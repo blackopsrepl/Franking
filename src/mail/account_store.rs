@@ -16,6 +16,59 @@ pub struct AccountRecord {
     pub enabled: bool,
     pub is_default: bool,
     pub maildir_path: Option<PathBuf>,
+    pub imap_host: Option<String>,
+    pub imap_port: Option<u16>,
+    pub imap_security: Option<String>,
+    pub smtp_host: Option<String>,
+    pub smtp_port: Option<u16>,
+    pub smtp_security: Option<String>,
+    pub auth_mode: Option<String>,
+    pub username: Option<String>,
+    pub keyring_imap_secret_id: Option<String>,
+    pub keyring_smtp_secret_id: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AccountConfig {
+    pub name: String,
+    pub backend_kind: String,
+    pub provider_kind: String,
+    pub enabled: bool,
+    pub is_default: bool,
+    pub maildir_path: Option<PathBuf>,
+    pub imap_host: Option<String>,
+    pub imap_port: Option<u16>,
+    pub imap_security: Option<String>,
+    pub smtp_host: Option<String>,
+    pub smtp_port: Option<u16>,
+    pub smtp_security: Option<String>,
+    pub auth_mode: Option<String>,
+    pub username: Option<String>,
+    pub keyring_imap_secret_id: Option<String>,
+    pub keyring_smtp_secret_id: Option<String>,
+}
+
+impl AccountConfig {
+    pub fn test_maildir() -> Self {
+        Self {
+            name: TEST_ACCOUNT_NAME.to_string(),
+            backend_kind: "maildir".to_string(),
+            provider_kind: "custom".to_string(),
+            enabled: true,
+            is_default: false,
+            maildir_path: Some(maildir::default_test_maildir_path()),
+            imap_host: None,
+            imap_port: None,
+            imap_security: None,
+            smtp_host: None,
+            smtp_port: None,
+            smtp_security: None,
+            auth_mode: Some("maildir".to_string()),
+            username: None,
+            keyring_imap_secret_id: None,
+            keyring_smtp_secret_id: None,
+        }
+    }
 }
 
 impl AccountRecord {
@@ -26,36 +79,40 @@ impl AccountRecord {
             default: self.is_default,
         }
     }
+
+    pub fn is_legacy(&self) -> bool {
+        self.provider_kind.eq_ignore_ascii_case("legacy")
+    }
 }
 
 pub fn seed_defaults(conn: &Connection) -> Result<()> {
-    let maildir_path = maildir::default_test_maildir_path();
-
-    conn.execute(
-        "INSERT INTO accounts (
-             name, backend_kind, provider_kind, enabled, is_default, maildir_path
-        ) VALUES (?1, 'maildir', 'custom', 1, ?2, ?3)
-         ON CONFLICT(name) DO UPDATE SET
-             backend_kind = excluded.backend_kind,
-             enabled = excluded.enabled,
-             maildir_path = excluded.maildir_path,
-             updated_at = datetime('now')",
-        params![
-            TEST_ACCOUNT_NAME,
-            0,
-            maildir_path.to_string_lossy().to_string()
-        ],
-    )?;
-
-    Ok(())
+    upsert_account(conn, &AccountConfig::test_maildir())
 }
 
 pub fn list_accounts(conn: &Connection) -> Result<Vec<AccountRecord>> {
     let mut stmt = conn.prepare(
-        "SELECT name, backend_kind, provider_kind, enabled, is_default, maildir_path
-         FROM accounts
-         WHERE enabled = 1
-         ORDER BY is_default DESC, name ASC",
+        "SELECT
+             a.name,
+             a.backend_kind,
+             a.provider_kind,
+             a.enabled,
+             a.is_default,
+             a.maildir_path,
+             e.imap_host,
+             e.imap_port,
+             e.imap_security,
+             e.smtp_host,
+             e.smtp_port,
+             e.smtp_security,
+             b.auth_mode,
+             b.username,
+             b.keyring_imap_secret_id,
+             b.keyring_smtp_secret_id
+         FROM accounts a
+         LEFT JOIN account_endpoints e ON e.account_id = a.id
+         LEFT JOIN auth_bindings b ON b.account_id = a.id
+         WHERE a.enabled = 1
+         ORDER BY a.is_default DESC, a.name ASC",
     )?;
 
     let rows = stmt.query_map([], row_to_account_record)?;
@@ -64,9 +121,27 @@ pub fn list_accounts(conn: &Connection) -> Result<Vec<AccountRecord>> {
 
 pub fn get_account(conn: &Connection, name: &str) -> Result<Option<AccountRecord>> {
     let mut stmt = conn.prepare(
-        "SELECT name, backend_kind, provider_kind, enabled, is_default, maildir_path
-         FROM accounts
-         WHERE name = ?1
+        "SELECT
+             a.name,
+             a.backend_kind,
+             a.provider_kind,
+             a.enabled,
+             a.is_default,
+             a.maildir_path,
+             e.imap_host,
+             e.imap_port,
+             e.imap_security,
+             e.smtp_host,
+             e.smtp_port,
+             e.smtp_security,
+             b.auth_mode,
+             b.username,
+             b.keyring_imap_secret_id,
+             b.keyring_smtp_secret_id
+         FROM accounts a
+         LEFT JOIN account_endpoints e ON e.account_id = a.id
+         LEFT JOIN auth_bindings b ON b.account_id = a.id
+         WHERE a.name = ?1
          LIMIT 1",
     )?;
 
@@ -91,29 +166,104 @@ pub fn preferred_account(records: &[AccountRecord]) -> Option<&AccountRecord> {
 }
 
 pub fn upsert_legacy_account(conn: &Connection, account: &Account) -> Result<()> {
-    if account.default {
-        conn.execute("UPDATE accounts SET is_default = 0", [])?;
+    let config = AccountConfig {
+        name: account.name.clone(),
+        backend_kind: account.backend.clone(),
+        provider_kind: "legacy".to_string(),
+        enabled: true,
+        is_default: account.default,
+        maildir_path: None,
+        imap_host: None,
+        imap_port: None,
+        imap_security: None,
+        smtp_host: None,
+        smtp_port: None,
+        smtp_security: None,
+        auth_mode: None,
+        username: None,
+        keyring_imap_secret_id: None,
+        keyring_smtp_secret_id: None,
+    };
+    upsert_account(conn, &config)
+}
+
+pub fn upsert_account(conn: &Connection, config: &AccountConfig) -> Result<()> {
+    let tx = conn.unchecked_transaction()?;
+    if config.is_default {
+        tx.execute("UPDATE accounts SET is_default = 0", [])?;
     }
 
-    conn.execute(
+    tx.execute(
         "INSERT INTO accounts (
-             name, backend_kind, provider_kind, enabled, is_default
-         ) VALUES (?1, ?2, 'legacy', 1, ?3)
+             name, backend_kind, provider_kind, enabled, is_default, maildir_path
+         ) VALUES (?1, ?2, ?3, ?4, ?5, ?6)
          ON CONFLICT(name) DO UPDATE SET
              backend_kind = excluded.backend_kind,
+             provider_kind = excluded.provider_kind,
              enabled = excluded.enabled,
-             is_default = CASE
-                 WHEN excluded.is_default = 1 THEN 1
-                 ELSE accounts.is_default
-             END,
+             is_default = excluded.is_default,
+             maildir_path = excluded.maildir_path,
              updated_at = datetime('now')",
         params![
-            account.name,
-            account.backend,
-            if account.default { 1 } else { 0 }
+            config.name,
+            config.backend_kind,
+            config.provider_kind,
+            if config.enabled { 1 } else { 0 },
+            if config.is_default { 1 } else { 0 },
+            config
+                .maildir_path
+                .as_ref()
+                .map(|path| path.to_string_lossy().to_string())
         ],
     )?;
 
+    let account_id: i64 = tx.query_row(
+        "SELECT id FROM accounts WHERE name = ?1",
+        [config.name.as_str()],
+        |row| row.get(0),
+    )?;
+
+    tx.execute(
+        "INSERT INTO account_endpoints (
+             account_id, imap_host, imap_port, imap_security, smtp_host, smtp_port, smtp_security
+         ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+         ON CONFLICT(account_id) DO UPDATE SET
+             imap_host = excluded.imap_host,
+             imap_port = excluded.imap_port,
+             imap_security = excluded.imap_security,
+             smtp_host = excluded.smtp_host,
+             smtp_port = excluded.smtp_port,
+             smtp_security = excluded.smtp_security",
+        params![
+            account_id,
+            config.imap_host,
+            config.imap_port.map(i64::from),
+            config.imap_security,
+            config.smtp_host,
+            config.smtp_port.map(i64::from),
+            config.smtp_security
+        ],
+    )?;
+
+    tx.execute(
+        "INSERT INTO auth_bindings (
+             account_id, auth_mode, username, keyring_imap_secret_id, keyring_smtp_secret_id
+         ) VALUES (?1, ?2, ?3, ?4, ?5)
+         ON CONFLICT(account_id) DO UPDATE SET
+             auth_mode = excluded.auth_mode,
+             username = excluded.username,
+             keyring_imap_secret_id = excluded.keyring_imap_secret_id,
+             keyring_smtp_secret_id = excluded.keyring_smtp_secret_id",
+        params![
+            account_id,
+            config.auth_mode.clone().unwrap_or_default(),
+            config.username,
+            config.keyring_imap_secret_id,
+            config.keyring_smtp_secret_id
+        ],
+    )?;
+
+    tx.commit()?;
     Ok(())
 }
 
@@ -126,5 +276,60 @@ fn row_to_account_record(row: &rusqlite::Row<'_>) -> rusqlite::Result<AccountRec
         enabled: row.get::<_, i64>(3)? != 0,
         is_default: row.get::<_, i64>(4)? != 0,
         maildir_path: path.map(PathBuf::from),
+        imap_host: row.get(6)?,
+        imap_port: row.get::<_, Option<i64>>(7)?.map(|value| value as u16),
+        imap_security: row.get(8)?,
+        smtp_host: row.get(9)?,
+        smtp_port: row.get::<_, Option<i64>>(10)?.map(|value| value as u16),
+        smtp_security: row.get(11)?,
+        auth_mode: row.get(12)?,
+        username: row.get(13)?,
+        keyring_imap_secret_id: row.get(14)?,
+        keyring_smtp_secret_id: row.get(15)?,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use rusqlite::Connection;
+
+    use super::{get_account, upsert_account, AccountConfig};
+
+    #[test]
+    fn upsert_account_persists_endpoint_and_auth_details() {
+        let conn = Connection::open_in_memory().unwrap();
+        crate::db::init_for_test(&conn).unwrap();
+
+        let config = AccountConfig {
+            name: "work".to_string(),
+            backend_kind: "imap".to_string(),
+            provider_kind: "generic".to_string(),
+            enabled: true,
+            is_default: true,
+            maildir_path: None,
+            imap_host: Some("imap.example.com".to_string()),
+            imap_port: Some(993),
+            imap_security: Some("tls".to_string()),
+            smtp_host: Some("smtp.example.com".to_string()),
+            smtp_port: Some(465),
+            smtp_security: Some("tls".to_string()),
+            auth_mode: Some("password".to_string()),
+            username: Some("alice@example.com".to_string()),
+            keyring_imap_secret_id: Some("solverforge-mail/work/imap".to_string()),
+            keyring_smtp_secret_id: Some("solverforge-mail/work/smtp".to_string()),
+        };
+
+        upsert_account(&conn, &config).unwrap();
+
+        let stored = get_account(&conn, "work").unwrap().unwrap();
+        assert_eq!(stored.imap_host.as_deref(), Some("imap.example.com"));
+        assert_eq!(stored.smtp_port, Some(465));
+        assert_eq!(stored.auth_mode.as_deref(), Some("password"));
+        assert_eq!(
+            stored.keyring_imap_secret_id.as_deref(),
+            Some("solverforge-mail/work/imap")
+        );
+        assert_eq!(stored.provider_kind, "generic");
+        assert!(stored.is_default);
+    }
 }
