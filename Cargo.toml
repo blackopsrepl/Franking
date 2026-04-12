@@ -25,6 +25,8 @@ rusqlite = { version = "0.38", features = ["bundled"] }
 # Phase 2: Email-first compose editor
 tui-textarea = { version = "0.7.0", features = ["search"] }
 rpassword = "7"
+mail-parser = "0.11"
+html2text = "0.16"
 
 [dev-dependencies]
 pretty_assertions = "1"

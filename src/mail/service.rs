@@ -5,6 +5,7 @@ use super::account_store::{self, AccountRecord};
 use super::errors::{MailError, MailResult};
 use super::himalaya::HimalayaService;
 use super::maildir::MaildirService;
+use super::message::MessageContent;
 use super::types::{sort_accounts, Account, Envelope, Folder};
 use crate::db;
 
@@ -26,7 +27,16 @@ pub trait MailService: Send + Sync {
         folder: &str,
         query: Option<&str>,
     ) -> MailResult<Vec<Envelope>>;
-    fn read_message(&self, account: Option<&str>, folder: &str, id: &str) -> MailResult<String>;
+    fn read_message_content(
+        &self,
+        account: Option<&str>,
+        folder: &str,
+        id: &str,
+    ) -> MailResult<MessageContent>;
+    fn read_message(&self, account: Option<&str>, folder: &str, id: &str) -> MailResult<String> {
+        self.read_message_content(account, folder, id)
+            .map(|message| message.render_for_legacy_view(78))
+    }
     fn delete_message(&self, account: Option<&str>, folder: &str, id: &str) -> MailResult<()>;
     fn move_message(
         &self,
@@ -197,10 +207,15 @@ impl MailService for RouterMailService {
         }
     }
 
-    fn read_message(&self, account: Option<&str>, folder: &str, id: &str) -> MailResult<String> {
+    fn read_message_content(
+        &self,
+        account: Option<&str>,
+        folder: &str,
+        id: &str,
+    ) -> MailResult<MessageContent> {
         match self.route_account(account)? {
-            Route::Maildir(service) => service.read_message(account, folder, id),
-            Route::Legacy(name) => self.legacy.read_message(Some(&name), folder, id),
+            Route::Maildir(service) => service.read_message_content(account, folder, id),
+            Route::Legacy(name) => self.legacy.read_message_content(Some(&name), folder, id),
         }
     }
 

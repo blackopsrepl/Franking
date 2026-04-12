@@ -1,4 +1,4 @@
-use std::collections::{BTreeSet, HashMap};
+use std::collections::BTreeSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -6,6 +6,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use chrono::Local;
 
 use super::errors::{MailError, MailResult};
+use super::message::{MessageContent, MessageDisplayMode};
+use super::mime;
 use super::service::MailService;
 use super::types::{Account, Envelope, Folder, Sender};
 
@@ -126,14 +128,19 @@ impl MailService for MaildirService {
         self.list_envelopes(account, folder, 1, usize::MAX, query)
     }
 
-    fn read_message(&self, _account: Option<&str>, folder: &str, id: &str) -> MailResult<String> {
+    fn read_message_content(
+        &self,
+        _account: Option<&str>,
+        folder: &str,
+        id: &str,
+    ) -> MailResult<MessageContent> {
         self.ensure_ready()?;
         let dir = self.folder_path(folder)?;
         let path = find_message_path(&dir, id)?;
-        let raw = fs::read_to_string(&path)
-            .map_err(|err| MailError::local_maildir_failure(err.to_string()))?;
+        let raw =
+            fs::read(&path).map_err(|err| MailError::local_maildir_failure(err.to_string()))?;
         mark_seen(&path)?;
-        Ok(raw)
+        mime::parse_message(&raw)
     }
 
     fn delete_message(&self, _account: Option<&str>, folder: &str, id: &str) -> MailResult<()> {
@@ -237,17 +244,16 @@ impl MailService for MaildirService {
         self.ensure_ready()?;
         let original = read_parsed_message(&find_message_path(&self.folder_path(folder)?, id)?)?;
         let to = original
-            .headers
-            .get("reply-to")
-            .cloned()
-            .or_else(|| original.headers.get("from").cloned())
+            .header_value("Reply-To")
+            .map(str::to_string)
+            .or_else(|| original.header_value("From").map(str::to_string))
             .unwrap_or_default();
         let cc = if all {
-            original.headers.get("cc").cloned().unwrap_or_default()
+            original.header_value("Cc").unwrap_or_default().to_string()
         } else {
             String::new()
         };
-        let subject = reply_subject(original.headers.get("subject").cloned());
+        let subject = reply_subject(original.header_value("Subject").map(str::to_string));
         let body = quoted_reply_body(&original);
 
         Ok(render_template(
@@ -264,7 +270,7 @@ impl MailService for MaildirService {
     ) -> MailResult<String> {
         self.ensure_ready()?;
         let original = read_parsed_message(&find_message_path(&self.folder_path(folder)?, id)?)?;
-        let subject = forward_subject(original.headers.get("subject").cloned());
+        let subject = forward_subject(original.header_value("Subject").map(str::to_string));
         let body = forwarded_body(&original);
 
         Ok(render_template(&[("Subject", subject)], &body))
@@ -272,16 +278,27 @@ impl MailService for MaildirService {
 
     fn template_send(&self, _account: Option<&str>, template: &str) -> MailResult<String> {
         self.ensure_ready()?;
-        let parsed = parse_message(template);
-        let from = parsed
-            .headers
-            .get("from")
-            .cloned()
-            .unwrap_or_else(|| "SolverForge Mail <test@solverforge.local>".to_string());
-        let to = parsed.headers.get("to").cloned().unwrap_or_default();
-        let cc = parsed.headers.get("cc").cloned().unwrap_or_default();
-        let bcc = parsed.headers.get("bcc").cloned().unwrap_or_default();
-        let subject = parsed.headers.get("subject").cloned().unwrap_or_default();
+        let parsed = parse_template_message(template);
+        let header = |name: &str| {
+            parsed
+                .headers
+                .iter()
+                .find(|(key, _)| key.eq_ignore_ascii_case(name))
+                .map(|(_, value)| value.clone())
+                .unwrap_or_default()
+        };
+        let from = {
+            let value = header("from");
+            if value.is_empty() {
+                "SolverForge Mail <test@solverforge.local>".to_string()
+            } else {
+                value
+            }
+        };
+        let to = header("to");
+        let cc = header("cc");
+        let bcc = header("bcc");
+        let subject = header("subject");
         let date = Local::now().format("%Y-%m-%d %H:%M:%S%:z").to_string();
 
         let mut raw = String::new();
@@ -387,9 +404,9 @@ fn list_message_entries(dir: &Path) -> MailResult<Vec<MessageEntry>> {
                 continue;
             }
             let path = item.path();
-            let raw = fs::read_to_string(&path)
-                .map_err(|err| MailError::local_maildir_failure(err.to_string()))?;
-            let parsed = parse_message(&raw);
+            let raw =
+                fs::read(&path).map_err(|err| MailError::local_maildir_failure(err.to_string()))?;
+            let parsed = mime::parse_message(&raw)?;
             let sort_key = item
                 .metadata()
                 .ok()
@@ -403,18 +420,20 @@ fn list_message_entries(dir: &Path) -> MailResult<Vec<MessageEntry>> {
                 sort_key,
                 searchable: format!(
                     "{}\n{}\n{}\n{}",
-                    parsed.headers.get("from").cloned().unwrap_or_default(),
-                    parsed.headers.get("to").cloned().unwrap_or_default(),
-                    parsed.headers.get("subject").cloned().unwrap_or_default(),
-                    parsed.body
+                    parsed.header_value("From").unwrap_or_default(),
+                    parsed.header_value("To").unwrap_or_default(),
+                    parsed.subject(),
+                    parsed.render_body(MessageDisplayMode::Auto, 78)
                 )
                 .to_ascii_lowercase(),
                 envelope: Envelope {
                     id: file_name(&path)?,
                     flags: flags_to_names(&parse_flag_codes(&path)),
-                    subject: parsed.headers.get("subject").cloned().unwrap_or_default(),
-                    sender: Sender::Plain(parsed.headers.get("from").cloned().unwrap_or_default()),
-                    date: parsed.headers.get("date").cloned().unwrap_or_default(),
+                    subject: parsed.subject().to_string(),
+                    sender: Sender::Plain(
+                        parsed.header_value("From").unwrap_or_default().to_string(),
+                    ),
+                    date: parsed.header_value("Date").unwrap_or_default().to_string(),
                 },
             });
         }
@@ -593,14 +612,13 @@ fn base_message_name(path: &Path) -> MailResult<String> {
         .unwrap_or(name))
 }
 
-fn read_parsed_message(path: &Path) -> MailResult<ParsedMessage> {
-    let raw = fs::read_to_string(path)
-        .map_err(|err| MailError::local_maildir_failure(err.to_string()))?;
-    Ok(parse_message(&raw))
+fn read_parsed_message(path: &Path) -> MailResult<MessageContent> {
+    let raw = fs::read(path).map_err(|err| MailError::local_maildir_failure(err.to_string()))?;
+    mime::parse_message(&raw)
 }
 
-fn parse_message(raw: &str) -> ParsedMessage {
-    let mut headers = HashMap::new();
+fn parse_template_message(raw: &str) -> TemplateMessage {
+    let mut headers: Vec<(String, String)> = Vec::new();
     let mut current_key: Option<String> = None;
     let mut body_lines = Vec::new();
     let mut in_body = false;
@@ -618,23 +636,27 @@ fn parse_message(raw: &str) -> ParsedMessage {
 
         if line.starts_with(' ') || line.starts_with('\t') {
             if let Some(key) = current_key.as_ref() {
-                let entry = headers.entry(key.clone()).or_insert_with(String::new);
-                if !entry.is_empty() {
-                    entry.push(' ');
+                if let Some((_, value)) = headers
+                    .iter_mut()
+                    .find(|(name, _)| name.eq_ignore_ascii_case(key))
+                {
+                    if !value.is_empty() {
+                        value.push(' ');
+                    }
+                    value.push_str(line.trim());
                 }
-                entry.push_str(line.trim());
             }
             continue;
         }
 
         if let Some((key, value)) = line.split_once(':') {
             let key = key.trim().to_ascii_lowercase();
-            headers.insert(key.clone(), value.trim().to_string());
+            headers.push((key.clone(), value.trim().to_string()));
             current_key = Some(key);
         }
     }
 
-    ParsedMessage {
+    TemplateMessage {
         headers,
         body: body_lines.join("\n"),
     }
@@ -674,46 +696,51 @@ fn forward_subject(subject: Option<String>) -> String {
     }
 }
 
-fn quoted_reply_body(message: &ParsedMessage) -> String {
-    let from = message.headers.get("from").cloned().unwrap_or_default();
-    let date = message.headers.get("date").cloned().unwrap_or_default();
+fn quoted_reply_body(message: &MessageContent) -> String {
+    let from = message.header_value("From").unwrap_or_default();
+    let date = message.header_value("Date").unwrap_or_default();
     let intro = match (!date.is_empty(), !from.is_empty()) {
         (true, true) => format!("On {date}, {from} wrote:\n"),
         (false, true) => format!("{from} wrote:\n"),
         _ => "Previous message:\n".to_string(),
     };
-    let quoted = message
-        .body
+    let rendered = message.render_body(MessageDisplayMode::Auto, 78);
+    let quoted = rendered
         .lines()
         .map(|line| format!("> {line}"))
         .collect::<Vec<_>>()
         .join("\n");
+    let quoted = if rendered.is_empty() {
+        String::new()
+    } else {
+        quoted
+    };
     format!("\n{intro}{quoted}")
 }
 
-fn forwarded_body(message: &ParsedMessage) -> String {
+fn forwarded_body(message: &MessageContent) -> String {
     let mut lines = vec!["---------- Forwarded message ----------".to_string()];
-    for header in ["from", "date", "subject", "to", "cc"] {
-        if let Some(value) = message.headers.get(header) {
+    for header in ["From", "Date", "Subject", "To", "Cc"] {
+        if let Some(value) = message.header_value(header) {
             let label = match header {
-                "from" => "From",
-                "date" => "Date",
-                "subject" => "Subject",
-                "to" => "To",
-                "cc" => "Cc",
+                "From" => "From",
+                "Date" => "Date",
+                "Subject" => "Subject",
+                "To" => "To",
+                "Cc" => "Cc",
                 _ => continue,
             };
             lines.push(format!("{label}: {value}"));
         }
     }
     lines.push(String::new());
-    lines.push(message.body.clone());
+    lines.push(message.render_body(MessageDisplayMode::Auto, 78));
     lines.join("\n")
 }
 
 #[derive(Debug, Clone)]
-struct ParsedMessage {
-    headers: HashMap<String, String>,
+struct TemplateMessage {
+    headers: Vec<(String, String)>,
     body: String,
 }
 

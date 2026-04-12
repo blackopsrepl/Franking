@@ -1,4 +1,6 @@
 use super::errors::{MailError, MailResult};
+use super::message::MessageContent;
+use super::mime;
 use super::types::{Account, Envelope, Folder};
 use crate::himalaya::{client, diagnostics};
 
@@ -47,13 +49,14 @@ impl HimalayaService {
             .map_err(|err| map_error(None, Operation::Imap, &err.to_string()))
     }
 
-    pub fn read_message(
+    pub fn read_message_content(
         &self,
         account: Option<&str>,
         folder: &str,
         id: &str,
-    ) -> MailResult<String> {
+    ) -> MailResult<MessageContent> {
         client::read_message(account, folder, id)
+            .and_then(|raw| mime::parse_message(raw.as_bytes()).map_err(anyhow::Error::from))
             .map_err(|err| map_error(None, Operation::Imap, &err.to_string()))
     }
 
