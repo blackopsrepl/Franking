@@ -14,8 +14,8 @@
 # SolverForge Mail
 
 A spiffy ratatui-based TUI email client with an app-owned mail layer, native
-maildir support, and a temporary Himalaya migration adapter for legacy
-accounts.
+maildir support, and a temporary Himalaya migration adapter for remote
+accounts that have not yet moved to native transport.
 
 ## Quick Start
 
@@ -153,7 +153,7 @@ Supported setup flows inside the wizard:
 - **Generic IMAP/SMTP**: Creates or updates an app-owned account definition plus keyring secret IDs
 - **iCloud**: App-specific password flow, with optional `~/.authinfo.gpg` compatibility rewrite
 - **Gmail/Outlook**: Temporary Himalaya-backed OAuth bootstrap while native OAuth transport is still pending
-- **Auth source of truth**: SQLite + OS keyring for password/app-password accounts; temporary Himalaya adapter for legacy/OAuth accounts
+- **Auth source of truth**: SQLite + OS keyring for stored account definitions, with the current remote transport path still temporarily backed by the Himalaya adapter
 
 ## Architecture
 
