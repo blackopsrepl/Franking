@@ -165,6 +165,22 @@ fn message_view_actions() {
         resolve(View::MessageView, key(KeyCode::Char('d'))),
         Action::Delete
     );
+    assert_eq!(
+        resolve(View::MessageView, key(KeyCode::Char('1'))),
+        Action::MessageModeAuto
+    );
+    assert_eq!(
+        resolve(View::MessageView, key(KeyCode::Char('2'))),
+        Action::MessageModePlain
+    );
+    assert_eq!(
+        resolve(View::MessageView, key(KeyCode::Char('3'))),
+        Action::MessageModeHtml
+    );
+    assert_eq!(
+        resolve(View::MessageView, key(KeyCode::Char('o'))),
+        Action::OpenHtmlExternally
+    );
 }
 
 // ── Folder list ─────────────────────────────────────────────────────

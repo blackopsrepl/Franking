@@ -1,4 +1,6 @@
 use std::collections::HashMap;
+use std::path::{Path, PathBuf};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use crossterm::event::{KeyEvent, MouseButton, MouseEvent, MouseEventKind};
 use ratatui::widgets::TableState;
@@ -13,6 +15,7 @@ use crate::identity_edit::IdentityEditState;
 use crate::keys::EditMode;
 use crate::keys::{self, Action, ComposeFocus, ComposeKeyContext, View};
 use crate::mail::types::*;
+use crate::mail::{MessageContent, MessageDisplayMode};
 use crate::worker::{Worker, WorkerResult};
 
 // Page size for envelope listing.
@@ -20,6 +23,12 @@ const PAGE_SIZE: usize = 50;
 
 // Auto-refresh interval in ticks (250ms each). 240 ticks = 60 seconds.
 const AUTO_REFRESH_TICKS: u64 = 240;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PendingOpenCommand {
+    pub program: String,
+    pub args: Vec<String>,
+}
 
 /// Top-level application state (TEA model).
 pub struct App {
@@ -45,7 +54,8 @@ pub struct App {
     pub page: usize,
 
     // ── Message view state ──────────────────────────────────────────
-    pub message_body: String,
+    pub message_content: Option<MessageContent>,
+    pub message_display_mode: MessageDisplayMode,
     pub message_scroll: u16,
 
     // ── Search state ────────────────────────────────────────────────
@@ -78,7 +88,7 @@ pub struct App {
     pub last_terminal_height: u16,
 
     // ── Shell-out command ───────────────────────────────────────────
-    pub pending_shell: Option<String>,
+    pub pending_open_command: Option<PendingOpenCommand>,
 
     // ── Background worker ───────────────────────────────────────────
     worker: Worker,
@@ -129,7 +139,8 @@ impl App {
             envelopes: Vec::new(),
             envelope_state: TableState::default(),
             page: 1,
-            message_body: String::new(),
+            message_content: None,
+            message_display_mode: MessageDisplayMode::Auto,
             message_scroll: 0,
             search_query: String::new(),
             active_query: None,
@@ -144,7 +155,7 @@ impl App {
             status_is_error: false,
             loading: false,
             tick_count: 0,
-            pending_shell: None,
+            pending_open_command: None,
             worker: Worker::new(),
             pending_message_id: None,
             pending_return_to_list: false,
@@ -225,6 +236,38 @@ impl App {
         self.envelopes.get(idx)
     }
 
+    pub fn current_message(&self) -> Option<&MessageContent> {
+        self.message_content.as_ref()
+    }
+
+    pub fn resolved_message_display_mode(&self) -> MessageDisplayMode {
+        self.current_message()
+            .map(|message| message.resolve_display_mode(self.message_display_mode))
+            .unwrap_or(MessageDisplayMode::Auto)
+    }
+
+    pub fn render_message_body(&self, width: usize) -> String {
+        self.current_message()
+            .map(|message| message.render_body(self.message_display_mode, width))
+            .unwrap_or_default()
+    }
+
+    pub fn rendered_message_line_count(&self, width: usize) -> u16 {
+        let header_lines = self
+            .current_message()
+            .map(|message| {
+                let attachment_lines = if message.attachments.is_empty() {
+                    0
+                } else {
+                    message.attachments.len() as u16 + 2
+                };
+                message.headers.len() as u16 + 3 + attachment_lines
+            })
+            .unwrap_or(0);
+        let body_lines = self.render_message_body(width).lines().count() as u16;
+        header_lines.saturating_add(body_lines)
+    }
+
     // ── Background result polling ───────────────────────────────────
 
     fn poll_worker(&mut self) {
@@ -251,8 +294,8 @@ impl App {
                     self.loading = false;
                     self.set_error(&format!("Failed to load envelopes: {e}"));
                 }
-                WorkerResult::Message(Ok(body)) => {
-                    self.handle_message_loaded(body);
+                WorkerResult::Message(Ok(message)) => {
+                    self.handle_message_loaded(message);
                 }
                 WorkerResult::Message(Err(e)) => {
                     self.loading = false;
@@ -388,11 +431,11 @@ impl App {
         }
     }
 
-    fn handle_message_loaded(&mut self, body: String) {
-        // Auto-harvest contacts from the message headers before storing body.
-        self.harvest_contacts_from_message(&body);
+    fn handle_message_loaded(&mut self, message: MessageContent) {
+        self.harvest_contacts_from_message(&message);
 
-        self.message_body = body;
+        self.message_content = Some(message);
+        self.message_display_mode = MessageDisplayMode::Auto;
         self.message_scroll = 0;
         self.loading = false;
         self.view = View::MessageView;
@@ -410,28 +453,20 @@ impl App {
     /// upsert them into the contacts DB.  The message body himalaya returns
     /// starts with rendered headers, so we scan lines until the first blank
     /// line.  Errors are silently ignored (harvest is best-effort).
-    fn harvest_contacts_from_message(&mut self, body: &str) {
+    fn harvest_contacts_from_message(&mut self, message: &MessageContent) {
         if self.db.is_none() {
             return;
         }
 
         let mut addrs: Vec<(Option<String>, String)> = Vec::new();
 
-        for line in body.lines() {
-            if line.is_empty() {
-                break; // end of headers
-            }
-            // Match lines like "From: ...", "To: ...", "Cc: ...", "Reply-To: ..."
-            let lower = line.to_lowercase();
-            let is_addr_header = lower.starts_with("from:")
-                || lower.starts_with("to:")
-                || lower.starts_with("cc:")
-                || lower.starts_with("reply-to:");
+        for header in &message.headers {
+            let is_addr_header = header.name.eq_ignore_ascii_case("from")
+                || header.name.eq_ignore_ascii_case("to")
+                || header.name.eq_ignore_ascii_case("cc")
+                || header.name.eq_ignore_ascii_case("reply-to");
             if is_addr_header {
-                if let Some(colon) = line.find(':') {
-                    let value = line[colon + 1..].trim();
-                    addrs.extend(crate::contacts::parse_address_list(value));
-                }
+                addrs.extend(crate::contacts::parse_address_list(&header.value));
             }
         }
 
@@ -494,6 +529,43 @@ impl App {
             self.pending_message_id = Some(id.clone());
             self.worker
                 .fetch_message(self.acct_owned(), self.current_folder.clone(), id);
+        }
+    }
+
+    fn set_message_display_mode(&mut self, mode: MessageDisplayMode) {
+        let Some(message) = self.current_message() else {
+            return;
+        };
+        let resolved = message.resolve_display_mode(mode);
+        self.message_display_mode = mode;
+        self.message_scroll = 0;
+        self.set_status(&format!(
+            "Message view: {}.",
+            match resolved {
+                MessageDisplayMode::Auto => "Auto",
+                MessageDisplayMode::Plain => "Plain",
+                MessageDisplayMode::Html => "HTML",
+            }
+        ));
+    }
+
+    fn open_message_html_externally(&mut self) {
+        let Some(message) = self.current_message() else {
+            return;
+        };
+        let Some(html) = message.html_body.as_deref() else {
+            self.set_status("This message does not contain an HTML body.");
+            return;
+        };
+
+        match write_html_preview_file(html) {
+            Ok(path) => {
+                self.pending_open_command = Some(external_open_command(&path));
+                self.set_status("Opening HTML body externally...");
+            }
+            Err(error) => {
+                self.set_error(&format!("Failed to prepare HTML preview: {error}"));
+            }
         }
     }
 
@@ -637,6 +709,10 @@ impl App {
             Action::Delete => self.delete(),
             Action::ToggleFlag => self.toggle_flag(),
             Action::DownloadAttachments => self.download_attachments(),
+            Action::MessageModeAuto => self.set_message_display_mode(MessageDisplayMode::Auto),
+            Action::MessageModePlain => self.set_message_display_mode(MessageDisplayMode::Plain),
+            Action::MessageModeHtml => self.set_message_display_mode(MessageDisplayMode::Html),
+            Action::OpenHtmlExternally => self.open_message_html_externally(),
             Action::ToggleThread => self.toggle_thread(),
             Action::Search => self.enter_search(),
             Action::SearchSubmit => self.submit_search(),
@@ -816,7 +892,7 @@ impl App {
         match self.view {
             View::MessageView => {
                 self.view = View::EnvelopeList;
-                self.message_body.clear();
+                self.message_content = None;
             }
             View::AccountList => {
                 self.view = View::EnvelopeList;
@@ -924,7 +1000,7 @@ impl App {
                 }
             }
             View::MessageView => {
-                let lines = self.message_body.lines().count() as u16;
+                let lines = self.rendered_message_line_count(78);
                 self.message_scroll = lines.saturating_sub(5);
             }
             View::Help => {
@@ -1872,6 +1948,46 @@ impl App {
     fn identity_edit_cancel(&mut self) {
         self.identity_edit_state = None;
         self.view = View::IdentityList;
+    }
+}
+
+fn write_html_preview_file(html: &str) -> std::io::Result<PathBuf> {
+    let preview_dir = std::env::temp_dir().join("solverforge-mail");
+    std::fs::create_dir_all(&preview_dir)?;
+
+    let unique = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_nanos())
+        .unwrap_or(0);
+    let path = preview_dir.join(format!("message-{unique}.html"));
+    let wrapped = if html.to_ascii_lowercase().contains("<html") {
+        html.to_string()
+    } else {
+        format!(
+            "<!doctype html><html><head><meta charset=\"utf-8\"></head><body>{html}</body></html>"
+        )
+    };
+    std::fs::write(&path, wrapped)?;
+    Ok(path)
+}
+
+fn external_open_command(path: &Path) -> PendingOpenCommand {
+    let path = path.to_string_lossy().to_string();
+    if cfg!(target_os = "macos") {
+        PendingOpenCommand {
+            program: "open".to_string(),
+            args: vec![path],
+        }
+    } else if cfg!(target_os = "windows") {
+        PendingOpenCommand {
+            program: "cmd".to_string(),
+            args: vec!["/C".to_string(), "start".to_string(), "".to_string(), path],
+        }
+    } else {
+        PendingOpenCommand {
+            program: "xdg-open".to_string(),
+            args: vec![path],
+        }
     }
 }
 

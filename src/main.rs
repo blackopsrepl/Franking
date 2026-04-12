@@ -82,25 +82,22 @@ fn run(
             Event::Resize(_, _) => {} // ratatui handles resize
         }
 
-        // If app requested a shell-out (compose/reply/forward), do it
-        // between frames while we still own the terminal.
-        if let Some(cmd) = app.pending_shell.take() {
+        // Run external open requests between frames while we still own the
+        // terminal so the child process never inherits the alternate screen.
+        if let Some(open) = app.pending_open_command.take() {
             restore_terminal()?;
-            let status = std::process::Command::new("sh")
-                .arg("-c")
-                .arg(&cmd)
+            let status = std::process::Command::new(&open.program)
+                .args(&open.args)
                 .status();
             // Re-enter raw/alternate mode with mouse
             enable_raw_mode()?;
             execute!(io::stdout(), EnterAlternateScreen, EnableMouseCapture)?;
             terminal.clear()?;
             match status {
-                Ok(s) if s.success() => app.set_status("Message sent."),
-                Ok(s) => app.set_status(&format!("Editor exited with {s}")),
-                Err(e) => app.set_status(&format!("Failed to launch editor: {e}")),
+                Ok(s) if s.success() => app.set_status("Opened HTML in the external viewer."),
+                Ok(s) => app.set_status(&format!("Open command exited with {s}")),
+                Err(e) => app.set_status(&format!("Failed to launch external viewer: {e}")),
             }
-            // Refresh envelope list after compose actions
-            app.refresh_envelopes();
         }
     }
     Ok(())

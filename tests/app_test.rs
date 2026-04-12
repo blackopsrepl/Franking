@@ -16,7 +16,7 @@ fn app_initial_state() {
     assert!(app.envelopes.is_empty());
     assert!(app.folders.is_empty());
     assert!(app.accounts.is_empty());
-    assert!(app.pending_shell.is_none());
+    assert!(app.pending_open_command.is_none());
 }
 
 #[test]
