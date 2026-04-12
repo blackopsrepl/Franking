@@ -150,10 +150,10 @@ cargo run -- --setup
 ```
 
 Supported setup flows inside the wizard:
-- **Generic IMAP/SMTP**: Creates or updates an app-owned account definition plus keyring secret IDs
-- **iCloud**: App-specific password flow, with optional `~/.authinfo.gpg` compatibility rewrite
+- **Generic IMAP/SMTP**: Temporarily gated in this build until native remote transport lands
+- **iCloud**: Temporarily gated in this build until native remote transport lands
 - **Gmail/Outlook**: Temporary Himalaya-backed OAuth bootstrap while native OAuth transport is still pending
-- **Auth source of truth**: SQLite + OS keyring for stored account definitions, with the current remote transport path still temporarily backed by the Himalaya adapter
+- **Auth source of truth**: SQLite + OS keyring remain the target control plane, with the current remote transport path still temporarily backed by the Himalaya adapter for legacy accounts
 
 ## Architecture
 
@@ -179,9 +179,9 @@ SolverForge Mail expects:
 - only the Himalaya backend binary/config for legacy accounts and the temporary OAuth bootstrap path
 
 ### Authentication errors
-- **iCloud**: Need an app-specific password, not the Apple ID password. If your config uses `auth.cmd`, verify `~/.authinfo.gpg` decrypts in this session.
+- **iCloud**: The app-owned setup flow is intentionally disabled in this build. If you still use a legacy Himalaya config with `auth.cmd`, verify `~/.authinfo.gpg` decrypts in this session.
 - **Gmail/Outlook**: OAuth bootstrap is still temporary. Re-run `himalaya account configure <account>` if the legacy OAuth token expires.
-- **Password-based IMAP/SMTP**: Verify the stored keyring secret IDs exist and your desktop secret service is unlocked.
+- **Password-based IMAP/SMTP**: Native app-owned transport is not enabled in this build yet. Use a legacy Himalaya-backed account if you need remote IMAP/SMTP today.
 - **Local `test` account failing**: This is not an auth issue. Fix backend discovery, config loading, or local maildir paths first.
 
 ### Keyring issues

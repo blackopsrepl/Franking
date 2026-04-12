@@ -9,5 +9,5 @@ pub mod types;
 
 pub use errors::{MailError, MailErrorKind, MailResult};
 pub use message::{MessageAttachment, MessageContent, MessageDisplayMode, MessageHeader};
-pub use service::{default_mail_service, MailService};
+pub use service::{app_owned_remote_transport_available, default_mail_service, MailService};
 pub use types::{Account, Envelope, Folder, Sender};

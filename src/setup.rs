@@ -10,7 +10,7 @@ use crate::db;
 use crate::himalaya::client;
 use crate::mail::account_store::{self, AccountConfig, AccountRecord};
 use crate::mail::types::Account;
-use crate::mail::{default_mail_service, MailService};
+use crate::mail::{app_owned_remote_transport_available, default_mail_service, MailService};
 
 pub fn run_wizard() -> Result<Option<String>> {
     println!("╔════════════════════════════════════════════╗");
@@ -24,8 +24,13 @@ pub fn run_wizard() -> Result<Option<String>> {
 
         println!();
         println!("Select an action:");
-        println!("1) Add or update a generic IMAP/SMTP account");
-        println!("2) Add or update an iCloud account");
+        if app_owned_remote_transport_available() {
+            println!("1) Add or update a generic IMAP/SMTP account");
+            println!("2) Add or update an iCloud account");
+        } else {
+            println!("1) Generic IMAP/SMTP setup (pending native transport)");
+            println!("2) iCloud setup (pending native transport)");
+        }
         println!("3) Run the temporary OAuth browser flow");
         println!("4) Launch SolverForge Mail with the first working account");
         println!("5) Exit");
@@ -33,12 +38,22 @@ pub fn run_wizard() -> Result<Option<String>> {
 
         match prompt("Choice [1-5]: ")? {
             choice if choice == "1" => {
-                if let Err(error) = configure_password_account(&inventory.accounts) {
+                let result = if app_owned_remote_transport_available() {
+                    configure_password_account(&inventory.accounts)
+                } else {
+                    bail_app_owned_remote_setup()
+                };
+                if let Err(error) = result {
                     println!("{error}");
                 }
             }
             choice if choice == "2" => {
-                if let Err(error) = configure_icloud_account(&inventory.accounts) {
+                let result = if app_owned_remote_transport_available() {
+                    configure_icloud_account(&inventory.accounts)
+                } else {
+                    bail_app_owned_remote_setup()
+                };
+                if let Err(error) = result {
                     println!("{error}");
                 }
             }
@@ -79,7 +94,7 @@ fn load_inventory() -> Result<Inventory> {
         .map_err(|error| anyhow!(error.to_string()))?;
     let banner = if should_show_bootstrap_only(&accounts) {
         Some(
-            "No configured remote accounts found yet. Add an IMAP/SMTP account, configure iCloud, or run the temporary OAuth bootstrap flow."
+            "No configured remote accounts found yet. Run the temporary OAuth bootstrap flow or add a legacy Himalaya-backed account until native IMAP/SMTP transport lands."
                 .to_string(),
         )
     } else {
@@ -442,6 +457,12 @@ fn load_account_record(name: &str) -> Result<Option<AccountRecord>> {
 fn save_account_config(config: &AccountConfig) -> Result<()> {
     let conn = db::open()?;
     account_store::upsert_account(&conn, config)
+}
+
+fn bail_app_owned_remote_setup() -> Result<()> {
+    bail!(
+        "App-owned IMAP/SMTP setup is temporarily disabled until native remote transport lands. Use the temporary OAuth flow or a legacy Himalaya-backed account for now."
+    )
 }
 
 fn secret_service_id(account_name: &str, protocol: &str) -> String {
