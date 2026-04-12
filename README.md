@@ -13,7 +13,9 @@
 
 # SolverForge Mail
 
-A spiffy ratatui-based TUI email client that wraps the himalaya CLI.
+A spiffy ratatui-based TUI email client with an app-owned mail layer, native
+maildir support, and a temporary Himalaya migration adapter for legacy
+accounts.
 
 ## Quick Start
 
@@ -28,7 +30,7 @@ cargo run -- --setup
 
 ## Features
 
-- **Non-blocking I/O** - Background workers for all himalaya operations
+- **Non-blocking I/O** - Background workers for all mail operations
 - **Relative timestamps** - "2h ago", "Yesterday", "Mon"
 - **Threading support** - Press `t` to toggle threaded view
 - **Auto-refresh** - New mail check every 60 seconds
@@ -36,13 +38,16 @@ cargo run -- --setup
 - **Mouse support** - Click to select, scroll wheel works
 - **Multi-account** - Switch with Ctrl+a
 - **Fast keyboard navigation** - j/k and g/G in list/message views, plus direct multiline editing in compose
-- **Smart error handling** - ANSI stripping, clean error messages
+- **Smart error handling** - Typed mail diagnostics and clean user-facing errors
+- **Structured message reader** - MIME-aware message content with `Auto`, `Plain`, and `HTML` modes
+- **External HTML open** - Safe argv-based browser handoff for full-fidelity HTML viewing
 - **Address book** - Contacts with name, email, phone, org, notes, tags
 - **Contact import** - vCard (.vcf) and Google CSV import
 - **Auto-harvest contacts** - Captured from sent/received mail
 - **Sender identities** - Multiple From addresses per account with default
 - **Local SQLite database** - Contacts and identities stored in `~/.local/share/solverforge/mail.db`
-- **Himalaya-managed auth** - Passwords, OAuth tokens, and GPG commands come from Himalaya's own config and secret backends
+- **App-owned account store** - Accounts, endpoints, auth bindings, and secret references live in SQLite
+- **Keyring-backed secrets** - Password and app-password flows store secret IDs in the app and raw secrets in the OS keyring
 
 ## Keybindings
 
@@ -73,6 +78,8 @@ cargo run -- --setup
 - `f` - Forward
 - `d` - Delete
 - `a` - Download attachments
+- `1` / `2` / `3` - `Auto` / `Plain` / `HTML`
+- `o` - Open HTML externally
 
 ### Compose View
 - `Tab` / `Shift+Tab` - Next/previous compose field
@@ -143,16 +150,18 @@ cargo run -- --setup
 ```
 
 Supported setup flows inside the wizard:
-- **Generic IMAP/SMTP**: Store keyring secrets for any configured Himalaya account
-- **iCloud**: App-specific password flow, with optional `~/.authinfo.gpg` rewrite
-- **Gmail/Outlook**: OAuth2 browser flow, including first-time config bootstrap
-- **Auth source of truth**: Himalaya itself, including `HIMALAYA_CONFIG` when set
+- **Generic IMAP/SMTP**: Creates or updates an app-owned account definition plus keyring secret IDs
+- **iCloud**: App-specific password flow, with optional `~/.authinfo.gpg` compatibility rewrite
+- **Gmail/Outlook**: Temporary Himalaya-backed OAuth bootstrap while native OAuth transport is still pending
+- **Auth source of truth**: SQLite + OS keyring for password/app-password accounts; temporary Himalaya adapter for legacy/OAuth accounts
 
 ## Architecture
 
 - **TEA pattern** - The Elm Architecture (Model, Update, View)
 - **Async worker pool** - Background threads for all I/O
 - **Channel-based IPC** - mpsc for result passing
+- **Mail service boundary** - `MailService` trait isolates UI/worker code from transport details
+- **Shared MIME parser** - Raw messages are parsed once and rendered as structured content
 - **Theme support** - Reads SolverForge colors.toml
 - **Zero dependencies** on async runtime (no tokio)
 
@@ -165,14 +174,14 @@ cargo run -- --account test
 ```
 
 SolverForge Mail expects:
-- a Himalaya backend binary in `~/.local/share/solverforge/bin/solverforge-himalaya`, `~/.local/bin/solverforge-himalaya`, `PATH`, or `/opt/himalaya/target/release/himalaya`
-- a Himalaya config that `himalaya account list` can read, either via `HIMALAYA_CONFIG` or the default config path
-- only the backend binary for first-time OAuth bootstrap via `cargo run -- --setup`, `make setup`, or `./setup-accounts.sh`
+- no external dependencies for the local `test` maildir account
+- the system keyring/`secret-tool` for password and app-password setup flows
+- only the Himalaya backend binary/config for legacy accounts and the temporary OAuth bootstrap path
 
 ### Authentication errors
 - **iCloud**: Need an app-specific password, not the Apple ID password. If your config uses `auth.cmd`, verify `~/.authinfo.gpg` decrypts in this session.
-- **Gmail/Outlook**: OAuth tokens expire. Re-run `himalaya account configure <account>`.
-- **Password-based IMAP/SMTP**: Verify the configured keyring secret names exist and your desktop secret service is unlocked.
+- **Gmail/Outlook**: OAuth bootstrap is still temporary. Re-run `himalaya account configure <account>` if the legacy OAuth token expires.
+- **Password-based IMAP/SMTP**: Verify the stored keyring secret IDs exist and your desktop secret service is unlocked.
 - **Local `test` account failing**: This is not an auth issue. Fix backend discovery, config loading, or local maildir paths first.
 
 ### Keyring issues
@@ -230,14 +239,20 @@ solverforge-mail/
 │   ├── keys.rs              # Keybinding definitions
 │   ├── theme.rs             # Color theme loader
 │   ├── himalaya/
-│   │   ├── client.rs        # Himalaya CLI wrapper
+│   │   ├── client.rs        # Temporary Himalaya CLI migration adapter
 │   │   ├── config.rs        # Backend discovery and config hints
 │   │   ├── diagnostics.rs   # Shared error classification
 │   │   └── types.rs         # JSON types
+│   ├── mail/
+│   │   ├── service.rs       # App-facing mail service boundary
+│   │   ├── message.rs       # Structured message content + display modes
+│   │   ├── mime.rs          # Shared raw-message MIME parser
+│   │   ├── maildir.rs       # Native local maildir backend
+│   │   └── account_store.rs # App-owned account metadata store
 │   └── ui/
 │       ├── envelope_list.rs # Email list with relative dates
 │       ├── folder_list.rs   # Sidebar with unread counts
-│       ├── message_view.rs  # Email reader
+│       ├── message_view.rs  # Structured message reader
 │       ├── account_list.rs  # Account switcher
 │       └── ...              # Other UI components
 └── tests/                   # 54 comprehensive tests
