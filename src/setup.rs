@@ -6,7 +6,9 @@ use std::sync::Arc;
 
 use anyhow::{anyhow, bail, Context, Result};
 
+use crate::db;
 use crate::himalaya::client;
+use crate::mail::account_store::{self, AccountConfig, AccountRecord};
 use crate::mail::types::Account;
 use crate::mail::{default_mail_service, MailService};
 
@@ -20,27 +22,11 @@ pub fn run_wizard() -> Result<Option<String>> {
         let inventory = load_inventory()?;
         print_inventory(&inventory);
 
-        if should_show_bootstrap_only(&inventory.accounts) {
-            println!();
-            println!("1) Bootstrap an OAuth account");
-            println!("2) Exit");
-            println!();
-
-            match prompt("Choice [1-2]: ")? {
-                choice if choice == "1" => configure_oauth(None)?,
-                choice if choice == "2" || choice.is_empty() => return Ok(None),
-                _ => println!("Invalid choice."),
-            }
-
-            println!();
-            continue;
-        }
-
         println!();
         println!("Select an action:");
-        println!("1) Store secrets for a password-based IMAP/SMTP account");
-        println!("2) Configure iCloud credentials");
-        println!("3) Run the OAuth browser flow");
+        println!("1) Add or update a generic IMAP/SMTP account");
+        println!("2) Add or update an iCloud account");
+        println!("3) Run the temporary OAuth browser flow");
         println!("4) Launch SolverForge Mail with the first working account");
         println!("5) Exit");
         println!();
@@ -92,7 +78,10 @@ fn load_inventory() -> Result<Inventory> {
         .list_accounts()
         .map_err(|error| anyhow!(error.to_string()))?;
     let banner = if should_show_bootstrap_only(&accounts) {
-        Some("No configured remote accounts found. OAuth bootstrap can create the first remote account from here.".to_string())
+        Some(
+            "No configured remote accounts found yet. Add an IMAP/SMTP account, configure iCloud, or run the temporary OAuth bootstrap flow."
+                .to_string(),
+        )
     } else {
         None
     };
@@ -129,54 +118,150 @@ fn describe_account_status(account: &Account) -> String {
 }
 
 fn configure_password_account(accounts: &[Account]) -> Result<()> {
-    let account = choose_existing_account(accounts, "Password account to configure")?;
-    let username = prompt_nonempty(&format!("Username/login for {}: ", account.name))?;
-    let password = prompt_password(&format!("Password for {}: ", account.name))?;
+    let account_name = choose_or_create_remote_account(accounts, "Generic IMAP/SMTP account")?;
+    let existing = load_account_record(&account_name)?;
+    let username = prompt_required_with_default(
+        &format!("Username/login for {}: ", account_name),
+        existing
+            .as_ref()
+            .and_then(|record| record.username.as_deref()),
+    )?;
+    let imap_host = prompt_required_with_default(
+        "IMAP host: ",
+        existing
+            .as_ref()
+            .and_then(|record| record.imap_host.as_deref()),
+    )?;
+    let imap_port = prompt_port_with_default(
+        "IMAP port: ",
+        existing.as_ref().and_then(|record| record.imap_port),
+        993,
+    )?;
+    let smtp_host = prompt_required_with_default(
+        "SMTP host: ",
+        existing
+            .as_ref()
+            .and_then(|record| record.smtp_host.as_deref()),
+    )?;
+    let smtp_port = prompt_port_with_default(
+        "SMTP port: ",
+        existing.as_ref().and_then(|record| record.smtp_port),
+        465,
+    )?;
+    let password = prompt_password(&format!("Password for {}: ", account_name))?;
+
+    let imap_secret_id = existing
+        .as_ref()
+        .and_then(|record| record.keyring_imap_secret_id.clone())
+        .unwrap_or_else(|| secret_service_id(&account_name, "imap"));
+    let smtp_secret_id = existing
+        .as_ref()
+        .and_then(|record| record.keyring_smtp_secret_id.clone())
+        .unwrap_or_else(|| secret_service_id(&account_name, "smtp"));
 
     store_secret(
-        &format!("{} IMAP password", account.name),
-        &format!("{}-imap", account.name),
+        &format!("{} IMAP password", account_name),
+        &imap_secret_id,
         &username,
         &password,
     )?;
     store_secret(
-        &format!("{} SMTP password", account.name),
-        &format!("{}-smtp", account.name),
+        &format!("{} SMTP password", account_name),
+        &smtp_secret_id,
         &username,
         &password,
     )?;
 
-    println!("Stored keyring secrets for {}.", account.name);
-    print_probe_result(&account.name, Some(&account.backend));
+    let config = AccountConfig {
+        name: account_name.clone(),
+        backend_kind: "imap".to_string(),
+        provider_kind: "generic".to_string(),
+        enabled: true,
+        is_default: existing
+            .as_ref()
+            .map(|record| record.is_default)
+            .unwrap_or_else(|| selectable_remote_accounts(accounts).is_empty()),
+        maildir_path: None,
+        imap_host: Some(imap_host),
+        imap_port: Some(imap_port),
+        imap_security: Some("tls".to_string()),
+        smtp_host: Some(smtp_host),
+        smtp_port: Some(smtp_port),
+        smtp_security: Some("tls".to_string()),
+        auth_mode: Some("password".to_string()),
+        username: Some(username),
+        keyring_imap_secret_id: Some(imap_secret_id),
+        keyring_smtp_secret_id: Some(smtp_secret_id),
+    };
+
+    save_account_config(&config)?;
+    println!(
+        "Stored app-owned IMAP/SMTP definition for {}.",
+        account_name
+    );
+    print_probe_result(&account_name, Some("imap"));
     Ok(())
 }
 
 fn configure_icloud_account(accounts: &[Account]) -> Result<()> {
-    let account = choose_existing_account(accounts, "iCloud account to configure")?;
+    let account_name = choose_or_create_remote_account(accounts, "iCloud account")?;
+    let existing = load_account_record(&account_name)?;
     let email = prompt_nonempty("iCloud email address: ")?;
     let password = prompt_password("iCloud app-specific password: ")?;
+
+    let imap_secret_id = existing
+        .as_ref()
+        .and_then(|record| record.keyring_imap_secret_id.clone())
+        .unwrap_or_else(|| secret_service_id(&account_name, "imap"));
+    let smtp_secret_id = existing
+        .as_ref()
+        .and_then(|record| record.keyring_smtp_secret_id.clone())
+        .unwrap_or_else(|| secret_service_id(&account_name, "smtp"));
+
+    store_secret(
+        &format!("{} IMAP password", account_name),
+        &imap_secret_id,
+        &email,
+        &password,
+    )?;
+    store_secret(
+        &format!("{} SMTP password", account_name),
+        &smtp_secret_id,
+        &email,
+        &password,
+    )?;
 
     if authinfo_gpg_path().is_file() {
         let recipient = prompt_nonempty("GPG recipient for ~/.authinfo.gpg: ")?;
         rewrite_authinfo_gpg(&email, &password, &recipient)?;
-        println!("Updated ~/.authinfo.gpg.");
-    } else {
-        store_secret(
-            &format!("{} IMAP password", account.name),
-            &format!("{}-imap", account.name),
-            &email,
-            &password,
-        )?;
-        store_secret(
-            &format!("{} SMTP password", account.name),
-            &format!("{}-smtp", account.name),
-            &email,
-            &password,
-        )?;
-        println!("Stored keyring secrets for {}.", account.name);
+        println!("Updated ~/.authinfo.gpg for iCloud compatibility.");
     }
 
-    print_probe_result(&account.name, Some(&account.backend));
+    let config = AccountConfig {
+        name: account_name.clone(),
+        backend_kind: "imap".to_string(),
+        provider_kind: "icloud".to_string(),
+        enabled: true,
+        is_default: existing
+            .as_ref()
+            .map(|record| record.is_default)
+            .unwrap_or_else(|| selectable_remote_accounts(accounts).is_empty()),
+        maildir_path: None,
+        imap_host: Some("imap.mail.me.com".to_string()),
+        imap_port: Some(993),
+        imap_security: Some("tls".to_string()),
+        smtp_host: Some("smtp.mail.me.com".to_string()),
+        smtp_port: Some(587),
+        smtp_security: Some("starttls".to_string()),
+        auth_mode: Some("app_password".to_string()),
+        username: Some(email),
+        keyring_imap_secret_id: Some(imap_secret_id),
+        keyring_smtp_secret_id: Some(smtp_secret_id),
+    };
+
+    save_account_config(&config)?;
+    println!("Stored app-owned iCloud definition for {}.", account_name);
+    print_probe_result(&account_name, Some("imap"));
     Ok(())
 }
 
@@ -205,10 +290,10 @@ fn first_working_account(accounts: &[Account]) -> Result<String> {
     bail!("No working account found. Fix the reported backend/auth issues first.")
 }
 
-fn choose_existing_account<'a>(accounts: &'a [Account], prompt_text: &str) -> Result<&'a Account> {
+fn choose_or_create_remote_account(accounts: &[Account], prompt_text: &str) -> Result<String> {
     let selectable = selectable_remote_accounts(accounts);
     if selectable.is_empty() {
-        bail!("No remote accounts are available for this setup flow yet.");
+        return prompt_nonempty(&format!("{prompt_text} name: "));
     }
 
     for (index, account) in selectable.iter().enumerate() {
@@ -221,14 +306,20 @@ fn choose_existing_account<'a>(accounts: &'a [Account], prompt_text: &str) -> Re
             default_marker
         );
     }
+    println!("  0) Enter a new account name");
     println!();
 
-    let raw = prompt(&format!("{prompt_text} [1-{}]: ", selectable.len()))?;
+    let raw = prompt(&format!("{prompt_text} [0-{}]: ", selectable.len()))?;
+    if raw == "0" {
+        return prompt_nonempty("New account name: ");
+    }
+
     let choice: usize = raw.parse().context("invalid account selection")?;
-    selectable
+    let account = selectable
         .get(choice.saturating_sub(1))
         .copied()
-        .ok_or_else(|| anyhow!("account selection out of range"))
+        .ok_or_else(|| anyhow!("account selection out of range"))?;
+    Ok(account.name.clone())
 }
 
 fn choose_oauth_account(accounts: Option<&[Account]>) -> Result<String> {
@@ -281,6 +372,31 @@ fn prompt_nonempty(label: &str) -> Result<String> {
     Ok(value)
 }
 
+fn prompt_required_with_default(label: &str, default: Option<&str>) -> Result<String> {
+    let label = match default {
+        Some(value) if !value.is_empty() => format!("{label}[{value}] "),
+        _ => label.to_string(),
+    };
+    let value = prompt(&label)?;
+    if value.is_empty() {
+        default
+            .map(str::to_string)
+            .filter(|value| !value.is_empty())
+            .ok_or_else(|| anyhow!("input is required"))
+    } else {
+        Ok(value)
+    }
+}
+
+fn prompt_port_with_default(label: &str, default: Option<u16>, fallback: u16) -> Result<u16> {
+    let default = default.unwrap_or(fallback);
+    let value = prompt(&format!("{label}[{default}] "))?;
+    if value.is_empty() {
+        return Ok(default);
+    }
+    value.parse().context("invalid port")
+}
+
 fn prompt_password(label: &str) -> Result<String> {
     let value = rpassword::prompt_password(label).context("failed to read password")?;
     if value.is_empty() {
@@ -292,7 +408,7 @@ fn prompt_password(label: &str) -> Result<String> {
 fn print_probe_result(account: &str, _backend: Option<&str>) {
     match mail_service().probe_account(account) {
         Ok(()) => println!("✓ {} is working.", account),
-        Err(error) => println!("✗ {error}"),
+        Err(error) => println!("Stored definition for {account}. Current runtime status: {error}"),
     }
 }
 
@@ -318,6 +434,20 @@ fn mail_service() -> Arc<dyn MailService> {
     default_mail_service()
 }
 
+fn load_account_record(name: &str) -> Result<Option<AccountRecord>> {
+    let conn = db::open()?;
+    account_store::get_account(&conn, name)
+}
+
+fn save_account_config(config: &AccountConfig) -> Result<()> {
+    let conn = db::open()?;
+    account_store::upsert_account(&conn, config)
+}
+
+fn secret_service_id(account_name: &str, protocol: &str) -> String {
+    format!("solverforge-mail/{account_name}/{protocol}")
+}
+
 fn store_secret(label: &str, service: &str, username: &str, password: &str) -> Result<()> {
     let mut child = Command::new("secret-tool")
         .args([
@@ -329,7 +459,7 @@ fn store_secret(label: &str, service: &str, username: &str, password: &str) -> R
             "username",
             username,
             "application",
-            "himalaya",
+            "solverforge-mail",
         ])
         .stdin(Stdio::piped())
         .stdout(Stdio::null())
