@@ -80,8 +80,37 @@ impl AccountRecord {
         }
     }
 
+    pub fn from_legacy_account(account: &Account) -> Self {
+        Self {
+            name: account.name.clone(),
+            backend_kind: account.backend.clone(),
+            provider_kind: "legacy".to_string(),
+            enabled: true,
+            is_default: account.default,
+            maildir_path: None,
+            imap_host: None,
+            imap_port: None,
+            imap_security: None,
+            smtp_host: None,
+            smtp_port: None,
+            smtp_security: None,
+            auth_mode: None,
+            username: None,
+            keyring_imap_secret_id: None,
+            keyring_smtp_secret_id: None,
+        }
+    }
+
+    pub fn is_maildir(&self) -> bool {
+        self.backend_kind.eq_ignore_ascii_case("maildir")
+    }
+
     pub fn is_legacy(&self) -> bool {
         self.provider_kind.eq_ignore_ascii_case("legacy")
+    }
+
+    pub fn is_routable(&self) -> bool {
+        self.is_maildir() || self.is_legacy()
     }
 }
 
@@ -163,28 +192,6 @@ pub fn preferred_account(records: &[AccountRecord]) -> Option<&AccountRecord> {
                 .find(|account| !account.backend_kind.eq_ignore_ascii_case("maildir"))
         })
         .or_else(|| records.first())
-}
-
-pub fn upsert_legacy_account(conn: &Connection, account: &Account) -> Result<()> {
-    let config = AccountConfig {
-        name: account.name.clone(),
-        backend_kind: account.backend.clone(),
-        provider_kind: "legacy".to_string(),
-        enabled: true,
-        is_default: account.default,
-        maildir_path: None,
-        imap_host: None,
-        imap_port: None,
-        imap_security: None,
-        smtp_host: None,
-        smtp_port: None,
-        smtp_security: None,
-        auth_mode: None,
-        username: None,
-        keyring_imap_secret_id: None,
-        keyring_smtp_secret_id: None,
-    };
-    upsert_account(conn, &config)
 }
 
 pub fn upsert_account(conn: &Connection, config: &AccountConfig) -> Result<()> {

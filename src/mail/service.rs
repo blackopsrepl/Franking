@@ -80,6 +80,10 @@ pub trait MailService: Send + Sync {
     fn template_send(&self, account: Option<&str>, template: &str) -> MailResult<String>;
 }
 
+pub fn app_owned_remote_transport_available() -> bool {
+    false
+}
+
 pub fn default_mail_service() -> Arc<dyn MailService> {
     Arc::new(RouterMailService::default())
 }
@@ -100,22 +104,34 @@ impl RouterMailService {
     fn choose_account(&self, account: Option<&str>) -> MailResult<AccountRecord> {
         self.with_db(|conn| {
             if let Some(name) = account {
-                return account_store::get_account(conn, name)
-                    .map_err(|err| MailError::config_invalid(err.to_string()))?
+                let stored_record = account_store::get_account(conn, name)
+                    .map_err(|err| MailError::config_invalid(err.to_string()))?;
+                let legacy_accounts = match self.legacy.list_accounts() {
+                    Ok(accounts) => accounts,
+                    Err(_) if stored_record.is_some() => Vec::new(),
+                    Err(error) => return Err(error),
+                };
+
+                return resolve_named_account(stored_record, &legacy_accounts, name)
                     .ok_or_else(|| MailError::account_not_found(name.to_string()));
             }
 
-            let accounts = account_store::list_accounts(conn)
+            let stored_accounts = account_store::list_accounts(conn)
                 .map_err(|err| MailError::config_invalid(err.to_string()))?;
-            account_store::preferred_account(&accounts)
-                .cloned()
+            let legacy_accounts = self.legacy.list_accounts().unwrap_or_default();
+            let mut accounts = merge_visible_records(stored_accounts, legacy_accounts);
+            sort_account_records(&mut accounts);
+
+            accounts
+                .into_iter()
+                .next()
                 .ok_or_else(|| MailError::account_not_found("no configured account".to_string()))
         })
     }
 
     fn route_account(&self, account: Option<&str>) -> MailResult<Route> {
         let record = self.choose_account(account)?;
-        if record.backend_kind.eq_ignore_ascii_case("maildir") {
+        if record.is_maildir() {
             let path = record.maildir_path.ok_or_else(|| {
                 MailError::config_invalid(format!(
                     "account {} is missing a maildir path",
@@ -127,32 +143,85 @@ impl RouterMailService {
             ));
         }
 
-        Ok(Route::Legacy(record.name))
+        if record.is_legacy() {
+            return Ok(Route::Legacy(record.name));
+        }
+
+        Err(MailError::unsupported_feature(format!(
+            "account {} is stored as an app-owned remote account, but native IMAP/SMTP transport is not available in this build",
+            record.name
+        )))
     }
 
     fn merged_accounts(&self) -> MailResult<Vec<Account>> {
         self.with_db(|conn| {
-            let mut merged = HashMap::new();
-            for account in account_store::list_accounts(conn)
-                .map_err(|err| MailError::config_invalid(err.to_string()))?
-            {
-                merged.insert(account.name.clone(), account.to_account());
-            }
-
-            if let Ok(legacy_accounts) = self.legacy.list_accounts() {
-                for account in &legacy_accounts {
-                    let _ = account_store::upsert_legacy_account(conn, account);
-                }
-                for account in legacy_accounts {
-                    merged.insert(account.name.clone(), account);
-                }
-            }
-
-            let mut accounts = merged.into_values().collect::<Vec<_>>();
-            sort_accounts(&mut accounts);
-            Ok(accounts)
+            let stored_accounts = account_store::list_accounts(conn)
+                .map_err(|err| MailError::config_invalid(err.to_string()))?;
+            let legacy_accounts = self.legacy.list_accounts().unwrap_or_default();
+            Ok(merge_visible_accounts(stored_accounts, legacy_accounts))
         })
     }
+}
+
+fn resolve_named_account(
+    stored_record: Option<AccountRecord>,
+    legacy_accounts: &[Account],
+    name: &str,
+) -> Option<AccountRecord> {
+    match stored_record {
+        Some(record) if record.is_routable() => Some(record),
+        Some(record) => legacy_accounts
+            .iter()
+            .find(|account| account.name == name)
+            .map(AccountRecord::from_legacy_account)
+            .or(Some(record)),
+        None => legacy_accounts
+            .iter()
+            .find(|account| account.name == name)
+            .map(AccountRecord::from_legacy_account),
+    }
+}
+
+fn merge_visible_accounts(
+    stored_accounts: Vec<AccountRecord>,
+    legacy_accounts: Vec<Account>,
+) -> Vec<Account> {
+    let mut accounts = merge_visible_records(stored_accounts, legacy_accounts)
+        .into_iter()
+        .map(|record| record.to_account())
+        .collect::<Vec<_>>();
+    sort_accounts(&mut accounts);
+    accounts
+}
+
+fn merge_visible_records(
+    stored_accounts: Vec<AccountRecord>,
+    legacy_accounts: Vec<Account>,
+) -> Vec<AccountRecord> {
+    let mut merged = HashMap::new();
+    for account in legacy_accounts {
+        merged.insert(
+            account.name.clone(),
+            AccountRecord::from_legacy_account(&account),
+        );
+    }
+    for account in stored_accounts
+        .into_iter()
+        .filter(AccountRecord::is_routable)
+    {
+        merged.insert(account.name.clone(), account);
+    }
+    merged.into_values().collect()
+}
+
+fn sort_account_records(accounts: &mut [AccountRecord]) {
+    accounts.sort_by(|left, right| {
+        right
+            .is_default
+            .cmp(&left.is_default)
+            .then_with(|| left.is_maildir().cmp(&right.is_maildir()))
+            .then_with(|| left.name.cmp(&right.name))
+    });
 }
 
 impl MailService for RouterMailService {
@@ -333,4 +402,76 @@ impl MailService for RouterMailService {
 enum Route {
     Maildir(MaildirService),
     Legacy(String),
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{merge_visible_accounts, resolve_named_account};
+    use crate::mail::account_store::AccountRecord;
+    use crate::mail::types::Account;
+
+    fn stored_account(name: &str, backend_kind: &str, provider_kind: &str) -> AccountRecord {
+        AccountRecord {
+            name: name.to_string(),
+            backend_kind: backend_kind.to_string(),
+            provider_kind: provider_kind.to_string(),
+            enabled: true,
+            is_default: false,
+            maildir_path: None,
+            imap_host: Some("imap.example.com".to_string()),
+            imap_port: Some(993),
+            imap_security: Some("tls".to_string()),
+            smtp_host: Some("smtp.example.com".to_string()),
+            smtp_port: Some(465),
+            smtp_security: Some("tls".to_string()),
+            auth_mode: Some("password".to_string()),
+            username: Some("alice@example.com".to_string()),
+            keyring_imap_secret_id: Some("solverforge-mail/work/imap".to_string()),
+            keyring_smtp_secret_id: Some("solverforge-mail/work/smtp".to_string()),
+        }
+    }
+
+    fn legacy_account(name: &str) -> Account {
+        Account {
+            name: name.to_string(),
+            backend: "imap".to_string(),
+            default: false,
+        }
+    }
+
+    #[test]
+    fn merged_accounts_keep_working_legacy_entry_when_stored_remote_is_unroutable() {
+        let accounts = merge_visible_accounts(
+            vec![stored_account("work", "imap", "generic")],
+            vec![legacy_account("work")],
+        );
+
+        assert_eq!(accounts.len(), 1);
+        assert_eq!(accounts[0].name, "work");
+        assert_eq!(accounts[0].backend, "imap");
+    }
+
+    #[test]
+    fn resolve_named_account_falls_back_to_legacy_when_stored_remote_is_unroutable() {
+        let resolved = resolve_named_account(
+            Some(stored_account("work", "imap", "generic")),
+            &[legacy_account("work")],
+            "work",
+        )
+        .expect("account should resolve");
+
+        assert!(resolved.is_legacy());
+    }
+
+    #[test]
+    fn resolve_named_account_keeps_stored_maildir_when_it_is_routable() {
+        let mut stored = stored_account("test", "maildir", "custom");
+        stored.maildir_path = Some("/tmp/test-maildir".into());
+
+        let resolved =
+            resolve_named_account(Some(stored.clone()), &[legacy_account("test")], "test")
+                .expect("account should resolve");
+
+        assert_eq!(resolved, stored);
+    }
 }
