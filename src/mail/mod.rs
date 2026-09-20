@@ -5,6 +5,7 @@ pub mod maildir;
 pub mod message;
 pub mod mime;
 pub mod oauth;
+pub mod remote;
 pub mod service;
 pub mod types;
 

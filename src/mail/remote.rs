@@ -1,0 +1,1226 @@
+use std::fs;
+use std::io::{Read, Write};
+use std::net::TcpStream;
+use std::path::PathBuf;
+use std::process::Command;
+use std::time::Duration;
+
+use imap::types::Flag;
+use imap::Authenticator;
+use lettre::message::{header::ContentType, Mailbox};
+use lettre::transport::smtp::authentication::Credentials;
+use lettre::transport::smtp::authentication::Mechanism;
+use lettre::transport::smtp::client::{Tls, TlsParameters};
+use lettre::transport::smtp::Error as SmtpError;
+use lettre::{Message, SmtpTransport, Transport};
+use mail_parser::{MessageParser, MimeHeaders};
+use native_tls::{TlsConnector, TlsStream};
+
+use super::account_store::AccountRecord;
+use super::errors::{MailError, MailResult};
+use super::message::{MessageContent, MessageDisplayMode};
+use super::mime;
+use super::oauth;
+use super::types::{Envelope, Folder, Sender};
+
+const NETWORK_TIMEOUT: Duration = Duration::from_secs(60);
+
+#[derive(Debug, Clone)]
+pub struct ImapSmtpService {
+    account: AccountRecord,
+}
+
+impl ImapSmtpService {
+    pub fn new(account: AccountRecord) -> Self {
+        Self { account }
+    }
+
+    pub fn probe_account(&self, account: &str) -> MailResult<()> {
+        self.ensure_account(account)?;
+        self.probe_imap()?;
+        self.probe_smtp()?;
+        Ok(())
+    }
+
+    pub fn list_folders(&self, account: Option<&str>) -> MailResult<Vec<Folder>> {
+        self.ensure_requested_account(account)?;
+
+        fn exec<S: Read + Write>(session: &mut imap::Session<S>) -> MailResult<Vec<Folder>> {
+            let names = session
+                .list(None, Some("*"))
+                .map_err(map_imap_error)?
+                .into_iter()
+                .filter(|name| {
+                    !name
+                        .attributes()
+                        .iter()
+                        .any(|attr| matches!(attr, imap::types::NameAttribute::NoSelect))
+                })
+                .map(|name| Folder {
+                    name: name.name().to_string(),
+                    desc: folder_description(name.name()),
+                })
+                .collect::<Vec<_>>();
+            Ok(names)
+        }
+
+        match self.connect_imap_session()? {
+            ConnectedImapSession::Plain(mut session) => exec(&mut session),
+            ConnectedImapSession::Tls(mut session) => exec(&mut session),
+        }
+    }
+
+    pub fn list_envelopes(
+        &self,
+        account: Option<&str>,
+        folder: &str,
+        page: usize,
+        page_size: usize,
+        query: Option<&str>,
+    ) -> MailResult<Vec<Envelope>> {
+        self.ensure_requested_account(account)?;
+
+        fn exec<S: Read + Write>(
+            session: &mut imap::Session<S>,
+            folder: &str,
+            page: usize,
+            page_size: usize,
+            query: Option<&str>,
+        ) -> MailResult<Vec<Envelope>> {
+            session.select(folder).map_err(map_imap_error)?;
+
+            let mut uids = session
+                .uid_search("ALL")
+                .map_err(map_imap_error)?
+                .into_iter()
+                .collect::<Vec<_>>();
+            if uids.is_empty() {
+                return Ok(Vec::new());
+            }
+            uids.sort_unstable_by(|left, right| right.cmp(left));
+
+            let filtered = if query.is_some() {
+                fetch_envelope_metadata(session, &uids)?
+                    .into_iter()
+                    .filter(|envelope| envelope_matches_query(envelope, query))
+                    .collect::<Vec<_>>()
+            } else {
+                let start = page.saturating_sub(1) * page_size;
+                let page_uids = uids
+                    .into_iter()
+                    .skip(start)
+                    .take(page_size)
+                    .collect::<Vec<_>>();
+                fetch_envelope_metadata(session, &page_uids)?
+            };
+
+            if query.is_some() {
+                let start = page.saturating_sub(1) * page_size;
+                Ok(filtered
+                    .into_iter()
+                    .skip(start)
+                    .take(page_size)
+                    .collect::<Vec<_>>())
+            } else {
+                Ok(filtered)
+            }
+        }
+
+        match self.connect_imap_session()? {
+            ConnectedImapSession::Plain(mut session) => {
+                exec(&mut session, folder, page, page_size, query)
+            }
+            ConnectedImapSession::Tls(mut session) => {
+                exec(&mut session, folder, page, page_size, query)
+            }
+        }
+    }
+
+    pub fn list_envelopes_threaded(
+        &self,
+        account: Option<&str>,
+        folder: &str,
+        query: Option<&str>,
+    ) -> MailResult<Vec<Envelope>> {
+        self.list_envelopes(account, folder, 1, usize::MAX, query)
+    }
+
+    pub fn read_message_content(
+        &self,
+        account: Option<&str>,
+        folder: &str,
+        id: &str,
+    ) -> MailResult<MessageContent> {
+        self.ensure_requested_account(account)?;
+
+        fn exec<S: Read + Write>(
+            session: &mut imap::Session<S>,
+            folder: &str,
+            id: &str,
+        ) -> MailResult<MessageContent> {
+            session.select(folder).map_err(map_imap_error)?;
+            let fetches = session.uid_fetch(id, "RFC822").map_err(map_imap_error)?;
+            let raw = fetches
+                .iter()
+                .find_map(|fetch| fetch.body())
+                .ok_or_else(|| {
+                    MailError::other("message body was not returned by the IMAP server")
+                })?;
+            mime::parse_message(raw)
+        }
+
+        match self.connect_imap_session()? {
+            ConnectedImapSession::Plain(mut session) => exec(&mut session, folder, id),
+            ConnectedImapSession::Tls(mut session) => exec(&mut session, folder, id),
+        }
+    }
+
+    pub fn delete_message(&self, account: Option<&str>, folder: &str, id: &str) -> MailResult<()> {
+        self.ensure_requested_account(account)?;
+
+        if folder.eq_ignore_ascii_case("trash") {
+            fn exec<S: Read + Write>(
+                session: &mut imap::Session<S>,
+                folder: &str,
+                id: &str,
+            ) -> MailResult<()> {
+                session.select(folder).map_err(map_imap_error)?;
+                session
+                    .uid_store(id, "+FLAGS.SILENT (\\Deleted)")
+                    .map_err(map_imap_error)?;
+                session.uid_expunge(id).map_err(map_imap_error)?;
+                Ok(())
+            }
+
+            return match self.connect_imap_session()? {
+                ConnectedImapSession::Plain(mut session) => exec(&mut session, folder, id),
+                ConnectedImapSession::Tls(mut session) => exec(&mut session, folder, id),
+            };
+        }
+
+        self.move_message(account, folder, "Trash", id)
+    }
+
+    pub fn move_message(
+        &self,
+        account: Option<&str>,
+        folder: &str,
+        target: &str,
+        id: &str,
+    ) -> MailResult<()> {
+        self.ensure_requested_account(account)?;
+
+        fn exec<S: Read + Write>(
+            session: &mut imap::Session<S>,
+            folder: &str,
+            target: &str,
+            id: &str,
+        ) -> MailResult<()> {
+            session.select(folder).map_err(map_imap_error)?;
+            match session.mv(id, target) {
+                Ok(()) => Ok(()),
+                Err(_) => {
+                    session.uid_copy(id, target).map_err(map_imap_error)?;
+                    session
+                        .uid_store(id, "+FLAGS.SILENT (\\Deleted)")
+                        .map_err(map_imap_error)?;
+                    session.uid_expunge(id).map_err(map_imap_error)?;
+                    Ok(())
+                }
+            }
+        }
+
+        match self.connect_imap_session()? {
+            ConnectedImapSession::Plain(mut session) => exec(&mut session, folder, target, id),
+            ConnectedImapSession::Tls(mut session) => exec(&mut session, folder, target, id),
+        }
+    }
+
+    pub fn copy_message(
+        &self,
+        account: Option<&str>,
+        folder: &str,
+        target: &str,
+        id: &str,
+    ) -> MailResult<()> {
+        self.ensure_requested_account(account)?;
+
+        fn exec<S: Read + Write>(
+            session: &mut imap::Session<S>,
+            folder: &str,
+            target: &str,
+            id: &str,
+        ) -> MailResult<()> {
+            session.select(folder).map_err(map_imap_error)?;
+            session.uid_copy(id, target).map_err(map_imap_error)?;
+            Ok(())
+        }
+
+        match self.connect_imap_session()? {
+            ConnectedImapSession::Plain(mut session) => exec(&mut session, folder, target, id),
+            ConnectedImapSession::Tls(mut session) => exec(&mut session, folder, target, id),
+        }
+    }
+
+    pub fn flag_add(
+        &self,
+        account: Option<&str>,
+        folder: &str,
+        id: &str,
+        flag: &str,
+    ) -> MailResult<()> {
+        self.ensure_requested_account(account)?;
+        self.set_flag(folder, id, flag, true)
+    }
+
+    pub fn flag_remove(
+        &self,
+        account: Option<&str>,
+        folder: &str,
+        id: &str,
+        flag: &str,
+    ) -> MailResult<()> {
+        self.ensure_requested_account(account)?;
+        self.set_flag(folder, id, flag, false)
+    }
+
+    pub fn download_attachments(
+        &self,
+        account: Option<&str>,
+        folder: &str,
+        id: &str,
+    ) -> MailResult<String> {
+        self.ensure_requested_account(account)?;
+
+        fn exec<S: Read + Write>(
+            session: &mut imap::Session<S>,
+            folder: &str,
+            id: &str,
+        ) -> MailResult<Vec<(String, Vec<u8>)>> {
+            session.select(folder).map_err(map_imap_error)?;
+            let fetches = session
+                .uid_fetch(id, "BODY.PEEK[]")
+                .map_err(map_imap_error)?;
+            let raw = fetches
+                .iter()
+                .find_map(|fetch| fetch.body())
+                .ok_or_else(|| {
+                    MailError::other("message body was not returned by the IMAP server")
+                })?;
+            extract_attachments(raw)
+        }
+
+        let attachments = match self.connect_imap_session()? {
+            ConnectedImapSession::Plain(mut session) => exec(&mut session, folder, id),
+            ConnectedImapSession::Tls(mut session) => exec(&mut session, folder, id),
+        }?;
+
+        if attachments.is_empty() {
+            return Err(MailError::unsupported_feature(
+                "this message does not include any downloadable attachments",
+            ));
+        }
+
+        let base = dirs::download_dir()
+            .or_else(dirs::data_dir)
+            .unwrap_or_else(|| PathBuf::from("."))
+            .join("solverforge-mail");
+        fs::create_dir_all(&base).map_err(|err| MailError::io(err.to_string()))?;
+
+        let mut saved = Vec::new();
+        for (index, (name, bytes)) in attachments.into_iter().enumerate() {
+            let file_name = ensure_unique_attachment_name(&base, index, &name);
+            let path = base.join(&file_name);
+            fs::write(&path, bytes).map_err(|err| MailError::io(err.to_string()))?;
+            saved.push(path.display().to_string());
+        }
+
+        Ok(saved.join(", "))
+    }
+
+    pub fn template_write(&self, account: Option<&str>) -> MailResult<String> {
+        self.ensure_requested_account(account)?;
+        Ok("\n".to_string())
+    }
+
+    pub fn template_reply(
+        &self,
+        account: Option<&str>,
+        folder: &str,
+        id: &str,
+        all: bool,
+    ) -> MailResult<String> {
+        self.ensure_requested_account(account)?;
+        let original = self.read_message_content(account, folder, id)?;
+        let to = original
+            .header_value("Reply-To")
+            .map(str::to_string)
+            .or_else(|| original.header_value("From").map(str::to_string))
+            .unwrap_or_default();
+        let cc = if all {
+            original.header_value("Cc").unwrap_or_default().to_string()
+        } else {
+            String::new()
+        };
+        let subject = reply_subject(original.header_value("Subject").map(str::to_string));
+        let body = quoted_reply_body(&original);
+
+        Ok(render_template(
+            &[("To", to), ("Cc", cc), ("Subject", subject)],
+            &body,
+        ))
+    }
+
+    pub fn template_forward(
+        &self,
+        account: Option<&str>,
+        folder: &str,
+        id: &str,
+    ) -> MailResult<String> {
+        self.ensure_requested_account(account)?;
+        let original = self.read_message_content(account, folder, id)?;
+        let subject = forward_subject(original.header_value("Subject").map(str::to_string));
+        let body = forwarded_body(&original);
+        Ok(render_template(&[("Subject", subject)], &body))
+    }
+
+    pub fn template_send(&self, account: Option<&str>, template: &str) -> MailResult<String> {
+        self.ensure_requested_account(account)?;
+        let draft = parse_template_message(template);
+        let from = draft
+            .header("from")
+            .map(str::to_string)
+            .or_else(|| self.default_from_header())
+            .ok_or_else(|| MailError::invalid_input("a From address is required to send mail"))?;
+        let to = draft
+            .header("to")
+            .ok_or_else(|| MailError::invalid_input("a To address is required to send mail"))?;
+
+        let mut builder = Message::builder()
+            .from(parse_mailbox(&from)?)
+            .subject(draft.header("subject").unwrap_or_default())
+            .header(ContentType::TEXT_PLAIN);
+
+        for mailbox in parse_mailboxes(to)? {
+            builder = builder.to(mailbox);
+        }
+        if let Some(value) = draft.header("cc") {
+            for mailbox in parse_mailboxes(value)? {
+                builder = builder.cc(mailbox);
+            }
+        }
+        if let Some(value) = draft.header("bcc") {
+            for mailbox in parse_mailboxes(value)? {
+                builder = builder.bcc(mailbox);
+            }
+        }
+
+        let message = builder
+            .body(draft.body)
+            .map_err(|err| MailError::invalid_input(err.to_string()))?;
+        let transport = self.smtp_transport()?;
+        transport.send(&message).map_err(map_smtp_error)?;
+
+        Ok("Message sent.".to_string())
+    }
+
+    fn ensure_requested_account(&self, account: Option<&str>) -> MailResult<()> {
+        if let Some(name) = account {
+            self.ensure_account(name)?;
+        }
+        Ok(())
+    }
+
+    fn ensure_account(&self, account: &str) -> MailResult<()> {
+        if self.account.name == account {
+            Ok(())
+        } else {
+            Err(MailError::account_not_found(account.to_string()))
+        }
+    }
+
+    fn probe_imap(&self) -> MailResult<()> {
+        fn exec<S: Read + Write>(session: &mut imap::Session<S>) -> MailResult<()> {
+            session.list(None, Some("*")).map_err(map_imap_error)?;
+            Ok(())
+        }
+
+        match self.connect_imap_session()? {
+            ConnectedImapSession::Plain(mut session) => exec(&mut session),
+            ConnectedImapSession::Tls(mut session) => exec(&mut session),
+        }
+    }
+
+    fn probe_smtp(&self) -> MailResult<()> {
+        let transport = self.smtp_transport()?;
+        let ok = transport.test_connection().map_err(map_smtp_error)?;
+        if ok {
+            Ok(())
+        } else {
+            Err(MailError::connection_dropped(
+                "SMTP server closed the connection during NOOP",
+            ))
+        }
+    }
+
+    fn set_flag(&self, folder: &str, id: &str, flag: &str, add: bool) -> MailResult<()> {
+        let op = if add {
+            "+FLAGS.SILENT"
+        } else {
+            "-FLAGS.SILENT"
+        };
+        let mapped = imap_flag(flag);
+        let command = format!("{op} ({mapped})");
+
+        fn exec<S: Read + Write>(
+            session: &mut imap::Session<S>,
+            folder: &str,
+            id: &str,
+            command: &str,
+        ) -> MailResult<()> {
+            session.select(folder).map_err(map_imap_error)?;
+            session.uid_store(id, command).map_err(map_imap_error)?;
+            Ok(())
+        }
+
+        match self.connect_imap_session()? {
+            ConnectedImapSession::Plain(mut session) => exec(&mut session, folder, id, &command),
+            ConnectedImapSession::Tls(mut session) => exec(&mut session, folder, id, &command),
+        }
+    }
+
+    fn connect_imap_session(&self) -> MailResult<ConnectedImapSession> {
+        let host = self
+            .account
+            .imap_host
+            .as_deref()
+            .ok_or_else(|| MailError::config_invalid("IMAP host is missing"))?;
+        let port = self
+            .account
+            .imap_port
+            .ok_or_else(|| MailError::config_invalid("IMAP port is missing"))?;
+        let security = normalize_security(self.account.imap_security.as_deref(), "tls");
+
+        match security {
+            Security::Tls => {
+                let connector = tls_connector()?;
+                let stream = connect_tcp(host, port)?;
+                let stream = connector
+                    .connect(host, stream)
+                    .map_err(|err| MailError::tls_failure(err.to_string()))?;
+                let mut client = imap::Client::new(stream);
+                client.read_greeting().map_err(map_imap_error)?;
+                self.login_client(client).map(ConnectedImapSession::Tls)
+            }
+            Security::StartTls => {
+                let connector = tls_connector()?;
+                let stream = connect_tcp(host, port)?;
+                let mut client = imap::Client::new(stream);
+                client.read_greeting().map_err(map_imap_error)?;
+                let client = client.secure(host, &connector).map_err(map_imap_error)?;
+                self.login_client(client).map(ConnectedImapSession::Tls)
+            }
+            Security::Plain => {
+                let stream = connect_tcp(host, port)?;
+                let mut client = imap::Client::new(stream);
+                client.read_greeting().map_err(map_imap_error)?;
+                self.login_client(client).map(ConnectedImapSession::Plain)
+            }
+        }
+    }
+
+    fn login_client<S: Read + Write>(
+        &self,
+        client: imap::Client<S>,
+    ) -> MailResult<imap::Session<S>> {
+        let username = self.username()?.to_string();
+        match self.account.auth_mode.as_deref().unwrap_or("password") {
+            "password" | "app_password" => {
+                let secret_id = self
+                    .account
+                    .keyring_imap_secret_id
+                    .as_deref()
+                    .ok_or_else(|| MailError::config_invalid("IMAP secret reference is missing"))?;
+                let secret = lookup_secret(secret_id, &username)?;
+                client
+                    .login(username, secret)
+                    .map_err(|(err, _)| map_imap_error(err))
+            }
+            "oauth2" => {
+                let access_token = oauth::ensure_access_token(&self.account.name, &username)?;
+                let auth = XOAuth2Authenticator {
+                    username,
+                    access_token,
+                };
+                client
+                    .authenticate("XOAUTH2", &auth)
+                    .map_err(|(err, _)| map_imap_error(err))
+            }
+            other => Err(MailError::unsupported_feature(format!(
+                "unsupported auth mode: {other}"
+            ))),
+        }
+    }
+
+    fn smtp_transport(&self) -> MailResult<SmtpTransport> {
+        let host = self
+            .account
+            .smtp_host
+            .as_deref()
+            .ok_or_else(|| MailError::config_invalid("SMTP host is missing"))?;
+        let port = self
+            .account
+            .smtp_port
+            .ok_or_else(|| MailError::config_invalid("SMTP port is missing"))?;
+        let security = normalize_security(self.account.smtp_security.as_deref(), "tls");
+        let username = self.username()?.to_string();
+
+        let mut builder = SmtpTransport::builder_dangerous(host)
+            .port(port)
+            .timeout(Some(NETWORK_TIMEOUT));
+
+        let tls = match security {
+            Security::Tls => Tls::Wrapper(
+                TlsParameters::new(host.to_string())
+                    .map_err(|err| MailError::tls_failure(err.to_string()))?,
+            ),
+            Security::StartTls => Tls::Required(
+                TlsParameters::new(host.to_string())
+                    .map_err(|err| MailError::tls_failure(err.to_string()))?,
+            ),
+            Security::Plain => Tls::None,
+        };
+        builder = builder.tls(tls);
+
+        match self.account.auth_mode.as_deref().unwrap_or("password") {
+            "password" | "app_password" => {
+                let secret_id = self
+                    .account
+                    .keyring_smtp_secret_id
+                    .as_deref()
+                    .ok_or_else(|| MailError::config_invalid("SMTP secret reference is missing"))?;
+                let secret = lookup_secret(secret_id, &username)?;
+                builder = builder.credentials(Credentials::new(username, secret));
+            }
+            "oauth2" => {
+                let access_token = oauth::ensure_access_token(&self.account.name, &username)?;
+                builder = builder
+                    .credentials(Credentials::new(username, access_token))
+                    .authentication(vec![Mechanism::Xoauth2]);
+            }
+            other => {
+                return Err(MailError::unsupported_feature(format!(
+                    "unsupported auth mode: {other}"
+                )));
+            }
+        }
+
+        Ok(builder.build())
+    }
+
+    fn username(&self) -> MailResult<&str> {
+        self.account
+            .username
+            .as_deref()
+            .ok_or_else(|| MailError::config_invalid("account username is missing"))
+    }
+
+    fn default_from_header(&self) -> Option<String> {
+        self.account.username.as_ref().cloned()
+    }
+}
+
+#[derive(Debug)]
+enum ConnectedImapSession {
+    Plain(imap::Session<TcpStream>),
+    Tls(imap::Session<TlsStream<TcpStream>>),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Security {
+    Tls,
+    StartTls,
+    Plain,
+}
+
+#[derive(Debug, Clone)]
+struct TemplateMessage {
+    headers: Vec<(String, String)>,
+    body: String,
+}
+
+#[derive(Debug, Clone)]
+struct XOAuth2Authenticator {
+    username: String,
+    access_token: String,
+}
+
+impl Authenticator for XOAuth2Authenticator {
+    type Response = String;
+
+    fn process(&self, _challenge: &[u8]) -> Self::Response {
+        format!(
+            "user={}\x01auth=Bearer {}\x01\x01",
+            self.username, self.access_token
+        )
+    }
+}
+
+impl TemplateMessage {
+    fn header(&self, name: &str) -> Option<&str> {
+        self.headers
+            .iter()
+            .find(|(key, _)| key.eq_ignore_ascii_case(name))
+            .map(|(_, value)| value.as_str())
+            .filter(|value| !value.trim().is_empty())
+    }
+}
+
+fn fetch_envelope_metadata<S: Read + Write>(
+    session: &mut imap::Session<S>,
+    uids: &[u32],
+) -> MailResult<Vec<Envelope>> {
+    if uids.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let query = uid_set(uids);
+    let mut envelopes = session
+        .uid_fetch(query, "(UID FLAGS INTERNALDATE ENVELOPE)")
+        .map_err(map_imap_error)?
+        .iter()
+        .map(fetch_to_envelope)
+        .collect::<Vec<_>>();
+    envelopes.sort_by(|left, right| {
+        right
+            .id
+            .parse::<u32>()
+            .unwrap_or_default()
+            .cmp(&left.id.parse::<u32>().unwrap_or_default())
+    });
+    Ok(envelopes)
+}
+
+fn fetch_to_envelope(fetch: &imap::types::Fetch) -> Envelope {
+    let subject = fetch
+        .envelope()
+        .and_then(|envelope| envelope.subject)
+        .map(|bytes| String::from_utf8_lossy(bytes).trim().to_string())
+        .unwrap_or_default();
+    let sender = fetch
+        .envelope()
+        .and_then(|envelope| envelope.from.as_ref())
+        .map(|addresses| sender_from_addresses(addresses))
+        .unwrap_or(Sender::Unknown);
+    let date = fetch
+        .internal_date()
+        .map(|date| date.format("%Y-%m-%d %H:%M:%S%:z").to_string())
+        .or_else(|| {
+            fetch
+                .envelope()
+                .and_then(|envelope| envelope.date)
+                .map(|bytes| String::from_utf8_lossy(bytes).trim().to_string())
+        })
+        .unwrap_or_default();
+
+    Envelope {
+        id: fetch.uid.unwrap_or(fetch.message).to_string(),
+        flags: fetch.flags().iter().map(imap_flag_name).collect(),
+        subject,
+        sender,
+        date,
+    }
+}
+
+fn sender_from_addresses(addresses: &[imap_proto::types::Address<'_>]) -> Sender {
+    let Some(address) = addresses.first() else {
+        return Sender::Unknown;
+    };
+
+    let name = address
+        .name
+        .map(|value| String::from_utf8_lossy(value).trim().to_string())
+        .filter(|value: &String| !value.is_empty());
+    let mailbox = address
+        .mailbox
+        .map(|value| String::from_utf8_lossy(value).trim().to_string())
+        .filter(|value: &String| !value.is_empty());
+    let host = address
+        .host
+        .map(|value| String::from_utf8_lossy(value).trim().to_string())
+        .filter(|value: &String| !value.is_empty());
+    let addr = match (mailbox, host) {
+        (Some(local), Some(domain)) => Some(format!("{local}@{domain}")),
+        (Some(local), None) => Some(local),
+        _ => None,
+    };
+
+    if name.is_some() || addr.is_some() {
+        Sender::Structured { name, addr }
+    } else {
+        Sender::Unknown
+    }
+}
+
+fn envelope_matches_query(envelope: &Envelope, query: Option<&str>) -> bool {
+    let Some(query) = query.map(str::trim).filter(|query| !query.is_empty()) else {
+        return true;
+    };
+
+    let lowered = query.to_ascii_lowercase();
+    match lowered.as_str() {
+        "flag seen" => envelope.is_seen(),
+        "not flag seen" => !envelope.is_seen(),
+        "flag flagged" => envelope.is_flagged(),
+        "not flag flagged" => !envelope.is_flagged(),
+        _ => {
+            let haystack = format!(
+                "{}\n{}\n{}\n{}",
+                envelope.subject.to_ascii_lowercase(),
+                envelope.sender_display().to_ascii_lowercase(),
+                envelope.date.to_ascii_lowercase(),
+                envelope.id
+            );
+            haystack.contains(&lowered)
+        }
+    }
+}
+
+fn normalize_security(value: Option<&str>, default: &str) -> Security {
+    match value
+        .unwrap_or(default)
+        .trim()
+        .to_ascii_lowercase()
+        .as_str()
+    {
+        "tls" | "ssl" | "smtps" | "imaps" => Security::Tls,
+        "starttls" => Security::StartTls,
+        "plain" | "none" => Security::Plain,
+        _ => Security::Tls,
+    }
+}
+
+fn folder_description(name: &str) -> Option<String> {
+    match name.to_ascii_lowercase().as_str() {
+        "inbox" => Some("Incoming messages".to_string()),
+        "sent" | "sent items" => Some("Sent messages".to_string()),
+        "drafts" => Some("Draft messages".to_string()),
+        "trash" | "deleted" | "bin" => Some("Deleted messages".to_string()),
+        _ => None,
+    }
+}
+
+fn connect_tcp(host: &str, port: u16) -> MailResult<TcpStream> {
+    let stream = TcpStream::connect((host, port)).map_err(|err| {
+        if err.kind() == std::io::ErrorKind::TimedOut {
+            MailError::transport_timeout(err.to_string())
+        } else {
+            MailError::io(err.to_string())
+        }
+    })?;
+    stream
+        .set_read_timeout(Some(NETWORK_TIMEOUT))
+        .map_err(|err| MailError::io(err.to_string()))?;
+    stream
+        .set_write_timeout(Some(NETWORK_TIMEOUT))
+        .map_err(|err| MailError::io(err.to_string()))?;
+    Ok(stream)
+}
+
+fn tls_connector() -> MailResult<TlsConnector> {
+    TlsConnector::builder()
+        .build()
+        .map_err(|err| MailError::tls_failure(err.to_string()))
+}
+
+fn lookup_secret(service: &str, username: &str) -> MailResult<String> {
+    let output = Command::new("secret-tool")
+        .args([
+            "lookup",
+            "service",
+            service,
+            "username",
+            username,
+            "application",
+            "solverforge-mail",
+        ])
+        .output()
+        .map_err(|err| {
+            if err.kind() == std::io::ErrorKind::NotFound {
+                MailError::keyring_unavailable(
+                    "secret-tool is not installed or not available in PATH",
+                )
+            } else {
+                MailError::keyring_unavailable(err.to_string())
+            }
+        })?;
+
+    if !output.status.success() {
+        return Err(MailError::keyring_unavailable(
+            String::from_utf8_lossy(&output.stderr).trim().to_string(),
+        ));
+    }
+
+    let secret = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    if secret.is_empty() {
+        Err(MailError::secret_missing(format!(
+            "no secret found for service {service}"
+        )))
+    } else {
+        Ok(secret)
+    }
+}
+
+fn uid_set(uids: &[u32]) -> String {
+    uids.iter()
+        .map(u32::to_string)
+        .collect::<Vec<_>>()
+        .join(",")
+}
+
+fn imap_flag(flag: &str) -> &str {
+    if flag.eq_ignore_ascii_case("seen") {
+        "\\Seen"
+    } else if flag.eq_ignore_ascii_case("flagged") {
+        "\\Flagged"
+    } else if flag.eq_ignore_ascii_case("answered") {
+        "\\Answered"
+    } else if flag.eq_ignore_ascii_case("deleted") {
+        "\\Deleted"
+    } else {
+        flag
+    }
+}
+
+fn imap_flag_name(flag: &Flag<'_>) -> String {
+    match flag {
+        Flag::Seen => "Seen".to_string(),
+        Flag::Flagged => "Flagged".to_string(),
+        Flag::Answered => "Answered".to_string(),
+        Flag::Deleted => "Deleted".to_string(),
+        Flag::Draft => "Draft".to_string(),
+        Flag::Recent => "Recent".to_string(),
+        Flag::MayCreate => "MayCreate".to_string(),
+        Flag::Custom(value) => value.to_string(),
+    }
+}
+
+fn map_imap_error(error: imap::error::Error) -> MailError {
+    match error {
+        imap::error::Error::No(detail) | imap::error::Error::Bad(detail)
+            if looks_like_auth_failure(&detail) =>
+        {
+            MailError::imap_auth_rejected(detail)
+        }
+        imap::error::Error::No(detail) | imap::error::Error::Bad(detail) => {
+            MailError::other(detail)
+        }
+        imap::error::Error::Tls(err) => MailError::tls_failure(err.to_string()),
+        imap::error::Error::TlsHandshake(err) => MailError::tls_failure(err.to_string()),
+        imap::error::Error::ConnectionLost => {
+            MailError::connection_dropped("the IMAP server closed the connection")
+        }
+        imap::error::Error::Io(err) if err.kind() == std::io::ErrorKind::TimedOut => {
+            MailError::transport_timeout(err.to_string())
+        }
+        imap::error::Error::Io(err) => MailError::io(err.to_string()),
+        other => MailError::other(other.to_string()),
+    }
+}
+
+fn map_smtp_error(error: SmtpError) -> MailError {
+    if error.is_tls() {
+        MailError::tls_failure(error.to_string())
+    } else if error.is_timeout() {
+        MailError::transport_timeout(error.to_string())
+    } else if looks_like_auth_failure(&error.to_string()) {
+        MailError::smtp_auth_rejected(error.to_string())
+    } else if error.is_transport_shutdown() {
+        MailError::connection_dropped(error.to_string())
+    } else {
+        MailError::other(error.to_string())
+    }
+}
+
+fn looks_like_auth_failure(detail: &str) -> bool {
+    let lowered = detail.to_ascii_lowercase();
+    lowered.contains("auth")
+        || lowered.contains("login failed")
+        || lowered.contains("invalid credentials")
+        || lowered.contains("username and password")
+        || lowered.contains("535")
+}
+
+fn extract_attachments(raw: &[u8]) -> MailResult<Vec<(String, Vec<u8>)>> {
+    let parser = MessageParser::new()
+        .with_minimal_headers()
+        .default_header_text();
+    let message = parser
+        .parse(raw)
+        .ok_or_else(|| MailError::other("failed to parse message attachments"))?;
+
+    Ok(message
+        .attachments()
+        .enumerate()
+        .map(|(index, part)| {
+            let name = part
+                .attachment_name()
+                .map(str::to_string)
+                .filter(|value| !value.is_empty())
+                .unwrap_or_else(|| format!("attachment-{}", index + 1));
+            (name, part.contents().to_vec())
+        })
+        .collect())
+}
+
+fn ensure_unique_attachment_name(base: &std::path::Path, index: usize, requested: &str) -> String {
+    let sanitized = sanitize_file_name(requested);
+    let candidate = if sanitized.is_empty() {
+        format!("attachment-{}", index + 1)
+    } else {
+        sanitized
+    };
+
+    if !base.join(&candidate).exists() {
+        return candidate;
+    }
+
+    let (stem, ext) = candidate
+        .rsplit_once('.')
+        .map(|(stem, ext)| (stem.to_string(), Some(ext.to_string())))
+        .unwrap_or_else(|| (candidate.clone(), None));
+
+    for suffix in 2..1000 {
+        let attempt = match ext.as_deref() {
+            Some(ext) => format!("{stem}-{suffix}.{ext}"),
+            None => format!("{stem}-{suffix}"),
+        };
+        if !base.join(&attempt).exists() {
+            return attempt;
+        }
+    }
+
+    candidate
+}
+
+fn sanitize_file_name(value: &str) -> String {
+    value
+        .chars()
+        .map(|ch| match ch {
+            '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|' => '_',
+            _ => ch,
+        })
+        .collect::<String>()
+        .trim()
+        .to_string()
+}
+
+fn parse_template_message(raw: &str) -> TemplateMessage {
+    let mut headers: Vec<(String, String)> = Vec::new();
+    let mut current_key: Option<String> = None;
+    let mut body_lines = Vec::new();
+    let mut in_body = false;
+
+    for line in raw.lines() {
+        if in_body {
+            body_lines.push(line);
+            continue;
+        }
+
+        if line.is_empty() {
+            in_body = true;
+            continue;
+        }
+
+        if line.starts_with(' ') || line.starts_with('\t') {
+            if let Some(key) = current_key.as_ref() {
+                if let Some((_, value)) = headers
+                    .iter_mut()
+                    .find(|(name, _)| name.eq_ignore_ascii_case(key))
+                {
+                    if !value.is_empty() {
+                        value.push(' ');
+                    }
+                    value.push_str(line.trim());
+                }
+            }
+            continue;
+        }
+
+        if let Some((key, value)) = line.split_once(':') {
+            let key = key.trim().to_ascii_lowercase();
+            headers.push((key.clone(), value.trim().to_string()));
+            current_key = Some(key);
+        }
+    }
+
+    TemplateMessage {
+        headers,
+        body: body_lines.join("\n"),
+    }
+}
+
+fn render_template(headers: &[(&str, String)], body: &str) -> String {
+    let mut out = String::new();
+    for (name, value) in headers {
+        if !value.trim().is_empty() {
+            out.push_str(&format!("{name}: {}\n", value.trim()));
+        }
+    }
+    out.push('\n');
+    out.push_str(body);
+    out
+}
+
+fn reply_subject(subject: Option<String>) -> String {
+    let subject = subject.unwrap_or_default();
+    if subject.to_ascii_lowercase().starts_with("re:") {
+        subject
+    } else if subject.is_empty() {
+        "Re:".to_string()
+    } else {
+        format!("Re: {subject}")
+    }
+}
+
+fn forward_subject(subject: Option<String>) -> String {
+    let subject = subject.unwrap_or_default();
+    if subject.to_ascii_lowercase().starts_with("fwd:") {
+        subject
+    } else if subject.is_empty() {
+        "Fwd:".to_string()
+    } else {
+        format!("Fwd: {subject}")
+    }
+}
+
+fn quoted_reply_body(message: &MessageContent) -> String {
+    let from = message.header_value("From").unwrap_or_default();
+    let date = message.header_value("Date").unwrap_or_default();
+    let intro = match (!date.is_empty(), !from.is_empty()) {
+        (true, true) => format!("On {date}, {from} wrote:\n"),
+        (false, true) => format!("{from} wrote:\n"),
+        _ => "Previous message:\n".to_string(),
+    };
+    let rendered = message.render_body(MessageDisplayMode::Auto, 78);
+    let quoted = rendered
+        .lines()
+        .map(|line| format!("> {line}"))
+        .collect::<Vec<_>>()
+        .join("\n");
+    let quoted = if rendered.is_empty() {
+        String::new()
+    } else {
+        quoted
+    };
+    format!("\n{intro}{quoted}")
+}
+
+fn forwarded_body(message: &MessageContent) -> String {
+    let mut lines = vec!["---------- Forwarded message ----------".to_string()];
+    for header in ["From", "Date", "Subject", "To", "Cc"] {
+        if let Some(value) = message.header_value(header) {
+            lines.push(format!("{header}: {value}"));
+        }
+    }
+    lines.push(String::new());
+    lines.push(message.render_body(MessageDisplayMode::Auto, 78));
+    lines.join("\n")
+}
+
+fn parse_mailboxes(value: &str) -> MailResult<Vec<Mailbox>> {
+    let raw = format!("To: {value}\r\n\r\n");
+    let parser = MessageParser::new()
+        .with_minimal_headers()
+        .default_header_text();
+    let message = parser
+        .parse(raw.as_bytes())
+        .ok_or_else(|| MailError::invalid_input("failed to parse email address list"))?;
+    let addresses = message
+        .to()
+        .ok_or_else(|| MailError::invalid_input("failed to parse email address list"))?;
+
+    let mut mailboxes = Vec::new();
+    for addr in addresses.iter() {
+        let address = addr
+            .address
+            .as_deref()
+            .ok_or_else(|| MailError::invalid_input("recipient address is missing"))?;
+        let mailbox = match addr.name.as_deref().filter(|value| !value.is_empty()) {
+            Some(name) => format!("{name} <{address}>"),
+            None => address.to_string(),
+        };
+        mailboxes.push(
+            mailbox
+                .parse::<Mailbox>()
+                .map_err(|err| MailError::invalid_input(err.to_string()))?,
+        );
+    }
+
+    if mailboxes.is_empty() {
+        Err(MailError::invalid_input(
+            "at least one recipient address is required",
+        ))
+    } else {
+        Ok(mailboxes)
+    }
+}
+
+fn parse_mailbox(value: &str) -> MailResult<Mailbox> {
+    parse_mailboxes(value)?
+        .into_iter()
+        .next()
+        .ok_or_else(|| MailError::invalid_input("address list was empty"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        envelope_matches_query, normalize_security, parse_template_message, sanitize_file_name,
+        Security,
+    };
+    use crate::mail::types::{Envelope, Sender};
+
+    #[test]
+    fn normalize_security_understands_known_values() {
+        assert_eq!(normalize_security(Some("tls"), "plain"), Security::Tls);
+        assert_eq!(
+            normalize_security(Some("starttls"), "plain"),
+            Security::StartTls
+        );
+        assert_eq!(normalize_security(Some("plain"), "tls"), Security::Plain);
+    }
+
+    #[test]
+    fn sanitize_file_name_replaces_path_separators() {
+        assert_eq!(
+            sanitize_file_name("report:Q2/2026?.pdf"),
+            "report_Q2_2026_.pdf"
+        );
+    }
+
+    #[test]
+    fn template_parser_splits_headers_and_body() {
+        let parsed = parse_template_message("To: a@example.com\nSubject: Hi\n\nHello");
+        assert_eq!(parsed.header("to"), Some("a@example.com"));
+        assert_eq!(parsed.header("subject"), Some("Hi"));
+        assert_eq!(parsed.body, "Hello");
+    }
+
+    #[test]
+    fn query_matching_supports_seen_filter_and_substring_search() {
+        let envelope = Envelope {
+            id: "42".to_string(),
+            flags: vec!["Seen".to_string()],
+            subject: "Project update".to_string(),
+            sender: Sender::Plain("alice@example.com".to_string()),
+            date: "2026-04-13 09:00:00+00:00".to_string(),
+        };
+
+        assert!(envelope_matches_query(&envelope, Some("flag seen")));
+        assert!(!envelope_matches_query(&envelope, Some("not flag seen")));
+        assert!(envelope_matches_query(&envelope, Some("project")));
+        assert!(envelope_matches_query(&envelope, Some("alice")));
+        assert!(!envelope_matches_query(&envelope, Some("missing")));
+    }
+}
