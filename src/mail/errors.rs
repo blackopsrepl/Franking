@@ -104,6 +104,15 @@ impl MailError {
     pub fn other(detail: impl Into<String>) -> Self {
         Self::new(MailErrorKind::Other, detail)
     }
+
+    /// Whether the failure is transport-level, meaning a cached result is
+    /// preferable offline and a pooled connection should be discarded.
+    pub fn is_transport(&self) -> bool {
+        matches!(
+            self.kind,
+            MailErrorKind::TransportTimeout | MailErrorKind::ConnectionDropped | MailErrorKind::Io
+        )
+    }
 }
 
 impl fmt::Display for MailError {

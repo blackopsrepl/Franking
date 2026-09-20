@@ -1,6 +1,7 @@
 use std::fs;
 use std::io::{Read, Write};
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::time::Duration;
 
 use imap::types::Flag;
@@ -18,7 +19,7 @@ use super::mime;
 use super::model::MessageDocument;
 use super::oauth;
 use super::session::{
-    self, looks_like_auth_failure, map_imap_error, ConnectedImapSession, Security,
+    looks_like_auth_failure, map_imap_error, ConnectedImapSession, Security, SessionPool,
 };
 use super::types::{Envelope, Folder, Sender};
 
@@ -27,11 +28,12 @@ const NETWORK_TIMEOUT: Duration = Duration::from_secs(60);
 #[derive(Debug, Clone)]
 pub struct ImapSmtpService {
     account: AccountRecord,
+    pool: Arc<SessionPool>,
 }
 
 impl ImapSmtpService {
-    pub fn new(account: AccountRecord) -> Self {
-        Self { account }
+    pub fn new(account: AccountRecord, pool: Arc<SessionPool>) -> Self {
+        Self { account, pool }
     }
 
     pub fn probe_account(&self, account: &str) -> MailResult<()> {
@@ -63,10 +65,11 @@ impl ImapSmtpService {
             Ok(names)
         }
 
-        match session::connect(&self.account)? {
-            ConnectedImapSession::Plain(mut session) => exec(&mut session),
-            ConnectedImapSession::Tls(mut session) => exec(&mut session),
-        }
+        self.pool
+            .with_connection(&self.account, |connection| match connection {
+                ConnectedImapSession::Plain(session) => exec(session),
+                ConnectedImapSession::Tls(session) => exec(session),
+            })
     }
 
     pub fn list_envelopes(
@@ -125,14 +128,13 @@ impl ImapSmtpService {
             }
         }
 
-        match session::connect(&self.account)? {
-            ConnectedImapSession::Plain(mut session) => {
-                exec(&mut session, folder, page, page_size, query)
-            }
-            ConnectedImapSession::Tls(mut session) => {
-                exec(&mut session, folder, page, page_size, query)
-            }
-        }
+        self.pool
+            .with_connection(&self.account, |connection| match connection {
+                ConnectedImapSession::Plain(session) => {
+                    exec(session, folder, page, page_size, query)
+                }
+                ConnectedImapSession::Tls(session) => exec(session, folder, page, page_size, query),
+            })
     }
 
     pub fn list_envelopes_threaded(
@@ -166,10 +168,11 @@ impl ImapSmtpService {
                 .ok_or_else(|| MailError::other("message body was not returned by the IMAP server"))
         }
 
-        match session::connect(&self.account)? {
-            ConnectedImapSession::Plain(mut session) => exec(&mut session, folder, id),
-            ConnectedImapSession::Tls(mut session) => exec(&mut session, folder, id),
-        }
+        self.pool
+            .with_connection(&self.account, |connection| match connection {
+                ConnectedImapSession::Plain(session) => exec(session, folder, id),
+                ConnectedImapSession::Tls(session) => exec(session, folder, id),
+            })
     }
 
     pub fn delete_message(&self, account: Option<&str>, folder: &str, id: &str) -> MailResult<()> {
@@ -189,10 +192,12 @@ impl ImapSmtpService {
                 Ok(())
             }
 
-            return match session::connect(&self.account)? {
-                ConnectedImapSession::Plain(mut session) => exec(&mut session, folder, id),
-                ConnectedImapSession::Tls(mut session) => exec(&mut session, folder, id),
-            };
+            return self
+                .pool
+                .with_connection(&self.account, |connection| match connection {
+                    ConnectedImapSession::Plain(session) => exec(session, folder, id),
+                    ConnectedImapSession::Tls(session) => exec(session, folder, id),
+                });
         }
 
         self.move_message(account, folder, "Trash", id)
@@ -227,10 +232,11 @@ impl ImapSmtpService {
             }
         }
 
-        match session::connect(&self.account)? {
-            ConnectedImapSession::Plain(mut session) => exec(&mut session, folder, target, id),
-            ConnectedImapSession::Tls(mut session) => exec(&mut session, folder, target, id),
-        }
+        self.pool
+            .with_connection(&self.account, |connection| match connection {
+                ConnectedImapSession::Plain(session) => exec(session, folder, target, id),
+                ConnectedImapSession::Tls(session) => exec(session, folder, target, id),
+            })
     }
 
     pub fn copy_message(
@@ -253,10 +259,11 @@ impl ImapSmtpService {
             Ok(())
         }
 
-        match session::connect(&self.account)? {
-            ConnectedImapSession::Plain(mut session) => exec(&mut session, folder, target, id),
-            ConnectedImapSession::Tls(mut session) => exec(&mut session, folder, target, id),
-        }
+        self.pool
+            .with_connection(&self.account, |connection| match connection {
+                ConnectedImapSession::Plain(session) => exec(session, folder, target, id),
+                ConnectedImapSession::Tls(session) => exec(session, folder, target, id),
+            })
     }
 
     pub fn flag_add(
@@ -307,10 +314,12 @@ impl ImapSmtpService {
             extract_attachments(raw)
         }
 
-        let attachments = match session::connect(&self.account)? {
-            ConnectedImapSession::Plain(mut session) => exec(&mut session, folder, id),
-            ConnectedImapSession::Tls(mut session) => exec(&mut session, folder, id),
-        }?;
+        let attachments =
+            self.pool
+                .with_connection(&self.account, |connection| match connection {
+                    ConnectedImapSession::Plain(session) => exec(session, folder, id),
+                    ConnectedImapSession::Tls(session) => exec(session, folder, id),
+                })?;
 
         if attachments.is_empty() {
             return Err(MailError::unsupported_feature(
@@ -442,10 +451,11 @@ impl ImapSmtpService {
             Ok(())
         }
 
-        match session::connect(&self.account)? {
-            ConnectedImapSession::Plain(mut session) => exec(&mut session),
-            ConnectedImapSession::Tls(mut session) => exec(&mut session),
-        }
+        self.pool
+            .with_connection(&self.account, |connection| match connection {
+                ConnectedImapSession::Plain(session) => exec(session),
+                ConnectedImapSession::Tls(session) => exec(session),
+            })
     }
 
     fn probe_smtp(&self) -> MailResult<()> {
@@ -480,10 +490,11 @@ impl ImapSmtpService {
             Ok(())
         }
 
-        match session::connect(&self.account)? {
-            ConnectedImapSession::Plain(mut session) => exec(&mut session, folder, id, &command),
-            ConnectedImapSession::Tls(mut session) => exec(&mut session, folder, id, &command),
-        }
+        self.pool
+            .with_connection(&self.account, |connection| match connection {
+                ConnectedImapSession::Plain(session) => exec(session, folder, id, &command),
+                ConnectedImapSession::Tls(session) => exec(session, folder, id, &command),
+            })
     }
 
     fn smtp_transport(&self) -> MailResult<SmtpTransport> {
@@ -523,7 +534,7 @@ impl ImapSmtpService {
                     .keyring_smtp_secret_id
                     .as_deref()
                     .ok_or_else(|| MailError::config_invalid("SMTP secret reference is missing"))?;
-                let secret = session::lookup_secret(secret_id, &username)?;
+                let secret = self.pool.credentials().lookup(secret_id, &username)?;
                 builder = builder.credentials(Credentials::new(username, secret));
             }
             "oauth2" => {

@@ -337,6 +337,12 @@ impl App {
                         cs.send_error = Some(e.to_string());
                     }
                 }
+                WorkerResult::MailboxChanged(_account, folder) => {
+                    if folder == self.current_folder && !self.loading {
+                        self.set_status("New mail arrived.");
+                        self.load_envelopes();
+                    }
+                }
             }
         }
     }
@@ -490,6 +496,8 @@ impl App {
 
     fn load_envelopes(&mut self) {
         self.loading = true;
+        self.worker
+            .start_watching(self.acct_owned(), self.current_folder.clone());
         if self.threaded {
             self.worker.fetch_envelopes_threaded(
                 self.acct_owned(),

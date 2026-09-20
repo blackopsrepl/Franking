@@ -6,9 +6,11 @@ server advertises. Callers that need a connection reuse this instead of
 reimplementing the handshake, so capability-aware behavior can be added in one
 spot. */
 
+use std::collections::HashMap;
 use std::io::{Read, Write};
 use std::net::TcpStream;
 use std::process::{Command, Stdio};
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use imap::extensions::idle::{SetReadTimeout, WaitOutcome};
@@ -20,6 +22,22 @@ use super::errors::{MailError, MailResult};
 use super::oauth;
 
 const NETWORK_TIMEOUT: Duration = Duration::from_secs(60);
+
+/// Resolves credentials for an account. The production implementation reads
+/// the OS keyring; tests inject a fixed provider so sessions can be exercised
+/// without a keyring or secret store.
+pub trait CredentialProvider: std::fmt::Debug + Send + Sync {
+    fn lookup(&self, service: &str, username: &str) -> MailResult<String>;
+}
+
+#[derive(Debug, Default)]
+pub struct KeyringCredentials;
+
+impl CredentialProvider for KeyringCredentials {
+    fn lookup(&self, service: &str, username: &str) -> MailResult<String> {
+        lookup_secret(service, username)
+    }
+}
 
 /// Capabilities advertised by the server, decoded into the flags this client
 /// actually branches on.
@@ -139,8 +157,11 @@ pub struct ImapSession {
 
 impl ImapSession {
     /// Open and authenticate a session, probing capabilities once.
-    pub fn connect(account: &AccountRecord) -> MailResult<Self> {
-        let mut connection = connect(account)?;
+    pub fn connect(
+        account: &AccountRecord,
+        credentials: &dyn CredentialProvider,
+    ) -> MailResult<Self> {
+        let mut connection = connect(account, credentials)?;
         let capabilities = probe_capabilities(&mut connection)?;
         Ok(Self {
             connection,
@@ -164,7 +185,10 @@ impl ImapSession {
 }
 
 /// Open and authenticate a connection without probing capabilities.
-pub fn connect(account: &AccountRecord) -> MailResult<ConnectedImapSession> {
+pub fn connect(
+    account: &AccountRecord,
+    credentials: &dyn CredentialProvider,
+) -> MailResult<ConnectedImapSession> {
     let host = account
         .imap_host
         .as_deref()
@@ -183,7 +207,7 @@ pub fn connect(account: &AccountRecord) -> MailResult<ConnectedImapSession> {
                 .map_err(|err| MailError::tls_failure(err.to_string()))?;
             let mut client = imap::Client::new(stream);
             client.read_greeting().map_err(map_imap_error)?;
-            login_client(client, account).map(ConnectedImapSession::Tls)
+            login_client(client, account, credentials).map(ConnectedImapSession::Tls)
         }
         Security::StartTls => {
             let connector = tls_connector()?;
@@ -191,13 +215,13 @@ pub fn connect(account: &AccountRecord) -> MailResult<ConnectedImapSession> {
             let mut client = imap::Client::new(stream);
             client.read_greeting().map_err(map_imap_error)?;
             let client = client.secure(host, &connector).map_err(map_imap_error)?;
-            login_client(client, account).map(ConnectedImapSession::Tls)
+            login_client(client, account, credentials).map(ConnectedImapSession::Tls)
         }
         Security::Plain => {
             let stream = connect_tcp(host, port)?;
             let mut client = imap::Client::new(stream);
             client.read_greeting().map_err(map_imap_error)?;
-            login_client(client, account).map(ConnectedImapSession::Plain)
+            login_client(client, account, credentials).map(ConnectedImapSession::Plain)
         }
     }
 }
@@ -233,9 +257,138 @@ where
     }
 }
 
+/// A pool of authenticated sessions, one per account, reused across operations.
+/// A transport failure discards the entry and retries the operation once on a
+/// fresh connection.
+#[derive(Debug)]
+pub struct SessionPool {
+    credentials: Arc<dyn CredentialProvider>,
+    sessions: Mutex<HashMap<String, ImapSession>>,
+    watchers: Mutex<HashMap<String, ImapSession>>,
+}
+
+impl Default for SessionPool {
+    fn default() -> Self {
+        Self::with_credentials(Arc::new(KeyringCredentials))
+    }
+}
+
+impl SessionPool {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn with_credentials(credentials: Arc<dyn CredentialProvider>) -> Self {
+        Self {
+            credentials,
+            sessions: Mutex::new(HashMap::new()),
+            watchers: Mutex::new(HashMap::new()),
+        }
+    }
+
+    pub fn credentials(&self) -> &Arc<dyn CredentialProvider> {
+        &self.credentials
+    }
+
+    pub fn with_connection<T>(
+        &self,
+        account: &AccountRecord,
+        mut operation: impl FnMut(&mut ConnectedImapSession) -> MailResult<T>,
+    ) -> MailResult<T> {
+        let mut attempts = 0;
+        loop {
+            let mut sessions = self
+                .sessions
+                .lock()
+                .map_err(|_| MailError::other("session pool lock was poisoned"))?;
+
+            if !sessions.contains_key(&account.name) {
+                sessions.insert(
+                    account.name.clone(),
+                    ImapSession::connect(account, self.credentials.as_ref())?,
+                );
+            }
+
+            let session = sessions
+                .get_mut(&account.name)
+                .expect("session inserted immediately above");
+
+            match operation(session.connection()) {
+                Ok(value) => return Ok(value),
+                Err(error) if error.is_transport() => {
+                    sessions.remove(&account.name);
+                    drop(sessions);
+                    if attempts == 0 {
+                        attempts += 1;
+                        continue;
+                    }
+                    return Err(error);
+                }
+                Err(error) => return Err(error),
+            }
+        }
+    }
+
+    pub fn idle_wait(
+        &self,
+        account: &AccountRecord,
+        folder: &str,
+        timeout: Duration,
+    ) -> MailResult<IdleOutcome> {
+        // A dedicated connection is used for IDLE so a long wait never blocks
+        // the operation sessions for the same account.
+        let mut watchers = self
+            .watchers
+            .lock()
+            .map_err(|_| MailError::other("session pool lock was poisoned"))?;
+
+        if !watchers.contains_key(&account.name) {
+            watchers.insert(
+                account.name.clone(),
+                ImapSession::connect(account, self.credentials.as_ref())?,
+            );
+        }
+        let session = watchers
+            .get_mut(&account.name)
+            .expect("session inserted immediately above");
+
+        let result = (|| {
+            select_mailbox(session.connection(), folder)?;
+            idle_wait(session.connection(), timeout)
+        })();
+
+        if let Err(error) = &result {
+            if error.is_transport() {
+                watchers.remove(&account.name);
+            }
+        }
+
+        result
+    }
+
+    pub fn invalidate(&self, account: &str) {
+        if let Ok(mut sessions) = self.sessions.lock() {
+            sessions.remove(account);
+        }
+    }
+}
+
+fn select_mailbox(connection: &mut ConnectedImapSession, folder: &str) -> MailResult<()> {
+    match connection {
+        ConnectedImapSession::Plain(session) => {
+            session.select(folder).map_err(map_imap_error)?;
+        }
+        ConnectedImapSession::Tls(session) => {
+            session.select(folder).map_err(map_imap_error)?;
+        }
+    }
+    Ok(())
+}
+
 fn login_client<S: Read + Write>(
     client: imap::Client<S>,
     account: &AccountRecord,
+    credentials: &dyn CredentialProvider,
 ) -> MailResult<imap::Session<S>> {
     let username = account
         .username
@@ -249,7 +402,7 @@ fn login_client<S: Read + Write>(
                 .keyring_imap_secret_id
                 .as_deref()
                 .ok_or_else(|| MailError::config_invalid("IMAP secret reference is missing"))?;
-            let secret = lookup_secret(secret_id, &username)?;
+            let secret = credentials.lookup(secret_id, &username)?;
             client
                 .login(username, secret)
                 .map_err(|(err, _)| map_imap_error(err))

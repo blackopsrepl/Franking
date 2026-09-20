@@ -5,6 +5,7 @@ use super::errors::{MailError, MailErrorKind, MailResult};
 use super::maildir::MaildirService;
 use super::model::MessageDocument;
 use super::remote::ImapSmtpService;
+use super::session::{IdleOutcome, SessionPool};
 use super::store::{self, StoredMessage};
 use super::types::{sort_accounts, Account, Envelope, Folder};
 use crate::db;
@@ -88,6 +89,20 @@ pub trait MailService: Send + Sync {
     fn template_forward(&self, account: Option<&str>, folder: &str, id: &str)
         -> MailResult<String>;
     fn template_send(&self, account: Option<&str>, template: &str) -> MailResult<String>;
+
+    /// Block until a folder changes or the timeout elapses. Backends without
+    /// push support report it as unsupported so callers can stop watching.
+    fn idle_watch(
+        &self,
+        account: Option<&str>,
+        folder: &str,
+        timeout: std::time::Duration,
+    ) -> MailResult<IdleOutcome> {
+        let _ = (account, folder, timeout);
+        Err(MailError::unsupported_feature(
+            "IDLE is not supported by this backend",
+        ))
+    }
 }
 
 pub fn app_owned_remote_transport_available() -> bool {
@@ -95,11 +110,13 @@ pub fn app_owned_remote_transport_available() -> bool {
 }
 
 pub fn default_mail_service() -> Arc<dyn MailService> {
-    Arc::new(RouterMailService)
+    Arc::new(RouterMailService::default())
 }
 
-#[derive(Debug, Default, Clone, Copy)]
-pub struct RouterMailService;
+#[derive(Debug, Default, Clone)]
+pub struct RouterMailService {
+    pool: Arc<SessionPool>,
+}
 
 impl RouterMailService {
     fn with_db<T>(&self, f: impl FnOnce(&rusqlite::Connection) -> MailResult<T>) -> MailResult<T> {
@@ -146,7 +163,10 @@ impl RouterMailService {
         }
 
         if record.backend_kind.eq_ignore_ascii_case("imap") {
-            return Ok(Route::Remote(Box::new(ImapSmtpService::new(record))));
+            return Ok(Route::Remote(Box::new(ImapSmtpService::new(
+                record,
+                self.pool.clone(),
+            ))));
         }
 
         Err(MailError::unsupported_feature(format!(
@@ -182,13 +202,7 @@ fn sort_account_records(accounts: &mut [AccountRecord]) {
 /// Whether an error means the server is unreachable, so a cached result is
 /// preferable to surfacing the failure.
 fn is_offline(error: &MailError) -> bool {
-    matches!(
-        error.kind,
-        MailErrorKind::TransportTimeout
-            | MailErrorKind::ConnectionDropped
-            | MailErrorKind::Io
-            | MailErrorKind::BackendUnavailable
-    )
+    error.is_transport() || error.kind == MailErrorKind::BackendUnavailable
 }
 
 /// Serve a folder listing or search from the local store.
@@ -434,6 +448,21 @@ impl MailService for RouterMailService {
             Route::Maildir(service) => service.template_send(account, template),
             Route::Remote(service) => service.template_send(account, template),
         }
+    }
+
+    fn idle_watch(
+        &self,
+        account: Option<&str>,
+        folder: &str,
+        timeout: std::time::Duration,
+    ) -> MailResult<IdleOutcome> {
+        let record = self.choose_account(account)?;
+        if !record.backend_kind.eq_ignore_ascii_case("imap") {
+            return Err(MailError::unsupported_feature(
+                "IDLE is only available for IMAP accounts",
+            ));
+        }
+        self.pool.idle_wait(&record, folder, timeout)
     }
 }
 
