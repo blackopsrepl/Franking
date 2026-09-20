@@ -45,6 +45,30 @@ impl ThreadRefs {
             .or_else(|| self.in_reply_to.first())
             .map(String::as_str)
     }
+
+    /// `In-Reply-To` and `References` header values for a reply to this message.
+    pub fn reply_headers(&self) -> Vec<(&'static str, String)> {
+        let Some(message_id) = self.message_id.as_deref().filter(|id| !id.is_empty()) else {
+            return Vec::new();
+        };
+
+        let mut references = self.references.clone();
+        if !references.iter().any(|id| id == message_id) {
+            references.push(message_id.to_string());
+        }
+
+        vec![
+            ("In-Reply-To", format!("<{message_id}>")),
+            (
+                "References",
+                references
+                    .iter()
+                    .map(|id| format!("<{id}>"))
+                    .collect::<Vec<_>>()
+                    .join(" "),
+            ),
+        ]
+    }
 }
 
 /// RFC 5256 §2.1 base subject: strip reply/forward prefixes and list tags.

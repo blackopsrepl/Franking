@@ -256,10 +256,9 @@ impl MailService for MaildirService {
         let subject = reply_subject(original.header_value("Subject").map(str::to_string));
         let body = quoted_reply_body(&original);
 
-        Ok(render_template(
-            &[("To", to), ("Cc", cc), ("Subject", subject)],
-            &body,
-        ))
+        let mut headers: Vec<(&str, String)> = vec![("To", to), ("Cc", cc), ("Subject", subject)];
+        headers.extend(original.thread.reply_headers());
+        Ok(render_template(&headers, &body))
     }
 
     fn template_forward(
@@ -299,6 +298,8 @@ impl MailService for MaildirService {
         let cc = header("cc");
         let bcc = header("bcc");
         let subject = header("subject");
+        let in_reply_to = header("in-reply-to");
+        let references = header("references");
         let date = Local::now().format("%Y-%m-%d %H:%M:%S%:z").to_string();
 
         let mut raw = String::new();
@@ -315,6 +316,13 @@ impl MailService for MaildirService {
         if !subject.is_empty() {
             raw.push_str(&format!("Subject: {subject}\n"));
         }
+        if !in_reply_to.is_empty() {
+            raw.push_str(&format!("In-Reply-To: {in_reply_to}\n"));
+        }
+        if !references.is_empty() {
+            raw.push_str(&format!("References: {references}\n"));
+        }
+        raw.push_str(&format!("Message-ID: {}\n", local_message_id()));
         raw.push_str(&format!("Date: {date}\n\n"));
         raw.push_str(&parsed.body);
 
@@ -583,6 +591,14 @@ fn flags_to_names(flags: &[char]) -> Vec<String> {
         .collect()
 }
 
+fn local_message_id() -> String {
+    let nanos = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_nanos())
+        .unwrap_or(0);
+    format!("<{nanos}.{}@solverforge.local>", std::process::id())
+}
+
 fn next_message_path(mailbox_dir: &Path, flags: &[char]) -> PathBuf {
     let nanos = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -815,6 +831,64 @@ mod tests {
             .list_envelopes(Some("test"), "Sent", 1, 50, None)
             .unwrap();
         assert_eq!(sent.len(), 1);
+
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn reply_template_carries_threading_headers() {
+        let root = temp_maildir();
+        let service = MaildirService::new("test", &root).with_default(true);
+        service.ensure_ready().unwrap();
+
+        let raw = "From: alice@example.com\nTo: bob@example.com\nSubject: Project\nMessage-ID: <child@example.com>\nReferences: <root@example.com>\nDate: 2026-04-13 09:00:00+00:00\n\nbody";
+        fs::write(root.join("new").join("threading-message"), raw).unwrap();
+
+        let inbox = service
+            .list_envelopes(Some("test"), "INBOX", 1, 50, None)
+            .unwrap();
+        let id = inbox
+            .iter()
+            .find(|envelope| envelope.subject == "Project")
+            .expect("seeded message should be listed")
+            .id
+            .clone();
+
+        let template = service
+            .template_reply(Some("test"), "INBOX", &id, false)
+            .unwrap();
+
+        assert!(
+            template.contains("In-Reply-To: <child@example.com>"),
+            "{template}"
+        );
+        assert!(
+            template.contains("References: <root@example.com> <child@example.com>"),
+            "{template}"
+        );
+
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn sent_message_receives_a_message_id() {
+        let root = temp_maildir();
+        let service = MaildirService::new("test", &root).with_default(true);
+        service.ensure_ready().unwrap();
+
+        service
+            .template_send(Some("test"), "To: bob@example.com\nSubject: Hi\n\nhello")
+            .unwrap();
+
+        let sent = service
+            .list_envelopes(Some("test"), "Sent", 1, 50, None)
+            .unwrap();
+        let raw = service
+            .read_message_raw(Some("test"), "Sent", &sent[0].id)
+            .unwrap();
+        let raw = String::from_utf8_lossy(&raw);
+
+        assert!(raw.contains("Message-ID: <"), "{raw}");
 
         let _ = fs::remove_dir_all(root);
     }

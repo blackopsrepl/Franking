@@ -371,10 +371,9 @@ impl ImapSmtpService {
         let subject = reply_subject(original.header_value("Subject").map(str::to_string));
         let body = quoted_reply_body(&original);
 
-        Ok(render_template(
-            &[("To", to), ("Cc", cc), ("Subject", subject)],
-            &body,
-        ))
+        let mut headers: Vec<(&str, String)> = vec![("To", to), ("Cc", cc), ("Subject", subject)];
+        headers.extend(original.thread.reply_headers());
+        Ok(render_template(&headers, &body))
     }
 
     pub fn template_forward(
@@ -419,6 +418,12 @@ impl ImapSmtpService {
             for mailbox in parse_mailboxes(value)? {
                 builder = builder.bcc(mailbox);
             }
+        }
+        if let Some(value) = draft.header("in-reply-to") {
+            builder = builder.in_reply_to(value.to_string());
+        }
+        if let Some(value) = draft.header("references") {
+            builder = builder.references(value.to_string());
         }
 
         let message = builder

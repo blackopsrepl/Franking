@@ -153,6 +153,9 @@ pub struct ComposeState {
     pub cc: String,
     pub bcc: String,
     pub subject: String,
+    /// Threading headers carried from a reply/forward template (RFC 5322).
+    pub in_reply_to: Option<String>,
+    pub references: Option<String>,
     /// Compose editor state for the message body.
     pub body: ComposeEditor,
     /// Which field has keyboard focus
@@ -183,6 +186,8 @@ impl ComposeState {
             cc: String::new(),
             bcc: String::new(),
             subject: String::new(),
+            in_reply_to: None,
+            references: None,
             body: ComposeEditor::default(),
             focused: FocusedField::From,
             autocomplete: None,
@@ -263,6 +268,8 @@ pub(crate) struct ParsedHeaders {
     cc: String,
     bcc: String,
     subject: String,
+    in_reply_to: Option<String>,
+    references: Option<String>,
     /// All unrecognised header lines (preserved verbatim).
     extra: Vec<String>,
 }
@@ -285,6 +292,8 @@ pub(crate) fn parse_template(raw: &str) -> (ParsedHeaders, String) {
     let mut cc = String::new();
     let mut bcc = String::new();
     let mut subject = String::new();
+    let mut in_reply_to = None;
+    let mut references = None;
     let mut extra = Vec::new();
     let mut body_lines = Vec::new();
     let mut in_body = false;
@@ -308,6 +317,8 @@ pub(crate) fn parse_template(raw: &str) -> (ParsedHeaders, String) {
                 "cc" => cc = value,
                 "bcc" => bcc = value,
                 "subject" => subject = value,
+                "in-reply-to" => in_reply_to = Some(value),
+                "references" => references = Some(value),
                 _ => extra.push(line.to_string()),
             }
         } else {
@@ -323,6 +334,8 @@ pub(crate) fn parse_template(raw: &str) -> (ParsedHeaders, String) {
             cc,
             bcc,
             subject,
+            in_reply_to,
+            references,
             extra,
         },
         body,
@@ -336,6 +349,8 @@ pub fn populate_from_template(state: &mut ComposeState, raw: &str) {
     state.cc = headers.cc;
     state.bcc = headers.bcc;
     state.subject = headers.subject;
+    state.in_reply_to = headers.in_reply_to;
+    state.references = headers.references;
 
     state.body = ComposeEditor::from_text(&body);
 
@@ -380,6 +395,20 @@ pub fn reassemble_template(state: &ComposeState) -> String {
     if !state.subject.is_empty() {
         out.push_str(&format!("Subject: {}\n", state.subject));
     }
+    if let Some(in_reply_to) = state
+        .in_reply_to
+        .as_deref()
+        .filter(|value| !value.is_empty())
+    {
+        out.push_str(&format!("In-Reply-To: {in_reply_to}\n"));
+    }
+    if let Some(references) = state
+        .references
+        .as_deref()
+        .filter(|value| !value.is_empty())
+    {
+        out.push_str(&format!("References: {references}\n"));
+    }
 
     out.push('\n'); // blank line separating headers from body
 
@@ -392,4 +421,27 @@ pub fn reassemble_template(state: &ComposeState) -> String {
 /// Check if the body has any non-whitespace content.
 pub fn body_is_empty(state: &ComposeState) -> bool {
     state.body.is_empty()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{populate_from_template, reassemble_template, ComposeMode, ComposeState};
+
+    #[test]
+    fn template_round_trip_preserves_threading_headers() {
+        let raw = "To: bob@example.com\nSubject: Re: Project\nIn-Reply-To: <child@example.com>\nReferences: <root@example.com> <child@example.com>\n\nquoted body";
+        let mut state = ComposeState::new(ComposeMode::Reply, Some("work".to_string()));
+
+        populate_from_template(&mut state, raw);
+
+        assert_eq!(state.in_reply_to.as_deref(), Some("<child@example.com>"));
+        assert_eq!(
+            state.references.as_deref(),
+            Some("<root@example.com> <child@example.com>")
+        );
+
+        let rebuilt = reassemble_template(&state);
+        assert!(rebuilt.contains("In-Reply-To: <child@example.com>"));
+        assert!(rebuilt.contains("References: <root@example.com> <child@example.com>"));
+    }
 }
