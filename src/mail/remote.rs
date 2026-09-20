@@ -1,12 +1,9 @@
 use std::fs;
 use std::io::{Read, Write};
-use std::net::TcpStream;
 use std::path::PathBuf;
-use std::process::Command;
 use std::time::Duration;
 
 use imap::types::Flag;
-use imap::Authenticator;
 use lettre::message::{header::ContentType, Mailbox};
 use lettre::transport::smtp::authentication::Credentials;
 use lettre::transport::smtp::authentication::Mechanism;
@@ -14,13 +11,15 @@ use lettre::transport::smtp::client::{Tls, TlsParameters};
 use lettre::transport::smtp::Error as SmtpError;
 use lettre::{Message, SmtpTransport, Transport};
 use mail_parser::{MessageParser, MimeHeaders};
-use native_tls::{TlsConnector, TlsStream};
 
 use super::account_store::AccountRecord;
 use super::errors::{MailError, MailResult};
 use super::mime;
 use super::model::MessageDocument;
 use super::oauth;
+use super::session::{
+    self, looks_like_auth_failure, map_imap_error, ConnectedImapSession, Security,
+};
 use super::types::{Envelope, Folder, Sender};
 
 const NETWORK_TIMEOUT: Duration = Duration::from_secs(60);
@@ -64,7 +63,7 @@ impl ImapSmtpService {
             Ok(names)
         }
 
-        match self.connect_imap_session()? {
+        match session::connect(&self.account)? {
             ConnectedImapSession::Plain(mut session) => exec(&mut session),
             ConnectedImapSession::Tls(mut session) => exec(&mut session),
         }
@@ -126,7 +125,7 @@ impl ImapSmtpService {
             }
         }
 
-        match self.connect_imap_session()? {
+        match session::connect(&self.account)? {
             ConnectedImapSession::Plain(mut session) => {
                 exec(&mut session, folder, page, page_size, query)
             }
@@ -169,7 +168,7 @@ impl ImapSmtpService {
             mime::parse_message(raw)
         }
 
-        match self.connect_imap_session()? {
+        match session::connect(&self.account)? {
             ConnectedImapSession::Plain(mut session) => exec(&mut session, folder, id),
             ConnectedImapSession::Tls(mut session) => exec(&mut session, folder, id),
         }
@@ -192,7 +191,7 @@ impl ImapSmtpService {
                 Ok(())
             }
 
-            return match self.connect_imap_session()? {
+            return match session::connect(&self.account)? {
                 ConnectedImapSession::Plain(mut session) => exec(&mut session, folder, id),
                 ConnectedImapSession::Tls(mut session) => exec(&mut session, folder, id),
             };
@@ -230,7 +229,7 @@ impl ImapSmtpService {
             }
         }
 
-        match self.connect_imap_session()? {
+        match session::connect(&self.account)? {
             ConnectedImapSession::Plain(mut session) => exec(&mut session, folder, target, id),
             ConnectedImapSession::Tls(mut session) => exec(&mut session, folder, target, id),
         }
@@ -256,7 +255,7 @@ impl ImapSmtpService {
             Ok(())
         }
 
-        match self.connect_imap_session()? {
+        match session::connect(&self.account)? {
             ConnectedImapSession::Plain(mut session) => exec(&mut session, folder, target, id),
             ConnectedImapSession::Tls(mut session) => exec(&mut session, folder, target, id),
         }
@@ -310,7 +309,7 @@ impl ImapSmtpService {
             extract_attachments(raw)
         }
 
-        let attachments = match self.connect_imap_session()? {
+        let attachments = match session::connect(&self.account)? {
             ConnectedImapSession::Plain(mut session) => exec(&mut session, folder, id),
             ConnectedImapSession::Tls(mut session) => exec(&mut session, folder, id),
         }?;
@@ -445,7 +444,7 @@ impl ImapSmtpService {
             Ok(())
         }
 
-        match self.connect_imap_session()? {
+        match session::connect(&self.account)? {
             ConnectedImapSession::Plain(mut session) => exec(&mut session),
             ConnectedImapSession::Tls(mut session) => exec(&mut session),
         }
@@ -483,82 +482,9 @@ impl ImapSmtpService {
             Ok(())
         }
 
-        match self.connect_imap_session()? {
+        match session::connect(&self.account)? {
             ConnectedImapSession::Plain(mut session) => exec(&mut session, folder, id, &command),
             ConnectedImapSession::Tls(mut session) => exec(&mut session, folder, id, &command),
-        }
-    }
-
-    fn connect_imap_session(&self) -> MailResult<ConnectedImapSession> {
-        let host = self
-            .account
-            .imap_host
-            .as_deref()
-            .ok_or_else(|| MailError::config_invalid("IMAP host is missing"))?;
-        let port = self
-            .account
-            .imap_port
-            .ok_or_else(|| MailError::config_invalid("IMAP port is missing"))?;
-        let security = normalize_security(self.account.imap_security.as_deref(), "tls");
-
-        match security {
-            Security::Tls => {
-                let connector = tls_connector()?;
-                let stream = connect_tcp(host, port)?;
-                let stream = connector
-                    .connect(host, stream)
-                    .map_err(|err| MailError::tls_failure(err.to_string()))?;
-                let mut client = imap::Client::new(stream);
-                client.read_greeting().map_err(map_imap_error)?;
-                self.login_client(client).map(ConnectedImapSession::Tls)
-            }
-            Security::StartTls => {
-                let connector = tls_connector()?;
-                let stream = connect_tcp(host, port)?;
-                let mut client = imap::Client::new(stream);
-                client.read_greeting().map_err(map_imap_error)?;
-                let client = client.secure(host, &connector).map_err(map_imap_error)?;
-                self.login_client(client).map(ConnectedImapSession::Tls)
-            }
-            Security::Plain => {
-                let stream = connect_tcp(host, port)?;
-                let mut client = imap::Client::new(stream);
-                client.read_greeting().map_err(map_imap_error)?;
-                self.login_client(client).map(ConnectedImapSession::Plain)
-            }
-        }
-    }
-
-    fn login_client<S: Read + Write>(
-        &self,
-        client: imap::Client<S>,
-    ) -> MailResult<imap::Session<S>> {
-        let username = self.username()?.to_string();
-        match self.account.auth_mode.as_deref().unwrap_or("password") {
-            "password" | "app_password" => {
-                let secret_id = self
-                    .account
-                    .keyring_imap_secret_id
-                    .as_deref()
-                    .ok_or_else(|| MailError::config_invalid("IMAP secret reference is missing"))?;
-                let secret = lookup_secret(secret_id, &username)?;
-                client
-                    .login(username, secret)
-                    .map_err(|(err, _)| map_imap_error(err))
-            }
-            "oauth2" => {
-                let access_token = oauth::ensure_access_token(&self.account.name, &username)?;
-                let auth = XOAuth2Authenticator {
-                    username,
-                    access_token,
-                };
-                client
-                    .authenticate("XOAUTH2", &auth)
-                    .map_err(|(err, _)| map_imap_error(err))
-            }
-            other => Err(MailError::unsupported_feature(format!(
-                "unsupported auth mode: {other}"
-            ))),
         }
     }
 
@@ -572,7 +498,7 @@ impl ImapSmtpService {
             .account
             .smtp_port
             .ok_or_else(|| MailError::config_invalid("SMTP port is missing"))?;
-        let security = normalize_security(self.account.smtp_security.as_deref(), "tls");
+        let security = Security::normalize(self.account.smtp_security.as_deref(), "tls");
         let username = self.username()?.to_string();
 
         let mut builder = SmtpTransport::builder_dangerous(host)
@@ -599,7 +525,7 @@ impl ImapSmtpService {
                     .keyring_smtp_secret_id
                     .as_deref()
                     .ok_or_else(|| MailError::config_invalid("SMTP secret reference is missing"))?;
-                let secret = lookup_secret(secret_id, &username)?;
+                let secret = session::lookup_secret(secret_id, &username)?;
                 builder = builder.credentials(Credentials::new(username, secret));
             }
             "oauth2" => {
@@ -630,40 +556,10 @@ impl ImapSmtpService {
     }
 }
 
-#[derive(Debug)]
-enum ConnectedImapSession {
-    Plain(imap::Session<TcpStream>),
-    Tls(imap::Session<TlsStream<TcpStream>>),
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Security {
-    Tls,
-    StartTls,
-    Plain,
-}
-
 #[derive(Debug, Clone)]
 struct TemplateMessage {
     headers: Vec<(String, String)>,
     body: String,
-}
-
-#[derive(Debug, Clone)]
-struct XOAuth2Authenticator {
-    username: String,
-    access_token: String,
-}
-
-impl Authenticator for XOAuth2Authenticator {
-    type Response = String;
-
-    fn process(&self, _challenge: &[u8]) -> Self::Response {
-        format!(
-            "user={}\x01auth=Bearer {}\x01\x01",
-            self.username, self.access_token
-        )
-    }
 }
 
 impl TemplateMessage {
@@ -786,20 +682,6 @@ fn envelope_matches_query(envelope: &Envelope, query: Option<&str>) -> bool {
     }
 }
 
-fn normalize_security(value: Option<&str>, default: &str) -> Security {
-    match value
-        .unwrap_or(default)
-        .trim()
-        .to_ascii_lowercase()
-        .as_str()
-    {
-        "tls" | "ssl" | "smtps" | "imaps" => Security::Tls,
-        "starttls" => Security::StartTls,
-        "plain" | "none" => Security::Plain,
-        _ => Security::Tls,
-    }
-}
-
 fn folder_description(name: &str) -> Option<String> {
     match name.to_ascii_lowercase().as_str() {
         "inbox" => Some("Incoming messages".to_string()),
@@ -807,67 +689,6 @@ fn folder_description(name: &str) -> Option<String> {
         "drafts" => Some("Draft messages".to_string()),
         "trash" | "deleted" | "bin" => Some("Deleted messages".to_string()),
         _ => None,
-    }
-}
-
-fn connect_tcp(host: &str, port: u16) -> MailResult<TcpStream> {
-    let stream = TcpStream::connect((host, port)).map_err(|err| {
-        if err.kind() == std::io::ErrorKind::TimedOut {
-            MailError::transport_timeout(err.to_string())
-        } else {
-            MailError::io(err.to_string())
-        }
-    })?;
-    stream
-        .set_read_timeout(Some(NETWORK_TIMEOUT))
-        .map_err(|err| MailError::io(err.to_string()))?;
-    stream
-        .set_write_timeout(Some(NETWORK_TIMEOUT))
-        .map_err(|err| MailError::io(err.to_string()))?;
-    Ok(stream)
-}
-
-fn tls_connector() -> MailResult<TlsConnector> {
-    TlsConnector::builder()
-        .build()
-        .map_err(|err| MailError::tls_failure(err.to_string()))
-}
-
-fn lookup_secret(service: &str, username: &str) -> MailResult<String> {
-    let output = Command::new("secret-tool")
-        .args([
-            "lookup",
-            "service",
-            service,
-            "username",
-            username,
-            "application",
-            "solverforge-mail",
-        ])
-        .output()
-        .map_err(|err| {
-            if err.kind() == std::io::ErrorKind::NotFound {
-                MailError::keyring_unavailable(
-                    "secret-tool is not installed or not available in PATH",
-                )
-            } else {
-                MailError::keyring_unavailable(err.to_string())
-            }
-        })?;
-
-    if !output.status.success() {
-        return Err(MailError::keyring_unavailable(
-            String::from_utf8_lossy(&output.stderr).trim().to_string(),
-        ));
-    }
-
-    let secret = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    if secret.is_empty() {
-        Err(MailError::secret_missing(format!(
-            "no secret found for service {service}"
-        )))
-    } else {
-        Ok(secret)
     }
 }
 
@@ -905,29 +726,6 @@ fn imap_flag_name(flag: &Flag<'_>) -> String {
     }
 }
 
-fn map_imap_error(error: imap::error::Error) -> MailError {
-    match error {
-        imap::error::Error::No(detail) | imap::error::Error::Bad(detail)
-            if looks_like_auth_failure(&detail) =>
-        {
-            MailError::imap_auth_rejected(detail)
-        }
-        imap::error::Error::No(detail) | imap::error::Error::Bad(detail) => {
-            MailError::other(detail)
-        }
-        imap::error::Error::Tls(err) => MailError::tls_failure(err.to_string()),
-        imap::error::Error::TlsHandshake(err) => MailError::tls_failure(err.to_string()),
-        imap::error::Error::ConnectionLost => {
-            MailError::connection_dropped("the IMAP server closed the connection")
-        }
-        imap::error::Error::Io(err) if err.kind() == std::io::ErrorKind::TimedOut => {
-            MailError::transport_timeout(err.to_string())
-        }
-        imap::error::Error::Io(err) => MailError::io(err.to_string()),
-        other => MailError::other(other.to_string()),
-    }
-}
-
 fn map_smtp_error(error: SmtpError) -> MailError {
     if error.is_tls() {
         MailError::tls_failure(error.to_string())
@@ -940,15 +738,6 @@ fn map_smtp_error(error: SmtpError) -> MailError {
     } else {
         MailError::other(error.to_string())
     }
-}
-
-fn looks_like_auth_failure(detail: &str) -> bool {
-    let lowered = detail.to_ascii_lowercase();
-    lowered.contains("auth")
-        || lowered.contains("login failed")
-        || lowered.contains("invalid credentials")
-        || lowered.contains("username and password")
-        || lowered.contains("535")
 }
 
 fn extract_attachments(raw: &[u8]) -> MailResult<Vec<(String, Vec<u8>)>> {
@@ -1175,21 +964,8 @@ fn parse_mailbox(value: &str) -> MailResult<Mailbox> {
 
 #[cfg(test)]
 mod tests {
-    use super::{
-        envelope_matches_query, normalize_security, parse_template_message, sanitize_file_name,
-        Security,
-    };
+    use super::{envelope_matches_query, parse_template_message, sanitize_file_name};
     use crate::mail::types::{Envelope, Sender};
-
-    #[test]
-    fn normalize_security_understands_known_values() {
-        assert_eq!(normalize_security(Some("tls"), "plain"), Security::Tls);
-        assert_eq!(
-            normalize_security(Some("starttls"), "plain"),
-            Security::StartTls
-        );
-        assert_eq!(normalize_security(Some("plain"), "tls"), Security::Plain);
-    }
 
     #[test]
     fn sanitize_file_name_replaces_path_separators() {

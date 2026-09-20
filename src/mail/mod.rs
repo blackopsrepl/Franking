@@ -6,6 +6,7 @@ pub mod model;
 pub mod oauth;
 pub mod remote;
 pub mod service;
+pub mod session;
 pub mod store;
 pub mod types;
 
