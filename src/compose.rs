@@ -1,10 +1,10 @@
 /* Compose editor state: template parsing, reassembly, and field management.
 The compose flow:
-1. Fetch a template from `himalaya template write/reply/forward`
+1. Fetch a backend-owned draft template for write/reply/forward
 2. Parse into header fields + body
 3. Edit in the TUI (compose editor for body, single-line inputs for headers)
 4. Reassemble into a template string
-5. Send via `himalaya template send` */
+5. Send via the active mail service backend */
 
 use crate::compose_editor::ComposeEditor;
 use crate::identities::Identity;
@@ -141,7 +141,7 @@ impl AutocompleteState {
 /// Full state of the compose editor.
 pub struct ComposeState {
     pub mode: ComposeMode,
-    /// Himalaya account name.
+    /// Account name used by the active mail service.
     pub account: Option<String>,
     /// Available sender identities for this account (loaded from DB).
     pub from_identities: Vec<Identity>,
@@ -267,7 +267,7 @@ pub(crate) struct ParsedHeaders {
     extra: Vec<String>,
 }
 
-/// Parse a himalaya template string (MML format) into its components.
+/// Parse a backend template string into its components.
 ///
 /// The template format is:
 /// ```text
@@ -329,7 +329,7 @@ pub(crate) fn parse_template(raw: &str) -> (ParsedHeaders, String) {
     )
 }
 
-/// Populate a `ComposeState` from a raw himalaya template string.
+/// Populate a `ComposeState` from a raw backend template string.
 pub fn populate_from_template(state: &mut ComposeState, raw: &str) {
     let (headers, body) = parse_template(raw);
     state.to = headers.to;
@@ -359,7 +359,7 @@ pub fn populate_from_template(state: &mut ComposeState, raw: &str) {
 
 // ── Template reassembly ──────────────────────────────────────────────────────
 
-/// Reassemble a ComposeState into an MML template string for `himalaya template send`.
+/// Reassemble a ComposeState into a backend template string for sending.
 pub fn reassemble_template(state: &ComposeState) -> String {
     let mut out = String::new();
 

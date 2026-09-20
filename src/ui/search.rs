@@ -21,7 +21,7 @@ pub fn render(app: &App, frame: &mut Frame, area: Rect) {
             t.search_input(),
         ),
         Span::styled(
-            "  (himalaya query: subject foo, from bar, order by date desc)",
+            "  (matches subject, sender, date, id; use 'flag seen' or 'not flag seen')",
             t.dimmed(),
         ),
     ];

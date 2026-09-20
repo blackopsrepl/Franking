@@ -11,7 +11,7 @@ use rusqlite::Connection;
 #[derive(Debug, Clone)]
 pub struct Identity {
     pub id: i64,
-    /// Himalaya account name this identity belongs to.
+    /// Account name this identity belongs to.
     pub account: String,
     /// Short label to identify this identity in the UI (e.g. "Work", "Personal").
     /// Distinct from `display_name`: this is never placed in email headers.

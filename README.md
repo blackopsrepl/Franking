@@ -14,8 +14,7 @@
 # SolverForge Mail
 
 A spiffy ratatui-based TUI email client with an app-owned mail layer, native
-maildir support, and a temporary Himalaya migration adapter for remote
-accounts that have not yet moved to native transport.
+maildir support, and native IMAP/SMTP transport for DB-backed accounts.
 
 ## Quick Start
 
@@ -39,8 +38,7 @@ cargo run -- --setup
 - **Multi-account** - Switch with Ctrl+a
 - **Fast keyboard navigation** - j/k and g/G in list/message views, plus direct multiline editing in compose
 - **Smart error handling** - Typed mail diagnostics and clean user-facing errors
-- **Structured message reader** - MIME-aware message content with `Auto`, `Plain`, and `HTML` modes
-- **External HTML open** - Safe argv-based browser handoff for full-fidelity HTML viewing
+- **Structured message reader** - MIME-aware message content with one canonical HTML-first render path
 - **Address book** - Contacts with name, email, phone, org, notes, tags
 - **Contact import** - vCard (.vcf) and Google CSV import
 - **Auto-harvest contacts** - Captured from sent/received mail
@@ -78,8 +76,6 @@ cargo run -- --setup
 - `f` - Forward
 - `d` - Delete
 - `a` - Download attachments
-- `1` / `2` / `3` - `Auto` / `Plain` / `HTML`
-- `o` - Open HTML externally
 
 ### Compose View
 - `Tab` / `Shift+Tab` - Next/previous compose field
@@ -150,10 +146,11 @@ cargo run -- --setup
 ```
 
 Supported setup flows inside the wizard:
-- **Generic IMAP/SMTP**: Temporarily gated in this build until native remote transport lands
-- **iCloud**: Temporarily gated in this build until native remote transport lands
-- **Gmail/Outlook**: Temporary Himalaya-backed OAuth bootstrap while native OAuth transport is still pending
-- **Auth source of truth**: SQLite + OS keyring remain the target control plane, with the current remote transport path still temporarily backed by the Himalaya adapter for legacy accounts
+- **Generic IMAP/SMTP**: Native app-owned IMAP read + SMTP send using SQLite account metadata and OS-keyring secrets
+- **iCloud**: Native app-owned endpoint presets with app-password storage in the OS keyring
+- **Gmail OAuth**: Native browser-based OAuth bootstrap with app-owned token refresh and SQLite-backed metadata
+- **Outlook OAuth**: Native browser-based OAuth bootstrap with app-owned token refresh and SQLite-backed metadata
+- **Auth source of truth**: SQLite stores account definitions, endpoints, auth bindings, OAuth state, and secret references; raw secrets stay in the OS keyring
 
 ## Architecture
 
@@ -175,13 +172,13 @@ cargo run -- --account test
 
 SolverForge Mail expects:
 - no external dependencies for the local `test` maildir account
-- the system keyring/`secret-tool` for password and app-password setup flows
-- only the Himalaya backend binary/config for legacy accounts and the temporary OAuth bootstrap path
+- the system keyring/`secret-tool` for password, app-password, and OAuth token storage
+- network reachability to the configured IMAP and SMTP endpoints for remote accounts
 
 ### Authentication errors
-- **iCloud**: The app-owned setup flow is intentionally disabled in this build. If you still use a legacy Himalaya config with `auth.cmd`, verify `~/.authinfo.gpg` decrypts in this session.
-- **Gmail/Outlook**: OAuth bootstrap is still temporary. Re-run `himalaya account configure <account>` if the legacy OAuth token expires.
-- **Password-based IMAP/SMTP**: Native app-owned transport is not enabled in this build yet. Use a legacy Himalaya-backed account if you need remote IMAP/SMTP today.
+- **Generic IMAP/SMTP**: Re-open `--setup`, confirm the endpoint/port pair, and verify the stored keyring secret matches the server login.
+- **iCloud**: Use an app-specific password, not your Apple ID password. If you keep `~/.authinfo.gpg` for other tooling, verify it still decrypts in this session.
+- **Gmail/Outlook OAuth**: Re-open `--setup`, run the provider flow again, and verify the stored client credentials match the OAuth app you registered with the provider.
 - **Local `test` account failing**: This is not an auth issue. Fix backend discovery, config loading, or local maildir paths first.
 
 ### Keyring issues
@@ -239,12 +236,13 @@ solverforge-mail/
 │   ├── keys.rs              # Keybinding definitions
 │   ├── theme.rs             # Color theme loader
 │   ├── himalaya/
-│   │   ├── client.rs        # Temporary Himalaya CLI migration adapter
-│   │   ├── config.rs        # Backend discovery and config hints
+│   │   ├── client.rs        # Legacy helper code retained for tests/migration work
+│   │   ├── config.rs        # Legacy backend discovery helpers
 │   │   ├── diagnostics.rs   # Shared error classification
 │   │   └── types.rs         # JSON types
 │   ├── mail/
 │   │   ├── service.rs       # App-facing mail service boundary
+│   │   ├── remote.rs        # Native IMAP/SMTP transport
 │   │   ├── message.rs       # Structured message content + display modes
 │   │   ├── mime.rs          # Shared raw-message MIME parser
 │   │   ├── maildir.rs       # Native local maildir backend

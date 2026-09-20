@@ -99,8 +99,8 @@ fn truncate(s: &str, max: usize) -> String {
     }
 }
 
-/* Parse a himalaya date string into a chrono DateTime<Local>.
-Himalaya outputs dates like "2026-02-14 10:30:00+00:00". */
+/* Parse a backend date string into a chrono DateTime<Local>.
+The native mail layer emits dates like "2026-02-14 10:30:00+00:00". */
 fn parse_date(date: &str) -> Option<DateTime<Local>> {
     // Try RFC 3339 / ISO 8601 with timezone offset
     if let Ok(dt) = DateTime::parse_from_str(date, "%Y-%m-%d %H:%M:%S%:z") {

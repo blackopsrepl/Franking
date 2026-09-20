@@ -1,7 +1,7 @@
 use solverforge_mail::keys::View;
 
-// Note: App depends on himalaya CLI being available, so we test
-// the state machine logic that doesn't require subprocess calls.
+// These tests cover the state machine logic directly without invoking
+// network or backend I/O.
 // We construct an App and manipulate its state directly.
 
 use solverforge_mail::app::App;
