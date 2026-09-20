@@ -27,6 +27,20 @@ tui-textarea = { version = "0.7.0", features = ["search"] }
 rpassword = "7"
 mail-parser = "0.11"
 html2text = "0.16"
+imap = "2.4"
+imap-proto = "0.10"
+base64 = "0.22"
+lettre = { version = "0.11", default-features = false, features = [
+  "builder",
+  "hostname",
+  "native-tls",
+  "smtp-transport",
+] }
+native-tls = "0.2"
+rand = "0.8"
+sha2 = "0.10"
+ureq = { version = "2.10", features = ["json"] }
+url = "2.5"
 
 [dev-dependencies]
 pretty_assertions = "1"
