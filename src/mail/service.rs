@@ -1,10 +1,11 @@
 use std::sync::Arc;
 
 use super::account_store::{self, AccountRecord};
-use super::errors::{MailError, MailResult};
+use super::errors::{MailError, MailErrorKind, MailResult};
 use super::maildir::MaildirService;
 use super::model::MessageDocument;
 use super::remote::ImapSmtpService;
+use super::store::{self, StoredMessage};
 use super::types::{sort_accounts, Account, Envelope, Folder};
 use crate::db;
 
@@ -26,12 +27,22 @@ pub trait MailService: Send + Sync {
         folder: &str,
         query: Option<&str>,
     ) -> MailResult<Vec<Envelope>>;
+    /// Raw RFC 5322 bytes for a message. Backends preserve the raw-bytes
+    /// boundary; parsing and caching happen one layer up.
+    fn read_message_raw(
+        &self,
+        account: Option<&str>,
+        folder: &str,
+        id: &str,
+    ) -> MailResult<Vec<u8>>;
     fn read_message_content(
         &self,
         account: Option<&str>,
         folder: &str,
         id: &str,
-    ) -> MailResult<MessageDocument>;
+    ) -> MailResult<MessageDocument> {
+        super::mime::parse_message(self.read_message_raw(account, folder, id)?)
+    }
     fn read_message(&self, account: Option<&str>, folder: &str, id: &str) -> MailResult<String> {
         self.read_message_content(account, folder, id)
             .map(|message| message.render_for_legacy_view(78))
@@ -168,6 +179,42 @@ fn sort_account_records(accounts: &mut [AccountRecord]) {
     });
 }
 
+/// Whether an error means the server is unreachable, so a cached result is
+/// preferable to surfacing the failure.
+fn is_offline(error: &MailError) -> bool {
+    matches!(
+        error.kind,
+        MailErrorKind::TransportTimeout
+            | MailErrorKind::ConnectionDropped
+            | MailErrorKind::Io
+            | MailErrorKind::BackendUnavailable
+    )
+}
+
+/// Serve a folder listing or search from the local store.
+fn cached_envelopes(
+    conn: &rusqlite::Connection,
+    account: &str,
+    folder: &str,
+    page: usize,
+    page_size: usize,
+    query: Option<&str>,
+) -> MailResult<Vec<Envelope>> {
+    let offset = page.saturating_sub(1) * page_size;
+    let messages = match query.map(str::trim).filter(|query| !query.is_empty()) {
+        Some(query) => store::search_messages(conn, Some(account), query, usize::MAX)
+            .map_err(|err| MailError::config_invalid(err.to_string()))?
+            .into_iter()
+            .filter(|message| message.folder == folder)
+            .skip(offset)
+            .take(page_size)
+            .collect::<Vec<_>>(),
+        None => store::list_messages(conn, account, folder, page_size, offset)
+            .map_err(|err| MailError::config_invalid(err.to_string()))?,
+    };
+    Ok(messages.iter().map(StoredMessage::to_envelope).collect())
+}
+
 impl MailService for RouterMailService {
     fn list_accounts(&self) -> MailResult<Vec<Account>> {
         self.merged_accounts()
@@ -195,13 +242,34 @@ impl MailService for RouterMailService {
         page_size: usize,
         query: Option<&str>,
     ) -> MailResult<Vec<Envelope>> {
-        match self.route_account(account)? {
+        let record = self.choose_account(account)?;
+        let result = match self.route_account(Some(&record.name))? {
             Route::Maildir(service) => {
                 service.list_envelopes(account, folder, page, page_size, query)
             }
             Route::Remote(service) => {
                 service.list_envelopes(account, folder, page, page_size, query)
             }
+        };
+
+        match result {
+            Ok(envelopes) => {
+                let _ = self.with_db(|conn| {
+                    for envelope in &envelopes {
+                        store::upsert_envelope(
+                            conn,
+                            &StoredMessage::from_envelope(&record.name, folder, envelope),
+                        )
+                        .map_err(|err| MailError::config_invalid(err.to_string()))?;
+                    }
+                    Ok(())
+                });
+                Ok(envelopes)
+            }
+            Err(error) if is_offline(&error) => self.with_db(|conn| {
+                cached_envelopes(conn, &record.name, folder, page, page_size, query)
+            }),
+            Err(error) => Err(error),
         }
     }
 
@@ -217,15 +285,44 @@ impl MailService for RouterMailService {
         }
     }
 
-    fn read_message_content(
+    fn read_message_raw(
         &self,
         account: Option<&str>,
         folder: &str,
         id: &str,
-    ) -> MailResult<MessageDocument> {
-        match self.route_account(account)? {
-            Route::Maildir(service) => service.read_message_content(account, folder, id),
-            Route::Remote(service) => service.read_message_content(account, folder, id),
+    ) -> MailResult<Vec<u8>> {
+        let record = self.choose_account(account)?;
+        let result = match self.route_account(Some(&record.name))? {
+            Route::Maildir(service) => service.read_message_raw(account, folder, id),
+            Route::Remote(service) => service.read_message_raw(account, folder, id),
+        };
+
+        match result {
+            Ok(raw) => {
+                if let Ok(document) = super::mime::parse_message(&raw) {
+                    let stored = StoredMessage::from_document(
+                        &record.name,
+                        folder,
+                        id,
+                        None,
+                        &[],
+                        &document,
+                        Some(raw.clone()),
+                    );
+                    let _ = self.with_db(|conn| {
+                        store::upsert_message(conn, &stored)
+                            .map_err(|err| MailError::config_invalid(err.to_string()))
+                    });
+                }
+                Ok(raw)
+            }
+            Err(error) if is_offline(&error) => self.with_db(|conn| {
+                store::get_message(conn, &record.name, folder, id)
+                    .map_err(|err| MailError::config_invalid(err.to_string()))?
+                    .and_then(|message| message.raw)
+                    .ok_or(error)
+            }),
+            Err(error) => Err(error),
         }
     }
 
@@ -391,5 +488,51 @@ mod tests {
 
         assert_eq!(accounts[0].name, "work");
         assert_eq!(accounts[1].name, "test");
+    }
+
+    #[test]
+    fn offline_errors_are_classified_for_cache_fallback() {
+        use super::is_offline;
+        use crate::mail::MailError;
+
+        assert!(is_offline(&MailError::transport_timeout("timed out")));
+        assert!(is_offline(&MailError::connection_dropped("closed")));
+        assert!(!is_offline(&MailError::imap_auth_rejected("bad password")));
+        assert!(!is_offline(&MailError::config_invalid("missing host")));
+    }
+
+    #[test]
+    fn cached_envelopes_serve_listings_and_search_offline() {
+        use super::cached_envelopes;
+        use crate::mail::store::{upsert_envelope, StoredMessage};
+        use crate::mail::types::{Envelope, Sender};
+
+        let conn = rusqlite::Connection::open_in_memory().unwrap();
+        crate::db::init_for_test(&conn).unwrap();
+
+        for (uid, subject) in [("1", "Quarterly report"), ("2", "Lunch plans")] {
+            let envelope = Envelope {
+                id: uid.to_string(),
+                flags: Vec::new(),
+                subject: subject.to_string(),
+                sender: Sender::Plain("alice@example.com".to_string()),
+                date: "2026-04-13 09:00:00+00:00".to_string(),
+            };
+            upsert_envelope(
+                &conn,
+                &StoredMessage::from_envelope("work", "INBOX", &envelope),
+            )
+            .unwrap();
+        }
+
+        let listed = cached_envelopes(&conn, "work", "INBOX", 1, 10, None).unwrap();
+        assert_eq!(listed.len(), 2);
+
+        let searched = cached_envelopes(&conn, "work", "INBOX", 1, 10, Some("lunch")).unwrap();
+        assert_eq!(searched.len(), 1);
+        assert_eq!(searched[0].id, "2");
+
+        let other_folder = cached_envelopes(&conn, "work", "Sent", 1, 10, None).unwrap();
+        assert!(other_folder.is_empty());
     }
 }

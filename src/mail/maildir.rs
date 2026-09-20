@@ -128,19 +128,19 @@ impl MailService for MaildirService {
         self.list_envelopes(account, folder, 1, usize::MAX, query)
     }
 
-    fn read_message_content(
+    fn read_message_raw(
         &self,
         _account: Option<&str>,
         folder: &str,
         id: &str,
-    ) -> MailResult<MessageDocument> {
+    ) -> MailResult<Vec<u8>> {
         self.ensure_ready()?;
         let dir = self.folder_path(folder)?;
         let path = find_message_path(&dir, id)?;
         let raw =
             fs::read(&path).map_err(|err| MailError::local_maildir_failure(err.to_string()))?;
         mark_seen(&path)?;
-        mime::parse_message(&raw)
+        Ok(raw)
     }
 
     fn delete_message(&self, _account: Option<&str>, folder: &str, id: &str) -> MailResult<()> {

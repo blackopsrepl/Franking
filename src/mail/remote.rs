@@ -144,28 +144,26 @@ impl ImapSmtpService {
         self.list_envelopes(account, folder, 1, usize::MAX, query)
     }
 
-    pub fn read_message_content(
+    pub fn read_message_raw(
         &self,
         account: Option<&str>,
         folder: &str,
         id: &str,
-    ) -> MailResult<MessageDocument> {
+    ) -> MailResult<Vec<u8>> {
         self.ensure_requested_account(account)?;
 
         fn exec<S: Read + Write>(
             session: &mut imap::Session<S>,
             folder: &str,
             id: &str,
-        ) -> MailResult<MessageDocument> {
+        ) -> MailResult<Vec<u8>> {
             session.select(folder).map_err(map_imap_error)?;
             let fetches = session.uid_fetch(id, "RFC822").map_err(map_imap_error)?;
-            let raw = fetches
+            fetches
                 .iter()
                 .find_map(|fetch| fetch.body())
-                .ok_or_else(|| {
-                    MailError::other("message body was not returned by the IMAP server")
-                })?;
-            mime::parse_message(raw)
+                .map(<[u8]>::to_vec)
+                .ok_or_else(|| MailError::other("message body was not returned by the IMAP server"))
         }
 
         match session::connect(&self.account)? {
@@ -350,7 +348,7 @@ impl ImapSmtpService {
         all: bool,
     ) -> MailResult<String> {
         self.ensure_requested_account(account)?;
-        let original = self.read_message_content(account, folder, id)?;
+        let original = mime::parse_message(self.read_message_raw(account, folder, id)?)?;
         let to = original
             .header_value("Reply-To")
             .map(str::to_string)
@@ -377,7 +375,7 @@ impl ImapSmtpService {
         id: &str,
     ) -> MailResult<String> {
         self.ensure_requested_account(account)?;
-        let original = self.read_message_content(account, folder, id)?;
+        let original = mime::parse_message(self.read_message_raw(account, folder, id)?)?;
         let subject = forward_subject(original.header_value("Subject").map(str::to_string));
         let body = forwarded_body(&original);
         Ok(render_template(&[("Subject", subject)], &body))

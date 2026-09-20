@@ -9,6 +9,7 @@ use anyhow::{Context, Result};
 use rusqlite::{params, Connection, OptionalExtension};
 
 use super::model::MessageDocument;
+use super::types::{Envelope, Sender};
 
 /// A message persisted in the local store.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -106,6 +107,110 @@ impl StoredMessage {
             raw,
         }
     }
+}
+
+impl StoredMessage {
+    /// Build envelope-only metadata from a server envelope.
+    pub fn from_envelope(account: &str, folder: &str, envelope: &Envelope) -> Self {
+        let from_email = match &envelope.sender {
+            Sender::Structured {
+                addr: Some(addr), ..
+            } => Some(addr.to_ascii_lowercase()),
+            Sender::Plain(value) => plain_email(value),
+            _ => None,
+        };
+        Self {
+            account: account.to_string(),
+            folder: folder.to_string(),
+            uid: envelope.id.clone(),
+            subject: envelope.subject.clone(),
+            from_display: envelope.sender.display(),
+            from_email,
+            date_epoch: parse_date_epoch(&envelope.date),
+            flags: envelope.flags.clone(),
+            ..Self::default()
+        }
+    }
+
+    pub fn to_envelope(&self) -> Envelope {
+        Envelope {
+            id: self.uid.clone(),
+            flags: self.flags.clone(),
+            subject: self.subject.clone(),
+            sender: Sender::Plain(self.from_display.clone()),
+            date: self.date_epoch.and_then(format_date).unwrap_or_default(),
+        }
+    }
+}
+
+fn plain_email(value: &str) -> Option<String> {
+    if let (Some(start), Some(end)) = (value.find('<'), value.find('>')) {
+        if start < end {
+            return Some(value[start + 1..end].trim().to_ascii_lowercase());
+        }
+    }
+    let trimmed = value.trim();
+    if trimmed.contains('@') && !trimmed.contains(char::is_whitespace) {
+        Some(trimmed.to_ascii_lowercase())
+    } else {
+        None
+    }
+}
+
+fn parse_date_epoch(value: &str) -> Option<i64> {
+    let value = value.trim();
+    if value.is_empty() {
+        return None;
+    }
+    for format in [
+        "%Y-%m-%d %H:%M:%S%:z",
+        "%Y-%m-%d %H:%M:%S%.f%:z",
+        "%Y-%m-%dT%H:%M:%S%:z",
+    ] {
+        if let Ok(parsed) = chrono::DateTime::parse_from_str(value, format) {
+            return Some(parsed.timestamp());
+        }
+    }
+    chrono::DateTime::parse_from_rfc3339(value)
+        .ok()
+        .map(|parsed| parsed.timestamp())
+}
+
+fn format_date(epoch: i64) -> Option<String> {
+    chrono::DateTime::from_timestamp(epoch, 0)
+        .map(|date| date.format("%Y-%m-%d %H:%M:%S%:z").to_string())
+}
+
+/// Insert or update envelope metadata without discarding cached body or raw
+/// bytes. Listing a folder must never erase a previously cached full message.
+pub fn upsert_envelope(conn: &Connection, message: &StoredMessage) -> Result<()> {
+    conn.execute(
+        "INSERT INTO messages (
+             account, folder, uid, subject, from_display, from_email,
+             to_display, date_epoch, flags, updated_at
+         ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, datetime('now'))
+         ON CONFLICT(account, folder, uid) DO UPDATE SET
+             subject = excluded.subject,
+             from_display = excluded.from_display,
+             from_email = excluded.from_email,
+             to_display = excluded.to_display,
+             date_epoch = excluded.date_epoch,
+             flags = excluded.flags,
+             updated_at = datetime('now')",
+        params![
+            &message.account,
+            &message.folder,
+            &message.uid,
+            &message.subject,
+            &message.from_display,
+            &message.from_email,
+            &message.to_display,
+            message.date_epoch,
+            message.flags.join(" "),
+        ],
+    )
+    .context("failed to upsert envelope")?;
+    Ok(())
 }
 
 /// Insert or update one message, keeping the FTS index in sync via triggers.
@@ -380,8 +485,8 @@ fn searched_columns() -> String {
 }
 
 fn row_to_message(row: &rusqlite::Row<'_>) -> rusqlite::Result<StoredMessage> {
-    let references: String = row.get(7)?;
-    let flags: String = row.get(13)?;
+    let references: String = row.get::<_, Option<String>>(7)?.unwrap_or_default();
+    let flags: String = row.get::<_, Option<String>>(13)?.unwrap_or_default();
     Ok(StoredMessage {
         account: row.get(0)?,
         folder: row.get(1)?,
@@ -434,8 +539,10 @@ mod tests {
 
     use super::{
         count_messages, delete_message, get_message, get_sync_state, list_messages,
-        search_messages, set_sync_state, thread_messages, upsert_message, StoredMessage, SyncState,
+        search_messages, set_sync_state, thread_messages, upsert_envelope, upsert_message,
+        StoredMessage, SyncState,
     };
+    use crate::mail::types::{Envelope, Sender};
 
     fn store() -> Connection {
         let conn = Connection::open_in_memory().unwrap();
@@ -546,5 +653,49 @@ mod tests {
         assert_eq!(loaded.uid_next, Some(100));
         assert_eq!(loaded.highest_modseq, Some(5000));
         assert!(loaded.last_synced_at.is_some());
+    }
+
+    #[test]
+    fn envelope_metadata_update_keeps_cached_body_and_raw() {
+        let conn = store();
+        let mut full = message("7", "original", "full body text");
+        full.raw = Some(b"raw bytes".to_vec());
+        full.message_id = Some("m7@example.com".to_string());
+        upsert_message(&conn, &full).unwrap();
+
+        let envelope = Envelope {
+            id: "7".to_string(),
+            flags: vec!["Seen".to_string()],
+            subject: "updated subject".to_string(),
+            sender: Sender::Plain("alice@example.com".to_string()),
+            date: "2026-04-13 09:00:00+00:00".to_string(),
+        };
+        upsert_envelope(
+            &conn,
+            &StoredMessage::from_envelope("work", "INBOX", &envelope),
+        )
+        .unwrap();
+
+        let loaded = get_message(&conn, "work", "INBOX", "7").unwrap().unwrap();
+        assert_eq!(loaded.subject, "updated subject");
+        assert_eq!(loaded.flags, vec!["Seen".to_string()]);
+        assert_eq!(loaded.message_id.as_deref(), Some("m7@example.com"));
+        assert_eq!(loaded.raw.as_deref(), Some(b"raw bytes".as_slice()));
+        assert!(loaded.body_text.contains("full body text"));
+    }
+
+    #[test]
+    fn envelope_round_trips_through_the_store_shape() {
+        let envelope = Envelope {
+            id: "9".to_string(),
+            flags: vec!["Flagged".to_string()],
+            subject: "hi".to_string(),
+            sender: Sender::Plain("Bob <bob@example.com>".to_string()),
+            date: "2026-04-13 09:00:00+00:00".to_string(),
+        };
+
+        let stored = StoredMessage::from_envelope("work", "INBOX", &envelope);
+        assert_eq!(stored.from_email.as_deref(), Some("bob@example.com"));
+        assert_eq!(stored.to_envelope(), envelope);
     }
 }
