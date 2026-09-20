@@ -18,8 +18,8 @@ use native_tls::{TlsConnector, TlsStream};
 
 use super::account_store::AccountRecord;
 use super::errors::{MailError, MailResult};
-use super::message::{MessageContent, MessageDisplayMode};
 use super::mime;
+use super::model::MessageDocument;
 use super::oauth;
 use super::types::{Envelope, Folder, Sender};
 
@@ -150,14 +150,14 @@ impl ImapSmtpService {
         account: Option<&str>,
         folder: &str,
         id: &str,
-    ) -> MailResult<MessageContent> {
+    ) -> MailResult<MessageDocument> {
         self.ensure_requested_account(account)?;
 
         fn exec<S: Read + Write>(
             session: &mut imap::Session<S>,
             folder: &str,
             id: &str,
-        ) -> MailResult<MessageContent> {
+        ) -> MailResult<MessageDocument> {
             session.select(folder).map_err(map_imap_error)?;
             let fetches = session.uid_fetch(id, "RFC822").map_err(map_imap_error)?;
             let raw = fetches
@@ -1094,7 +1094,7 @@ fn forward_subject(subject: Option<String>) -> String {
     }
 }
 
-fn quoted_reply_body(message: &MessageContent) -> String {
+fn quoted_reply_body(message: &MessageDocument) -> String {
     let from = message.header_value("From").unwrap_or_default();
     let date = message.header_value("Date").unwrap_or_default();
     let intro = match (!date.is_empty(), !from.is_empty()) {
@@ -1102,7 +1102,7 @@ fn quoted_reply_body(message: &MessageContent) -> String {
         (false, true) => format!("{from} wrote:\n"),
         _ => "Previous message:\n".to_string(),
     };
-    let rendered = message.render_body(MessageDisplayMode::Auto, 78);
+    let rendered = message.render(78);
     let quoted = rendered
         .lines()
         .map(|line| format!("> {line}"))
@@ -1116,7 +1116,7 @@ fn quoted_reply_body(message: &MessageContent) -> String {
     format!("\n{intro}{quoted}")
 }
 
-fn forwarded_body(message: &MessageContent) -> String {
+fn forwarded_body(message: &MessageDocument) -> String {
     let mut lines = vec!["---------- Forwarded message ----------".to_string()];
     for header in ["From", "Date", "Subject", "To", "Cc"] {
         if let Some(value) = message.header_value(header) {
@@ -1124,7 +1124,7 @@ fn forwarded_body(message: &MessageContent) -> String {
         }
     }
     lines.push(String::new());
-    lines.push(message.render_body(MessageDisplayMode::Auto, 78));
+    lines.push(message.render(78));
     lines.join("\n")
 }
 

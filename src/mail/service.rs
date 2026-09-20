@@ -3,7 +3,7 @@ use std::sync::Arc;
 use super::account_store::{self, AccountRecord};
 use super::errors::{MailError, MailResult};
 use super::maildir::MaildirService;
-use super::message::MessageContent;
+use super::model::MessageDocument;
 use super::remote::ImapSmtpService;
 use super::types::{sort_accounts, Account, Envelope, Folder};
 use crate::db;
@@ -31,7 +31,7 @@ pub trait MailService: Send + Sync {
         account: Option<&str>,
         folder: &str,
         id: &str,
-    ) -> MailResult<MessageContent>;
+    ) -> MailResult<MessageDocument>;
     fn read_message(&self, account: Option<&str>, folder: &str, id: &str) -> MailResult<String> {
         self.read_message_content(account, folder, id)
             .map(|message| message.render_for_legacy_view(78))
@@ -222,7 +222,7 @@ impl MailService for RouterMailService {
         account: Option<&str>,
         folder: &str,
         id: &str,
-    ) -> MailResult<MessageContent> {
+    ) -> MailResult<MessageDocument> {
         match self.route_account(account)? {
             Route::Maildir(service) => service.read_message_content(account, folder, id),
             Route::Remote(service) => service.read_message_content(account, folder, id),

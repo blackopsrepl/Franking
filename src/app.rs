@@ -13,7 +13,7 @@ use crate::identity_edit::IdentityEditState;
 use crate::keys::EditMode;
 use crate::keys::{self, Action, ComposeFocus, ComposeKeyContext, View};
 use crate::mail::types::*;
-use crate::mail::{MessageContent, MessageDisplayMode};
+use crate::mail::MessageDocument;
 use crate::worker::{Worker, WorkerResult};
 
 // Page size for envelope listing.
@@ -52,8 +52,7 @@ pub struct App {
     pub page: usize,
 
     // ── Message view state ──────────────────────────────────────────
-    pub message_content: Option<MessageContent>,
-    pub message_display_mode: MessageDisplayMode,
+    pub message_content: Option<MessageDocument>,
     pub message_scroll: u16,
 
     // ── Search state ────────────────────────────────────────────────
@@ -138,7 +137,6 @@ impl App {
             envelope_state: TableState::default(),
             page: 1,
             message_content: None,
-            message_display_mode: MessageDisplayMode::Auto,
             message_scroll: 0,
             search_query: String::new(),
             active_query: None,
@@ -234,19 +232,13 @@ impl App {
         self.envelopes.get(idx)
     }
 
-    pub fn current_message(&self) -> Option<&MessageContent> {
+    pub fn current_message(&self) -> Option<&MessageDocument> {
         self.message_content.as_ref()
-    }
-
-    pub fn resolved_message_display_mode(&self) -> MessageDisplayMode {
-        self.current_message()
-            .map(|message| message.resolve_display_mode(self.message_display_mode))
-            .unwrap_or(MessageDisplayMode::Auto)
     }
 
     pub fn render_message_body(&self, width: usize) -> String {
         self.current_message()
-            .map(|message| message.render_body(MessageDisplayMode::Auto, width))
+            .map(|message| message.render(width))
             .unwrap_or_default()
     }
 
@@ -259,7 +251,7 @@ impl App {
                 } else {
                     message.attachments.len() as u16 + 2
                 };
-                message.headers.len() as u16 + 3 + attachment_lines
+                message.header_fields().len() as u16 + 3 + attachment_lines
             })
             .unwrap_or(0);
         let body_lines = self.render_message_body(width).lines().count() as u16;
@@ -292,13 +284,13 @@ impl App {
                     self.loading = false;
                     self.set_error(&format!("Failed to load envelopes: {e}"));
                 }
-                WorkerResult::Message(Ok(message)) => {
-                    self.handle_message_loaded(message);
-                }
-                WorkerResult::Message(Err(e)) => {
-                    self.loading = false;
-                    self.set_error(&format!("Failed to read message: {e}"));
-                }
+                WorkerResult::Message(result) => match *result {
+                    Ok(message) => self.handle_message_loaded(message),
+                    Err(e) => {
+                        self.loading = false;
+                        self.set_error(&format!("Failed to read message: {e}"));
+                    }
+                },
                 WorkerResult::ActionDone(Ok(msg)) => {
                     self.loading = false;
                     self.set_status(&msg);
@@ -429,11 +421,10 @@ impl App {
         }
     }
 
-    fn handle_message_loaded(&mut self, message: MessageContent) {
+    fn handle_message_loaded(&mut self, message: MessageDocument) {
         self.harvest_contacts_from_message(&message);
 
         self.message_content = Some(message);
-        self.message_display_mode = MessageDisplayMode::Auto;
         self.message_scroll = 0;
         self.loading = false;
         self.view = View::MessageView;
@@ -450,14 +441,14 @@ impl App {
     /// Parse From/To/Cc/Reply-To addresses from message headers and upsert them
     /// into the contacts DB. Errors are silently ignored (harvest is
     /// best-effort).
-    fn harvest_contacts_from_message(&mut self, message: &MessageContent) {
+    fn harvest_contacts_from_message(&mut self, message: &MessageDocument) {
         if self.db.is_none() {
             return;
         }
 
         let mut addrs: Vec<(Option<String>, String)> = Vec::new();
 
-        for header in &message.headers {
+        for header in message.header_fields() {
             let is_addr_header = header.name.eq_ignore_ascii_case("from")
                 || header.name.eq_ignore_ascii_case("to")
                 || header.name.eq_ignore_ascii_case("cc")

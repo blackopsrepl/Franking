@@ -1,128 +1,17 @@
-use std::borrow::Cow;
-
-use mail_parser::{MessageParser, MimeHeaders};
+/*! Raw-message parsing entry point.
+Thin adapter over the lossless model so backends keep one raw-bytes-to-document
+boundary regardless of whether they read from disk or the network. */
 
 use super::errors::MailResult;
-use super::message::{
-    normalize_newlines, MessageAttachment, MessageContent, MessageDisplayMode, MessageHeader,
-};
+use super::model::{parse, MessageDocument};
 
-pub fn parse_message(raw: impl AsRef<[u8]>) -> MailResult<MessageContent> {
-    let raw = raw.as_ref();
-    let parser = MessageParser::new()
-        .with_minimal_headers()
-        .default_header_text();
-
-    if let Some(message) = parser.parse(raw) {
-        let headers = message
-            .headers_raw()
-            .map(|(name, value)| MessageHeader {
-                name: name.to_string(),
-                value: normalize_newlines(value).trim().to_string(),
-            })
-            .collect::<Vec<_>>();
-        let plain_body = message.body_text(0).map(cow_to_normalized_string);
-        let html_body = message.body_html(0).map(cow_to_normalized_string);
-        let attachments = (0..message.attachment_count())
-            .filter_map(|index| message.attachment(index as u32))
-            .map(|part| MessageAttachment {
-                file_name: part.attachment_name().map(str::to_string),
-                content_type: part.content_type().map(|content_type| {
-                    if let Some(subtype) = content_type.c_subtype.as_ref() {
-                        format!("{}/{}", content_type.c_type, subtype)
-                    } else {
-                        content_type.c_type.to_string()
-                    }
-                }),
-                is_inline: part
-                    .content_disposition()
-                    .map(|disposition| disposition.c_type.eq_ignore_ascii_case("inline"))
-                    .unwrap_or(false),
-                size: part.len(),
-            })
-            .collect::<Vec<_>>();
-
-        return Ok(MessageContent {
-            headers,
-            plain_body,
-            html_body: html_body.clone(),
-            attachments,
-            preferred_display: choose_preferred_display(raw, html_body.as_deref()),
-        });
-    }
-
-    Ok(fallback_parse(raw))
-}
-
-fn choose_preferred_display(raw: &[u8], html_body: Option<&str>) -> MessageDisplayMode {
-    let raw = String::from_utf8_lossy(raw).to_ascii_lowercase();
-    let has_plain = raw.contains("content-type: text/plain");
-    let has_html = raw.contains("content-type: text/html") || (html_body.is_some() && has_plain);
-
-    if has_html {
-        MessageDisplayMode::Html
-    } else {
-        MessageDisplayMode::Plain
-    }
-}
-
-fn fallback_parse(raw: &[u8]) -> MessageContent {
-    let rendered = String::from_utf8_lossy(raw);
-    let mut headers: Vec<MessageHeader> = Vec::new();
-    let mut body = Vec::new();
-    let mut in_body = false;
-    let mut current_header: Option<usize> = None;
-
-    for line in normalize_newlines(&rendered).lines() {
-        if in_body {
-            body.push(line.to_string());
-            continue;
-        }
-
-        if line.trim().is_empty() {
-            in_body = true;
-            continue;
-        }
-
-        if (line.starts_with(' ') || line.starts_with('\t')) && current_header.is_some() {
-            if let Some(header) = current_header.and_then(|index| headers.get_mut(index)) {
-                if !header.value.is_empty() {
-                    header.value.push(' ');
-                }
-                header.value.push_str(line.trim());
-            }
-            continue;
-        }
-
-        if let Some((name, value)) = line.split_once(':') {
-            headers.push(MessageHeader {
-                name: name.trim().to_string(),
-                value: value.trim().to_string(),
-            });
-            current_header = Some(headers.len() - 1);
-        } else {
-            in_body = true;
-            body.push(line.to_string());
-        }
-    }
-
-    MessageContent {
-        headers,
-        plain_body: Some(body.join("\n")),
-        html_body: None,
-        attachments: Vec::new(),
-        preferred_display: MessageDisplayMode::Plain,
-    }
-}
-
-fn cow_to_normalized_string(input: Cow<'_, str>) -> String {
-    normalize_newlines(input.as_ref())
+pub fn parse_message(raw: impl AsRef<[u8]>) -> MailResult<MessageDocument> {
+    Ok(parse(raw.as_ref()))
 }
 
 #[cfg(test)]
 mod tests {
     use super::parse_message;
-    use crate::mail::message::MessageDisplayMode;
 
     #[test]
     fn parses_plain_message() {
@@ -131,7 +20,8 @@ mod tests {
 
         assert_eq!(parsed.header_value("Subject"), Some("Plain"));
         assert_eq!(parsed.plain_body.as_deref(), Some("Hello plain world."));
-        assert_eq!(parsed.preferred_display, MessageDisplayMode::Plain);
+        assert!(parsed.has_plain_body());
+        assert!(!parsed.has_html_body());
     }
 
     #[test]
@@ -149,7 +39,7 @@ Content-Type: text/html; charset=utf-8
             .as_deref()
             .unwrap_or_default()
             .contains("<h1>Hello</h1>"));
-        assert_eq!(parsed.preferred_display, MessageDisplayMode::Html);
+        assert!(parsed.has_html_body());
     }
 
     #[test]
@@ -176,6 +66,85 @@ Content-Type: text/html; charset=utf-8
             .as_deref()
             .unwrap_or_default()
             .contains("HTML"));
-        assert_eq!(parsed.preferred_display, MessageDisplayMode::Html);
+    }
+
+    #[test]
+    fn decodes_rfc2047_subject_and_address_names() {
+        let raw = b"From: =?UTF-8?B?SsO2cmc=?= <j@example.com>\r\nSubject: =?UTF-8?B?SMOpbGxv?=\r\n\r\nbody";
+        let parsed = parse_message(raw).unwrap();
+
+        assert_eq!(parsed.subject(), "Héllo");
+        assert_eq!(parsed.headers.from[0].name.as_deref(), Some("Jörg"));
+        assert_eq!(
+            parsed.headers.from[0].email.as_deref(),
+            Some("j@example.com")
+        );
+    }
+
+    #[test]
+    fn decodes_rfc2231_attachment_filename() {
+        let raw = br#"MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="n"
+
+--n
+Content-Type: text/plain
+
+body
+--n
+Content-Type: application/pdf
+Content-Disposition: attachment; filename*=utf-8''na%C3%AFve.pdf
+
+PDFDATA
+--n--"#;
+        let parsed = parse_message(raw).unwrap();
+
+        assert_eq!(parsed.attachments.len(), 1);
+        assert_eq!(
+            parsed.attachments[0].file_name.as_deref(),
+            Some("naïve.pdf")
+        );
+    }
+
+    #[test]
+    fn extracts_threading_headers() {
+        let raw = b"Subject: Re: Project update\r\nMessage-ID: <child@example.com>\r\nReferences: <root@example.com> <mid@example.com>\r\nIn-Reply-To: <mid@example.com>\r\n\r\nreply";
+        let parsed = parse_message(raw).unwrap();
+
+        assert_eq!(
+            parsed.thread.message_id.as_deref(),
+            Some("child@example.com")
+        );
+        assert_eq!(parsed.thread.root_id(), Some("root@example.com"));
+        assert_eq!(parsed.thread.parent_id(), Some("mid@example.com"));
+        assert_eq!(parsed.thread.base_subject, "Project update");
+        assert!(parsed.thread.is_reply);
+    }
+
+    #[test]
+    fn preserves_multiple_text_parts_in_the_tree() {
+        let raw = br#"MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="m"
+
+--m
+Content-Type: text/plain
+
+FIRST
+--m
+Content-Type: text/plain
+
+SECOND
+--m--"#;
+        let parsed = parse_message(raw).unwrap();
+
+        let mut texts = Vec::new();
+        for part in &parsed.parts {
+            part.walk(&mut |part| {
+                if let Some(text) = part.text() {
+                    texts.push(text.trim().to_string());
+                }
+            });
+        }
+        assert!(texts.contains(&"FIRST".to_string()));
+        assert!(texts.contains(&"SECOND".to_string()));
     }
 }

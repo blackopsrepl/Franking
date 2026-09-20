@@ -3,7 +3,7 @@ use std::sync::Arc;
 use std::thread;
 
 use crate::mail::types::*;
-use crate::mail::{default_mail_service, MailError, MailService, MessageContent};
+use crate::mail::{default_mail_service, MailError, MailService, MessageDocument};
 
 /// Messages sent from background threads back to the main App.
 #[derive(Debug)]
@@ -11,7 +11,7 @@ pub enum WorkerResult {
     Accounts(Result<Vec<Account>, MailError>),
     Folders(Result<Vec<Folder>, MailError>),
     Envelopes(Result<Vec<Envelope>, MailError>),
-    Message(Result<MessageContent, MailError>),
+    Message(Box<Result<MessageDocument, MailError>>),
     ActionDone(Result<String, MailError>),
     /// Unread count for a specific folder: (folder_name, count).
     FolderUnread(String, Result<usize, MailError>),
@@ -136,7 +136,7 @@ impl Worker {
         let service = self.service.clone();
         thread::spawn(move || {
             let result = service.read_message_content(account.as_deref(), &folder, &id);
-            let _ = tx.send(WorkerResult::Message(result));
+            let _ = tx.send(WorkerResult::Message(Box::new(result)));
         });
     }
 

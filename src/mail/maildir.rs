@@ -6,8 +6,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use chrono::Local;
 
 use super::errors::{MailError, MailResult};
-use super::message::{MessageContent, MessageDisplayMode};
 use super::mime;
+use super::model::MessageDocument;
 use super::service::MailService;
 use super::types::{Account, Envelope, Folder, Sender};
 
@@ -133,7 +133,7 @@ impl MailService for MaildirService {
         _account: Option<&str>,
         folder: &str,
         id: &str,
-    ) -> MailResult<MessageContent> {
+    ) -> MailResult<MessageDocument> {
         self.ensure_ready()?;
         let dir = self.folder_path(folder)?;
         let path = find_message_path(&dir, id)?;
@@ -423,7 +423,7 @@ fn list_message_entries(dir: &Path) -> MailResult<Vec<MessageEntry>> {
                     parsed.header_value("From").unwrap_or_default(),
                     parsed.header_value("To").unwrap_or_default(),
                     parsed.subject(),
-                    parsed.render_body(MessageDisplayMode::Auto, 78)
+                    parsed.render(78)
                 )
                 .to_ascii_lowercase(),
                 envelope: Envelope {
@@ -612,7 +612,7 @@ fn base_message_name(path: &Path) -> MailResult<String> {
         .unwrap_or(name))
 }
 
-fn read_parsed_message(path: &Path) -> MailResult<MessageContent> {
+fn read_parsed_message(path: &Path) -> MailResult<MessageDocument> {
     let raw = fs::read(path).map_err(|err| MailError::local_maildir_failure(err.to_string()))?;
     mime::parse_message(&raw)
 }
@@ -696,7 +696,7 @@ fn forward_subject(subject: Option<String>) -> String {
     }
 }
 
-fn quoted_reply_body(message: &MessageContent) -> String {
+fn quoted_reply_body(message: &MessageDocument) -> String {
     let from = message.header_value("From").unwrap_or_default();
     let date = message.header_value("Date").unwrap_or_default();
     let intro = match (!date.is_empty(), !from.is_empty()) {
@@ -704,7 +704,7 @@ fn quoted_reply_body(message: &MessageContent) -> String {
         (false, true) => format!("{from} wrote:\n"),
         _ => "Previous message:\n".to_string(),
     };
-    let rendered = message.render_body(MessageDisplayMode::Auto, 78);
+    let rendered = message.render(78);
     let quoted = rendered
         .lines()
         .map(|line| format!("> {line}"))
@@ -718,7 +718,7 @@ fn quoted_reply_body(message: &MessageContent) -> String {
     format!("\n{intro}{quoted}")
 }
 
-fn forwarded_body(message: &MessageContent) -> String {
+fn forwarded_body(message: &MessageDocument) -> String {
     let mut lines = vec!["---------- Forwarded message ----------".to_string()];
     for header in ["From", "Date", "Subject", "To", "Cc"] {
         if let Some(value) = message.header_value(header) {
@@ -734,7 +734,7 @@ fn forwarded_body(message: &MessageContent) -> String {
         }
     }
     lines.push(String::new());
-    lines.push(message.render_body(MessageDisplayMode::Auto, 78));
+    lines.push(message.render(78));
     lines.join("\n")
 }
 

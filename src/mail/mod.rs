@@ -1,14 +1,14 @@
 pub mod account_store;
 pub mod errors;
 pub mod maildir;
-pub mod message;
 pub mod mime;
+pub mod model;
 pub mod oauth;
 pub mod remote;
 pub mod service;
 pub mod types;
 
 pub use errors::{MailError, MailErrorKind, MailResult};
-pub use message::{MessageAttachment, MessageContent, MessageDisplayMode, MessageHeader};
+pub use model::{Attachment, MessageDocument};
 pub use service::{app_owned_remote_transport_available, default_mail_service, MailService};
 pub use types::{Account, Envelope, Folder, Sender};

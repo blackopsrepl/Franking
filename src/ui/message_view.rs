@@ -23,7 +23,7 @@ pub fn render(app: &App, frame: &mut Frame, area: Rect) {
 
     let mut lines: Vec<Line> = Vec::new();
 
-    for header in &message.headers {
+    for header in message.header_fields() {
         lines.push(Line::from(vec![
             Span::styled(format!("{}: ", header.name), t.header_label()),
             Span::styled(header.value.clone(), t.header_value()),
