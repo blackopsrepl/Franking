@@ -106,33 +106,8 @@ impl AccountRecord {
         }
     }
 
-    pub fn from_legacy_account(account: &Account) -> Self {
-        Self {
-            name: account.name.clone(),
-            backend_kind: account.backend.clone(),
-            provider_kind: "legacy".to_string(),
-            enabled: true,
-            is_default: account.default,
-            maildir_path: None,
-            imap_host: None,
-            imap_port: None,
-            imap_security: None,
-            smtp_host: None,
-            smtp_port: None,
-            smtp_security: None,
-            auth_mode: None,
-            username: None,
-            keyring_imap_secret_id: None,
-            keyring_smtp_secret_id: None,
-        }
-    }
-
     pub fn is_maildir(&self) -> bool {
         self.backend_kind.eq_ignore_ascii_case("maildir")
-    }
-
-    pub fn is_legacy(&self) -> bool {
-        self.provider_kind.eq_ignore_ascii_case("legacy")
     }
 
     pub fn is_routable(&self) -> bool {

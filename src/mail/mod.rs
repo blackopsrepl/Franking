@@ -12,6 +12,6 @@ pub mod types;
 
 pub use errors::{MailError, MailErrorKind, MailResult};
 pub use model::{Attachment, MessageDocument};
-pub use service::{app_owned_remote_transport_available, default_mail_service, MailService};
+pub use service::{default_mail_service, MailService};
 pub use session::IdleOutcome;
 pub use types::{Account, Envelope, Folder, Sender};

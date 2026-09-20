@@ -105,10 +105,6 @@ pub trait MailService: Send + Sync {
     }
 }
 
-pub fn app_owned_remote_transport_available() -> bool {
-    true
-}
-
 pub fn default_mail_service() -> Arc<dyn MailService> {
     Arc::new(RouterMailService::default())
 }
