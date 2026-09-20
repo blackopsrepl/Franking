@@ -59,9 +59,7 @@ fn choose_preferred_display(raw: &[u8], html_body: Option<&str>) -> MessageDispl
     let has_plain = raw.contains("content-type: text/plain");
     let has_html = raw.contains("content-type: text/html") || (html_body.is_some() && has_plain);
 
-    if has_plain {
-        MessageDisplayMode::Plain
-    } else if has_html {
+    if has_html {
         MessageDisplayMode::Html
     } else {
         MessageDisplayMode::Plain
@@ -178,6 +176,6 @@ Content-Type: text/html; charset=utf-8
             .as_deref()
             .unwrap_or_default()
             .contains("HTML"));
-        assert_eq!(parsed.preferred_display, MessageDisplayMode::Plain);
+        assert_eq!(parsed.preferred_display, MessageDisplayMode::Html);
     }
 }
