@@ -91,8 +91,9 @@ impl ImapSmtpService {
         ) -> MailResult<Vec<Envelope>> {
             session.select(folder).map_err(map_imap_error)?;
 
+            let criteria = search_criteria(query);
             let mut uids = session
-                .uid_search("ALL")
+                .uid_search(&criteria)
                 .map_err(map_imap_error)?
                 .into_iter()
                 .collect::<Vec<_>>();
@@ -101,31 +102,13 @@ impl ImapSmtpService {
             }
             uids.sort_unstable_by(|left, right| right.cmp(left));
 
-            let filtered = if query.is_some() {
-                fetch_envelope_metadata(session, &uids)?
-                    .into_iter()
-                    .filter(|envelope| envelope_matches_query(envelope, query))
-                    .collect::<Vec<_>>()
-            } else {
-                let start = page.saturating_sub(1) * page_size;
-                let page_uids = uids
-                    .into_iter()
-                    .skip(start)
-                    .take(page_size)
-                    .collect::<Vec<_>>();
-                fetch_envelope_metadata(session, &page_uids)?
-            };
-
-            if query.is_some() {
-                let start = page.saturating_sub(1) * page_size;
-                Ok(filtered
-                    .into_iter()
-                    .skip(start)
-                    .take(page_size)
-                    .collect::<Vec<_>>())
-            } else {
-                Ok(filtered)
-            }
+            let start = page.saturating_sub(1) * page_size;
+            let page_uids = uids
+                .into_iter()
+                .skip(start)
+                .take(page_size)
+                .collect::<Vec<_>>();
+            fetch_envelope_metadata(session, &page_uids)
         }
 
         self.pool
@@ -672,28 +655,43 @@ fn sender_from_addresses(addresses: &[imap_proto::types::Address<'_>]) -> Sender
     }
 }
 
-fn envelope_matches_query(envelope: &Envelope, query: Option<&str>) -> bool {
+/// Translate the app's search grammar into an RFC 3501 SEARCH expression so
+/// filtering happens on the server instead of over a fully fetched mailbox.
+fn search_criteria(query: Option<&str>) -> String {
     let Some(query) = query.map(str::trim).filter(|query| !query.is_empty()) else {
-        return true;
+        return "ALL".to_string();
     };
 
-    let lowered = query.to_ascii_lowercase();
-    match lowered.as_str() {
-        "flag seen" => envelope.is_seen(),
-        "not flag seen" => !envelope.is_seen(),
-        "flag flagged" => envelope.is_flagged(),
-        "not flag flagged" => !envelope.is_flagged(),
-        _ => {
-            let haystack = format!(
-                "{}\n{}\n{}\n{}",
-                envelope.subject.to_ascii_lowercase(),
-                envelope.sender_display().to_ascii_lowercase(),
-                envelope.date.to_ascii_lowercase(),
-                envelope.id
-            );
-            haystack.contains(&lowered)
+    let mut criteria = Vec::new();
+    for term in query.split(" and ") {
+        let term = term.trim();
+        match term.to_ascii_lowercase().as_str() {
+            "flag seen" => criteria.push("SEEN".to_string()),
+            "not flag seen" => criteria.push("UNSEEN".to_string()),
+            "flag flagged" => criteria.push("FLAGGED".to_string()),
+            "not flag flagged" => criteria.push("UNFLAGGED".to_string()),
+            other => {
+                if let Some(value) = other.strip_prefix("subject ") {
+                    criteria.push(format!("SUBJECT {}", imap_quote(value.trim())));
+                } else if let Some(value) = other.strip_prefix("from ") {
+                    criteria.push(format!("FROM {}", imap_quote(value.trim())));
+                } else {
+                    criteria.push(format!("TEXT {}", imap_quote(other)));
+                }
+            }
         }
     }
+
+    if criteria.is_empty() {
+        "ALL".to_string()
+    } else {
+        criteria.join(" ")
+    }
+}
+
+fn imap_quote(value: &str) -> String {
+    let escaped = value.replace('\\', "\\\\").replace('"', "\\\"");
+    format!("\"{escaped}\"")
 }
 
 fn folder_description(name: &str) -> Option<String> {
@@ -978,8 +976,7 @@ fn parse_mailbox(value: &str) -> MailResult<Mailbox> {
 
 #[cfg(test)]
 mod tests {
-    use super::{envelope_matches_query, parse_template_message, sanitize_file_name};
-    use crate::mail::types::{Envelope, Sender};
+    use super::{parse_template_message, sanitize_file_name, search_criteria};
 
     #[test]
     fn sanitize_file_name_replaces_path_separators() {
@@ -998,19 +995,24 @@ mod tests {
     }
 
     #[test]
-    fn query_matching_supports_seen_filter_and_substring_search() {
-        let envelope = Envelope {
-            id: "42".to_string(),
-            flags: vec!["Seen".to_string()],
-            subject: "Project update".to_string(),
-            sender: Sender::Plain("alice@example.com".to_string()),
-            date: "2026-04-13 09:00:00+00:00".to_string(),
-        };
-
-        assert!(envelope_matches_query(&envelope, Some("flag seen")));
-        assert!(!envelope_matches_query(&envelope, Some("not flag seen")));
-        assert!(envelope_matches_query(&envelope, Some("project")));
-        assert!(envelope_matches_query(&envelope, Some("alice")));
-        assert!(!envelope_matches_query(&envelope, Some("missing")));
+    fn search_criteria_translate_the_app_query_grammar() {
+        assert_eq!(search_criteria(None), "ALL");
+        assert_eq!(search_criteria(Some("   ")), "ALL");
+        assert_eq!(search_criteria(Some("flag seen")), "SEEN");
+        assert_eq!(search_criteria(Some("not flag seen")), "UNSEEN");
+        assert_eq!(search_criteria(Some("flag flagged")), "FLAGGED");
+        assert_eq!(
+            search_criteria(Some("subject quarterly")),
+            "SUBJECT \"quarterly\""
+        );
+        assert_eq!(
+            search_criteria(Some("from alice and not flag seen")),
+            "FROM \"alice\" UNSEEN"
+        );
+        assert_eq!(search_criteria(Some("revenue")), "TEXT \"revenue\"");
+        assert_eq!(
+            search_criteria(Some("subject \"quoted\"")),
+            "SUBJECT \"\\\"quoted\\\"\""
+        );
     }
 }
