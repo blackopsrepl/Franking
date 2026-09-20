@@ -62,8 +62,6 @@ pub fn render(app: &App, frame: &mut Frame) {
         binding("f", "Forward"),
         binding("d", "Delete"),
         binding("a", "Download attachments"),
-        binding("1 / 2 / 3", "Auto / Plain / HTML body"),
-        binding("o", "Open HTML externally"),
         binding("q / Esc", "Back to list"),
         Line::from(""),
         Line::from(Span::styled(

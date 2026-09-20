@@ -1,6 +1,4 @@
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
-use std::time::{SystemTime, UNIX_EPOCH};
 
 use crossterm::event::{KeyEvent, MouseButton, MouseEvent, MouseEventKind};
 use ratatui::widgets::TableState;
@@ -248,7 +246,7 @@ impl App {
 
     pub fn render_message_body(&self, width: usize) -> String {
         self.current_message()
-            .map(|message| message.render_body(self.message_display_mode, width))
+            .map(|message| message.render_body(MessageDisplayMode::Auto, width))
             .unwrap_or_default()
     }
 
@@ -449,10 +447,9 @@ impl App {
         }
     }
 
-    /// Parse From/To/Cc/Reply-To addresses from the top of a message body and
-    /// upsert them into the contacts DB.  The message body himalaya returns
-    /// starts with rendered headers, so we scan lines until the first blank
-    /// line.  Errors are silently ignored (harvest is best-effort).
+    /// Parse From/To/Cc/Reply-To addresses from message headers and upsert them
+    /// into the contacts DB. Errors are silently ignored (harvest is
+    /// best-effort).
     fn harvest_contacts_from_message(&mut self, message: &MessageContent) {
         if self.db.is_none() {
             return;
@@ -470,7 +467,7 @@ impl App {
             }
         }
 
-        // Also harvest the envelope sender directly (already parsed by himalaya).
+        // Also harvest the envelope sender directly from the already-parsed list row.
         // Collect separately to avoid holding a borrow on self while calling upsert.
         let sender_str = self
             .selected_envelope()
@@ -529,43 +526,6 @@ impl App {
             self.pending_message_id = Some(id.clone());
             self.worker
                 .fetch_message(self.acct_owned(), self.current_folder.clone(), id);
-        }
-    }
-
-    fn set_message_display_mode(&mut self, mode: MessageDisplayMode) {
-        let Some(message) = self.current_message() else {
-            return;
-        };
-        let resolved = message.resolve_display_mode(mode);
-        self.message_display_mode = mode;
-        self.message_scroll = 0;
-        self.set_status(&format!(
-            "Message view: {}.",
-            match resolved {
-                MessageDisplayMode::Auto => "Auto",
-                MessageDisplayMode::Plain => "Plain",
-                MessageDisplayMode::Html => "HTML",
-            }
-        ));
-    }
-
-    fn open_message_html_externally(&mut self) {
-        let Some(message) = self.current_message() else {
-            return;
-        };
-        let Some(html) = message.html_body.as_deref() else {
-            self.set_status("This message does not contain an HTML body.");
-            return;
-        };
-
-        match write_html_preview_file(html) {
-            Ok(path) => {
-                self.pending_open_command = Some(external_open_command(&path));
-                self.set_status("Opening HTML body externally...");
-            }
-            Err(error) => {
-                self.set_error(&format!("Failed to prepare HTML preview: {error}"));
-            }
         }
     }
 
@@ -707,10 +667,6 @@ impl App {
             Action::Delete => self.delete(),
             Action::ToggleFlag => self.toggle_flag(),
             Action::DownloadAttachments => self.download_attachments(),
-            Action::MessageModeAuto => self.set_message_display_mode(MessageDisplayMode::Auto),
-            Action::MessageModePlain => self.set_message_display_mode(MessageDisplayMode::Plain),
-            Action::MessageModeHtml => self.set_message_display_mode(MessageDisplayMode::Html),
-            Action::OpenHtmlExternally => self.open_message_html_externally(),
             Action::ToggleThread => self.toggle_thread(),
             Action::Search => self.enter_search(),
             Action::SearchSubmit => self.submit_search(),
@@ -1946,46 +1902,6 @@ impl App {
     fn identity_edit_cancel(&mut self) {
         self.identity_edit_state = None;
         self.view = View::IdentityList;
-    }
-}
-
-fn write_html_preview_file(html: &str) -> std::io::Result<PathBuf> {
-    let preview_dir = std::env::temp_dir().join("solverforge-mail");
-    std::fs::create_dir_all(&preview_dir)?;
-
-    let unique = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|duration| duration.as_nanos())
-        .unwrap_or(0);
-    let path = preview_dir.join(format!("message-{unique}.html"));
-    let wrapped = if html.to_ascii_lowercase().contains("<html") {
-        html.to_string()
-    } else {
-        format!(
-            "<!doctype html><html><head><meta charset=\"utf-8\"></head><body>{html}</body></html>"
-        )
-    };
-    std::fs::write(&path, wrapped)?;
-    Ok(path)
-}
-
-fn external_open_command(path: &Path) -> PendingOpenCommand {
-    let path = path.to_string_lossy().to_string();
-    if cfg!(target_os = "macos") {
-        PendingOpenCommand {
-            program: "open".to_string(),
-            args: vec![path],
-        }
-    } else if cfg!(target_os = "windows") {
-        PendingOpenCommand {
-            program: "cmd".to_string(),
-            args: vec!["/C".to_string(), "start".to_string(), "".to_string(), path],
-        }
-    } else {
-        PendingOpenCommand {
-            program: "xdg-open".to_string(),
-            args: vec![path],
-        }
     }
 }
 
