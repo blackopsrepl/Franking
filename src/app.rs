@@ -641,11 +641,9 @@ impl App {
                     }
                 }
             }
-            MouseEventKind::Down(MouseButton::Right) => {
-                // Right-click to go back
-                if self.view == View::MessageView {
-                    self.go_back()
-                }
+            // Right-click to go back
+            MouseEventKind::Down(MouseButton::Right) if self.view == View::MessageView => {
+                self.go_back()
             }
             _ => {}
         }

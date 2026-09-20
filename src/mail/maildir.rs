@@ -103,7 +103,7 @@ impl MailService for MaildirService {
         self.ensure_ready()?;
         let dir = self.folder_path(folder)?;
         let mut entries = list_message_entries(&dir)?;
-        entries.sort_by(|left, right| right.sort_key.cmp(&left.sort_key));
+        entries.sort_by_key(|entry| std::cmp::Reverse(entry.sort_key));
 
         let filtered: Vec<Envelope> = entries
             .into_iter()
