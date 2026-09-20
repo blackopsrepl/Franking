@@ -136,7 +136,7 @@ impl AccountRecord {
     }
 
     pub fn is_routable(&self) -> bool {
-        self.is_maildir() || self.is_legacy()
+        self.is_maildir() || self.backend_kind.eq_ignore_ascii_case("imap")
     }
 }
 

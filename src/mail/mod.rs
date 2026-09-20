@@ -1,6 +1,5 @@
 pub mod account_store;
 pub mod errors;
-mod himalaya;
 pub mod maildir;
 pub mod message;
 pub mod mime;
