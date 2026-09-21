@@ -95,3 +95,15 @@ fn unrecognized_key_returns_none() {
 }
 
 // ── New modal scheme tests (replaces old Ctrl+p/s tests) ─────────────────────
+
+#[test]
+fn unread_navigation_keys() {
+    assert_eq!(
+        resolve(View::EnvelopeList, key(KeyCode::Char('>'))),
+        Action::NextUnread
+    );
+    assert_eq!(
+        resolve(View::EnvelopeList, key(KeyCode::Char('<'))),
+        Action::PrevUnread
+    );
+}

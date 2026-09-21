@@ -12,3 +12,4 @@ mod message_search;
 mod move_prompt;
 mod sieve;
 mod undo;
+mod unread;

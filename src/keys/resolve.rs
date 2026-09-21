@@ -11,6 +11,7 @@ use super::resolve_contacts::{
     resolve_compose, resolve_contact_edit, resolve_contact_search, resolve_contacts,
     resolve_identity_edit, resolve_identity_list,
 };
+use super::resolve_message_view::resolve_message_view;
 use super::resolve_sieve::{resolve_sieve_edit, resolve_sieve_name, resolve_sieve_scripts};
 use super::view::View;
 
@@ -152,6 +153,8 @@ fn resolve_envelope_list(key: KeyEvent) -> Action {
         KeyCode::Char(' ') => Action::ToggleSelect,
         KeyCode::Char('u') => Action::ClearSelection,
         KeyCode::Char('z') => Action::Undo,
+        KeyCode::Char('>') => Action::NextUnread,
+        KeyCode::Char('<') => Action::PrevUnread,
         KeyCode::Char('e') => Action::Archive,
         KeyCode::Char('E') => Action::EmptyFolder,
         KeyCode::Char('O') => Action::OpenOutbox,
@@ -165,39 +168,6 @@ fn resolve_envelope_list(key: KeyEvent) -> Action {
         _ => Action::None,
     }
 }
-fn resolve_message_view(key: KeyEvent) -> Action {
-    match key.code {
-        KeyCode::Char('q') | KeyCode::Esc => Action::Back,
-        KeyCode::Char('j') | KeyCode::Down => Action::ScrollDown,
-        KeyCode::Char('k') | KeyCode::Up => Action::ScrollUp,
-        KeyCode::Char(' ') => Action::PageDown,
-        KeyCode::Char('r') => Action::Reply,
-        KeyCode::Char('R') => Action::ReplyAll,
-        KeyCode::Char('f') => Action::Forward,
-        KeyCode::Char('d') => Action::Delete,
-        KeyCode::Char('a') => Action::DownloadAttachments,
-        KeyCode::Char('N') => Action::ToggleRead,
-        KeyCode::Char('P') => Action::UnlockPrompt,
-        KeyCode::Char('T') => Action::TrustSigner,
-        KeyCode::Char('o') => Action::OpenAttachments,
-        KeyCode::Char('h') => Action::ToggleHeaders,
-        KeyCode::Char('Q') => Action::ToggleQuotes,
-        KeyCode::Char('v') => Action::OpenInviteReply,
-        KeyCode::Char('s') => Action::SaveMessage,
-        KeyCode::Char('z') => Action::Undo,
-        KeyCode::Char('e') => Action::Archive,
-        KeyCode::Char('C') => Action::CopyMessage,
-        KeyCode::Char('l') => Action::OpenLinks,
-        KeyCode::Char('/') => Action::SearchMessage,
-        KeyCode::Char('n') => Action::NextMatch,
-        KeyCode::Char('p') => Action::PrevMatch,
-        KeyCode::Char('?') => Action::ToggleHelp,
-        KeyCode::Char('g') => Action::JumpTop,
-        KeyCode::Char('G') => Action::JumpBottom,
-        _ => Action::None,
-    }
-}
-
 fn resolve_folder_list(key: KeyEvent) -> Action {
     match key.code {
         KeyCode::Char('q') | KeyCode::Esc => Action::FocusEnvelopes,

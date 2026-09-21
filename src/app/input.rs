@@ -91,6 +91,8 @@ impl App {
             Action::SaveMessage => self.save_message(),
             Action::Undo => self.undo(),
             Action::Archive => self.archive(),
+            Action::NextUnread => self.jump_unread(true),
+            Action::PrevUnread => self.jump_unread(false),
             Action::SetDefaultAccount => self.set_default_account(),
             Action::DeleteAccount => self.delete_account(),
             Action::AccountNew => self.open_account_new(),

@@ -143,6 +143,10 @@ pub enum Action {
     ToggleSelect,
     /// Reverse the last destructive action.
     Undo,
+    /// Jump to the next unread message.
+    NextUnread,
+    /// Jump to the previous unread message.
+    PrevUnread,
     /// Move the selection to the archive folder.
     Archive,
     /// Make the highlighted account the default.

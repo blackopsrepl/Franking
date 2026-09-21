@@ -35,6 +35,7 @@ mod sieve_actions;
 mod smime;
 mod threads;
 mod undo;
+mod unread;
 mod worker;
 
 #[cfg(test)]
