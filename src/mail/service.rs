@@ -98,6 +98,14 @@ pub trait MailService: Send + Sync {
         ))
     }
 
+    /// Number of unseen messages in a folder.
+    fn folder_unread(&self, account: Option<&str>, folder: &str) -> MailResult<usize> {
+        let _ = (account, folder);
+        Err(MailError::unsupported_feature(
+            "unread counts are not supported by this backend",
+        ))
+    }
+
     /// Block until a folder changes or the timeout elapses. Backends without
     /// push support report it as unsupported so callers can stop watching.
     fn idle_watch(
@@ -458,6 +466,13 @@ impl MailService for RouterMailService {
         match self.route_account(account)? {
             Route::Maildir(service) => service.save_draft(account, template),
             Route::Remote(service) => service.save_draft(account, template),
+        }
+    }
+
+    fn folder_unread(&self, account: Option<&str>, folder: &str) -> MailResult<usize> {
+        match self.route_account(account)? {
+            Route::Maildir(service) => service.folder_unread(account, folder),
+            Route::Remote(service) => service.folder_unread(account, folder),
         }
     }
 

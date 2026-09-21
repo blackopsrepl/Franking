@@ -294,6 +294,11 @@ impl MailService for MaildirService {
             .map_err(|err| MailError::local_maildir_failure(err.to_string()))?;
         Ok("Draft saved.".to_string())
     }
+
+    fn folder_unread(&self, account: Option<&str>, folder: &str) -> MailResult<usize> {
+        self.list_envelopes(account, folder, 1, usize::MAX, Some("not flag seen"))
+            .map(|envelopes| envelopes.len())
+    }
 }
 
 pub fn default_test_maildir_path() -> PathBuf {
@@ -924,6 +929,25 @@ mod tests {
             .unwrap();
         assert_eq!(drafts.len(), 1);
         assert_eq!(drafts[0].subject, "Draft subject");
+
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn folder_unread_counts_unseen_messages() {
+        let root = temp_maildir();
+        let service = MaildirService::new("test", &root).with_default(true);
+        service.ensure_ready().unwrap();
+
+        assert_eq!(service.folder_unread(Some("test"), "INBOX").unwrap(), 1);
+
+        let inbox = service
+            .list_envelopes(Some("test"), "INBOX", 1, 50, None)
+            .unwrap();
+        service
+            .flag_add(Some("test"), "INBOX", &inbox[0].id, "seen")
+            .unwrap();
+        assert_eq!(service.folder_unread(Some("test"), "INBOX").unwrap(), 0);
 
         let _ = fs::remove_dir_all(root);
     }

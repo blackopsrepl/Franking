@@ -408,6 +408,26 @@ impl ImapSmtpService {
         Ok("Draft saved.".to_string())
     }
 
+    /// Count unseen messages in a folder using server-side SEARCH.
+    pub fn folder_unread(&self, account: Option<&str>, folder: &str) -> MailResult<usize> {
+        self.ensure_requested_account(account)?;
+
+        fn exec<S: Read + Write>(
+            session: &mut imap::Session<S>,
+            folder: &str,
+        ) -> MailResult<usize> {
+            session.select(folder).map_err(map_imap_error)?;
+            let unseen = session.uid_search("UNSEEN").map_err(map_imap_error)?;
+            Ok(unseen.len())
+        }
+
+        self.pool
+            .with_connection(&self.account, |connection| match connection {
+                ConnectedImapSession::Plain(session) => exec(session, folder),
+                ConnectedImapSession::Tls(session) => exec(session, folder),
+            })
+    }
+
     fn build_outgoing_message(&self, template: &str) -> MailResult<Message> {
         let draft = parse_template_message(template);
         let from = draft

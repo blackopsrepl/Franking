@@ -184,11 +184,7 @@ impl Worker {
         let service = self.service.clone();
         let folder_name = folder.clone();
         thread::spawn(move || {
-            // Query for unseen envelopes with page-size 1 to get a count.
-            // We use the envelope list with "not flag seen" filter.
-            let result = service
-                .list_envelopes(account.as_deref(), &folder, 1, 200, Some("not flag seen"))
-                .map(|envs| envs.len());
+            let result = service.folder_unread(account.as_deref(), &folder);
             let _ = tx.send(WorkerResult::FolderUnread(folder_name, result));
         });
     }
