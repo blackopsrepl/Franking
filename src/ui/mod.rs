@@ -10,6 +10,7 @@ mod folder_prompt;
 mod help;
 mod identity_edit;
 mod identity_list;
+mod links;
 mod message_view;
 mod move_prompt;
 mod passphrase_prompt;
@@ -92,6 +93,9 @@ pub fn render(app: &mut App, frame: &mut Frame) {
     }
     if app.view == View::AttachmentList {
         attachment_list::render(app, frame);
+    }
+    if app.view == View::LinkList {
+        links::render(app, frame);
     }
     if app.view == View::ContactEdit {
         contact_edit::render(app, frame);

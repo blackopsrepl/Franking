@@ -17,6 +17,8 @@ pub enum View {
     FolderPrompt,
     /// In-message search prompt.
     MessageSearch,
+    /// Link list overlay for the current message.
+    LinkList,
     /// Server-side Sieve script browser.
     SieveScripts,
     /// New-script name prompt.
@@ -143,6 +145,12 @@ pub enum Action {
     ExpandThread,
     /// Permanently remove every message in the current folder.
     EmptyFolder,
+    // ── Links ─────────────────────────────────────────────────────────
+    OpenLinks,
+    LinkNext,
+    LinkPrev,
+    LinkOpen,
+    LinkClose,
     // ── In-message search ─────────────────────────────────────────────
     SearchMessage,
     MessageSearchInput(char),

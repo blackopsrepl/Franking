@@ -18,6 +18,7 @@ pub fn resolve(view: View, key: KeyEvent) -> Action {
         View::IdentityList => return resolve_identity_list(key),
         View::IdentityEdit => return resolve_identity_edit(key),
         View::MessageSearch => return resolve_message_search(key),
+        View::LinkList => return resolve_link_list(key),
         View::SieveScripts => return resolve_sieve_scripts(key),
         View::SieveName => return resolve_sieve_name(key),
         View::SieveEdit => return resolve_sieve_edit(key),
@@ -45,6 +46,7 @@ pub fn resolve(view: View, key: KeyEvent) -> Action {
         View::MovePrompt => resolve_move_prompt(key),
         View::PassphrasePrompt => resolve_unlock_prompt(key),
         View::AttachmentList => resolve_attachment_list(key),
+        View::LinkList => resolve_link_list(key),
         View::MessageSearch => resolve_message_search(key),
         View::FolderPrompt => resolve_folder_prompt(key),
         View::ContactSearch => resolve_contact_search(key),
@@ -170,6 +172,7 @@ fn resolve_message_view(key: KeyEvent) -> Action {
         KeyCode::Char('s') => Action::SaveMessage,
         KeyCode::Char('z') => Action::Undo,
         KeyCode::Char('e') => Action::Archive,
+        KeyCode::Char('l') => Action::OpenLinks,
         KeyCode::Char('/') => Action::SearchMessage,
         KeyCode::Char('n') => Action::NextMatch,
         KeyCode::Char('p') => Action::PrevMatch,
@@ -223,6 +226,16 @@ fn resolve_help(key: KeyEvent) -> Action {
         KeyCode::Esc | KeyCode::Char('q') | KeyCode::Char('?') => Action::ToggleHelp,
         KeyCode::Char('j') | KeyCode::Down => Action::ScrollDown,
         KeyCode::Char('k') | KeyCode::Up => Action::ScrollUp,
+        _ => Action::None,
+    }
+}
+
+fn resolve_link_list(key: KeyEvent) -> Action {
+    match key.code {
+        KeyCode::Char('j') | KeyCode::Down => Action::LinkNext,
+        KeyCode::Char('k') | KeyCode::Up => Action::LinkPrev,
+        KeyCode::Enter | KeyCode::Char('o') => Action::LinkOpen,
+        KeyCode::Esc | KeyCode::Char('q') => Action::LinkClose,
         _ => Action::None,
     }
 }

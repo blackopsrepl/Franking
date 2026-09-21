@@ -37,6 +37,7 @@ pub fn hints(view: View) -> Vec<(&'static str, &'static str)> {
             ("T", "trust"),
             ("o", "attach"),
             ("/", "find"),
+            ("l", "links"),
             ("h", "headers"),
             ("s", "save .eml"),
             ("z", "undo"),
@@ -55,6 +56,7 @@ pub fn hints(view: View) -> Vec<(&'static str, &'static str)> {
         ],
         View::FolderPrompt => vec![("Enter", "confirm"), ("Esc", "cancel")],
         View::MessageSearch => vec![("Enter", "find"), ("Esc", "cancel")],
+        View::LinkList => vec![("j/k", "nav"), ("Enter", "open"), ("Esc", "close")],
         View::SieveScripts => vec![
             ("j/k", "nav"),
             ("Enter", "activate"),

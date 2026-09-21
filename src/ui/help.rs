@@ -73,6 +73,7 @@ pub fn render(app: &App, frame: &mut Frame) {
         binding("o", "Open the attachment list"),
         binding("h", "Toggle all headers"),
         binding("/", "Find text in the message"),
+        binding("l", "Open the link list"),
         binding("n / p", "Next / previous match"),
         binding("s", "Save the message as .eml"),
         binding("q / Esc", "Back to list"),

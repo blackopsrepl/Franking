@@ -12,6 +12,7 @@ mod empty_folder;
 mod folders;
 mod identities;
 mod input;
+mod links;
 mod loading;
 mod message_search;
 mod model;

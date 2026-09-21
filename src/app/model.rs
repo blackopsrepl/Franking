@@ -120,6 +120,8 @@ pub struct App {
     pub(crate) message_matches: Vec<u16>,
     /// Highlighted match index.
     pub(crate) message_match_index: usize,
+    /// Selected row in the message link list.
+    pub(crate) link_index: usize,
 
     // ── Shell-out command ───────────────────────────────────────────
     pub pending_open_command: Option<PendingOpenCommand>,
@@ -215,6 +217,7 @@ impl App {
             message_search_active: false,
             message_matches: Vec::new(),
             message_match_index: 0,
+            link_index: 0,
             help_scroll: 0,
             status_message: String::new(),
             status_is_error: false,

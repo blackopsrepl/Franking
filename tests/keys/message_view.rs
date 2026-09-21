@@ -23,6 +23,26 @@ fn message_view_toggles_all_headers() {
 }
 
 #[test]
+fn message_view_lists_links() {
+    assert_eq!(
+        resolve(View::MessageView, key(KeyCode::Char('l'))),
+        Action::OpenLinks
+    );
+    assert_eq!(
+        resolve(View::LinkList, key(KeyCode::Char('j'))),
+        Action::LinkNext
+    );
+    assert_eq!(
+        resolve(View::LinkList, key(KeyCode::Enter)),
+        Action::LinkOpen
+    );
+    assert_eq!(
+        resolve(View::LinkList, key(KeyCode::Esc)),
+        Action::LinkClose
+    );
+}
+
+#[test]
 fn message_view_archives() {
     assert_eq!(
         resolve(View::MessageView, key(KeyCode::Char('e'))),
