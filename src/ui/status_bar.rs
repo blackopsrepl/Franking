@@ -13,6 +13,27 @@ const SPINNER: &[&str] = &[
 pub fn render(app: &App, frame: &mut Frame, area: Rect) {
     let t = theme();
 
+    // A status message owns the bar: the hint list is longer than most
+    // terminals, so appending it would push the message off-screen.
+    if !app.status_message.is_empty() || app.loading {
+        let mut spans: Vec<Span> = Vec::new();
+        if !app.status_message.is_empty() {
+            let style = if app.status_is_error {
+                t.error()
+            } else {
+                t.accent_style()
+            };
+            spans.push(Span::styled(format!(" {} ", app.status_message), style));
+        }
+        if app.loading {
+            let idx = (app.tick_count as usize) % SPINNER.len();
+            spans.push(Span::styled(format!(" {} ", SPINNER[idx]), t.spinner()));
+        }
+        let paragraph = Paragraph::new(Line::from(spans)).style(t.status_bar());
+        frame.render_widget(paragraph, area);
+        return;
+    }
+
     // Build key-hint spans
     let hints = keys::hints(app.view);
     let mut spans: Vec<Span> = Vec::new();
@@ -24,26 +45,6 @@ pub fn render(app: &App, frame: &mut Frame, area: Rect) {
         spans.push(Span::styled(format!(" {key} "), t.status_key()));
         spans.push(Span::styled(desc.to_string(), t.status_desc()));
     }
-
-    // Add status message or spinner on the right
-    let right_content = if app.loading {
-        let idx = (app.tick_count as usize) % SPINNER.len();
-        format!(" {} ", SPINNER[idx])
-    } else if !app.status_message.is_empty() {
-        format!("  {}", app.status_message)
-    } else {
-        String::new()
-    };
-
-    let right_style = if app.status_is_error {
-        t.error()
-    } else if app.loading {
-        t.spinner()
-    } else {
-        t.accent_style()
-    };
-
-    spans.push(Span::styled(right_content, right_style));
 
     let paragraph = Paragraph::new(Line::from(spans)).style(t.status_bar());
     frame.render_widget(paragraph, area);
