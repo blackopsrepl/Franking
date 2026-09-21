@@ -1,15 +1,27 @@
 //! Live IMAP integration test.
 //!
-//! Runs only when `SOLVERFORGE_IMAP_TEST_ADDR` is set (e.g. `127.0.0.1:1143`)
-//! and a Dovecot server accepts `test`/`secret` there; otherwise it is skipped.
-//! It exercises a real connect, LOGIN, capability probe, and LIST, and proves
-//! that the pooled session is reused for a second operation.
+//! Runs only when `SOLVERFORGE_IMAP_TEST_ADDR` is set, pointing at a Dovecot
+//! test container started per the official docs (rootless image, non-privileged
+//! port, password via env):
+//!
+//! ```text
+//! printf 'auth_allow_cleartext = yes\n' > 99-test.conf
+//! podman run -d --name sfm-dovecot -p 1143:31143 -e USER_PASSWORD=password \
+//!   -v $PWD/99-test.conf:/etc/dovecot/conf.d/99-test.conf:Z dovecot/dovecot:latest
+//! SOLVERFORGE_IMAP_TEST_ADDR=127.0.0.1:1143 cargo test --test dovecot_test
+//! ```
+//!
+//! Any username authenticates with that password; the drop-in allows cleartext
+//! auth for the non-TLS test port. Skipped otherwise.
 
 use std::sync::Arc;
 
 use solverforge_mail::mail::account_store::AccountRecord;
+use solverforge_mail::mail::mime;
 use solverforge_mail::mail::remote::ImapSmtpService;
-use solverforge_mail::mail::session::{CredentialProvider, SessionPool};
+use solverforge_mail::mail::session::{
+    map_imap_error, ConnectedImapSession, CredentialProvider, SessionPool,
+};
 use solverforge_mail::mail::MailResult;
 
 #[derive(Debug)]
@@ -17,7 +29,7 @@ struct FixedCredentials;
 
 impl CredentialProvider for FixedCredentials {
     fn lookup(&self, _service: &str, _username: &str) -> MailResult<String> {
-        Ok("secret".to_string())
+        Ok("password".to_string())
     }
 }
 
@@ -43,25 +55,43 @@ fn account(host: &str, port: u16) -> AccountRecord {
 }
 
 #[test]
-fn dovecot_lists_folders_and_reuses_the_session() {
+fn dovecot_append_list_read_and_flag() {
     let Ok(address) = std::env::var("SOLVERFORGE_IMAP_TEST_ADDR") else {
         return;
     };
     let (host, port) = address.rsplit_once(':').expect("host:port");
     let port: u16 = port.parse().expect("port");
+    let account = account(host, port);
 
     let pool = Arc::new(SessionPool::with_credentials(Arc::new(FixedCredentials)));
-    let service = ImapSmtpService::new(account(host, port), pool);
+    let service = ImapSmtpService::new(account.clone(), pool.clone());
 
-    let folders = service.list_folders(None).expect("list folders");
-    assert!(
-        folders
-            .iter()
-            .any(|folder| folder.name.eq_ignore_ascii_case("INBOX")),
-        "INBOX should be listed: {folders:?}"
-    );
+    let raw = b"From: alice@example.com\r\nTo: test@example.com\r\nSubject: Dovecot probe\r\nMessage-ID: <probe@example.com>\r\nDate: 2026-04-13 09:00:00+00:00\r\n\r\nhello from dovecot";
+    pool.with_connection(&account, |connection| match connection {
+        ConnectedImapSession::Plain(session) => session
+            .append("INBOX", raw.as_slice())
+            .map_err(map_imap_error),
+        ConnectedImapSession::Tls(session) => session
+            .append("INBOX", raw.as_slice())
+            .map_err(map_imap_error),
+    })
+    .expect("append");
 
-    // A second operation must reuse the pooled connection rather than relogin.
-    let again = service.list_folders(None).expect("list folders again");
-    assert_eq!(folders.len(), again.len());
+    let envelopes = service
+        .list_envelopes(None, "INBOX", 1, 50, None)
+        .expect("list");
+    let probe = envelopes
+        .iter()
+        .find(|envelope| envelope.subject == "Dovecot probe")
+        .expect("appended message should be listed");
+
+    let bytes = service
+        .read_message_raw(None, "INBOX", &probe.id)
+        .expect("read");
+    let document = mime::parse_message(&bytes).expect("parse");
+    assert_eq!(document.subject(), "Dovecot probe");
+
+    service
+        .flag_add(None, "INBOX", &probe.id, "seen")
+        .expect("flag");
 }
