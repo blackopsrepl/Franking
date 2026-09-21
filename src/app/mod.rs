@@ -9,6 +9,7 @@ mod loading;
 mod model;
 mod mouse;
 mod navigation;
+mod pgp;
 mod worker;
 
 #[cfg(test)]

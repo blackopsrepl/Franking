@@ -182,7 +182,7 @@ impl App {
 
     pub(crate) fn handle_message_loaded(&mut self, mut message: MessageDocument) {
         self.harvest_contacts_from_message(&message);
-        self.pgp_status = process_pgp(&mut message);
+        self.pgp_status = super::pgp::process_pgp(&mut message);
 
         self.message_content = Some(message);
         self.message_scroll = 0;
@@ -248,42 +248,4 @@ fn notify_new_mail(folder: &str) {
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .spawn();
-}
-
-/// Verify or decrypt inline PGP using the local keyring, returning a status.
-fn process_pgp(message: &mut MessageDocument) -> Option<String> {
-    use crate::mail::model::BodyDocument;
-    use crate::mail::pgp::{self, InlinePgp};
-
-    let body = message.plain_body.clone()?;
-    let kind = pgp::detect_inline(&body)?;
-    let keyring = pgp::Keyring::load(&pgp_keys_dir());
-
-    match kind {
-        InlinePgp::Signed => {
-            let fingerprints = pgp::verify_cleartext(&body, &keyring.public);
-            Some(if fingerprints.is_empty() {
-                "PGP signature could not be verified".to_string()
-            } else {
-                format!("PGP signature valid: {}", fingerprints.join(", "))
-            })
-        }
-        InlinePgp::Encrypted => match pgp::decrypt_inline(&body, &keyring.secret, "") {
-            Some(data) => {
-                let text = String::from_utf8_lossy(&data).to_string();
-                message.body = BodyDocument::from_plain(&text);
-                message.plain_body = Some(text);
-                Some("PGP encrypted message decrypted".to_string())
-            }
-            None => Some("PGP encrypted (no usable secret key)".to_string()),
-        },
-    }
-}
-
-fn pgp_keys_dir() -> std::path::PathBuf {
-    dirs::data_dir()
-        .unwrap_or_else(|| std::path::PathBuf::from("."))
-        .join("solverforge")
-        .join("mail")
-        .join("keys")
 }

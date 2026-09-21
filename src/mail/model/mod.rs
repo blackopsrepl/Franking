@@ -39,6 +39,8 @@ pub struct MessageDocument {
     pub attachments: Vec<Attachment>,
     /// Message identity and threading relations.
     pub thread: ThreadRefs,
+    /// Original raw message bytes, retained for signature verification.
+    pub raw: Option<Vec<u8>>,
 }
 
 impl MessageDocument {

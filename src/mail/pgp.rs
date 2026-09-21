@@ -4,6 +4,7 @@ signatures. Keyrings are loaded from armored/binary key files. */
 
 use std::path::Path;
 
+use mail_parser::{MessageParser, MimeHeaders, PartType};
 use pgp::composed::{
     CleartextSignedMessage, Deserializable, Message, SignedPublicKey, SignedSecretKey,
 };
@@ -47,6 +48,51 @@ pub fn verify_detached(content: &[u8], signature: &[u8], keys: &[SignedPublicKey
         .filter(|key| signature.verify(*key, content).is_ok())
         .map(|key| key.fingerprint().to_string())
         .collect()
+}
+
+/// Verify a PGP/MIME (multipart/signed) message, returning signer fingerprints.
+pub fn verify_mime(raw: &[u8], keys: &[SignedPublicKey]) -> Option<Vec<String>> {
+    let parser = MessageParser::new()
+        .with_minimal_headers()
+        .default_header_text();
+    let message = parser.parse(raw)?;
+    let root = message.part(0)?;
+    let content_type = root.content_type()?;
+    if !content_type.c_type.eq_ignore_ascii_case("multipart")
+        || !content_type
+            .c_subtype
+            .as_deref()
+            .is_some_and(|subtype| subtype.eq_ignore_ascii_case("signed"))
+    {
+        return None;
+    }
+    let PartType::Multipart(ids) = &root.body else {
+        return None;
+    };
+    if ids.len() < 2 {
+        return None;
+    }
+    let signed = message.part(ids[0])?;
+    let signature_part = message.part(ids[1])?;
+    let raw_message = message.raw_message.as_ref();
+    let start = signed.offset_header as usize;
+    let end = signed.offset_end as usize;
+    let signed_bytes = raw_message.get(start..end)?;
+    let signature_bytes = signature_part.contents();
+
+    let mut fingerprints = verify_detached(signed_bytes, signature_bytes, keys);
+    if fingerprints.is_empty() {
+        // Some producers sign the LF-normalized form.
+        fingerprints = verify_detached(&normalize_crlf(signed_bytes), signature_bytes, keys);
+    }
+    Some(fingerprints)
+}
+
+fn normalize_crlf(bytes: &[u8]) -> Vec<u8> {
+    let text = String::from_utf8_lossy(bytes);
+    text.replace("\r\n", "\n")
+        .replace('\n', "\r\n")
+        .into_bytes()
 }
 
 /// Decrypt an inline armored OpenPGP message with the first usable secret key.

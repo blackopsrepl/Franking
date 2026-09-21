@@ -15,7 +15,11 @@ pub fn parse(bytes: &[u8]) -> MessageDocument {
         .with_minimal_headers()
         .default_header_text();
     match parser.parse(bytes) {
-        Some(message) => parse_message_object(&message),
+        Some(message) => {
+            let mut document = parse_message_object(&message);
+            document.raw = Some(bytes.to_vec());
+            document
+        }
         None => fallback(bytes),
     }
 }
@@ -66,6 +70,7 @@ pub(super) fn parse_message_object(message: &ParsedMessage<'_>) -> MessageDocume
         body,
         attachments,
         thread,
+        raw: None,
     }
 }
 
@@ -121,5 +126,6 @@ fn fallback(bytes: &[u8]) -> MessageDocument {
         body: BodyDocument::from_plain(&plain),
         attachments: Vec::new(),
         thread: ThreadRefs::default(),
+        raw: Some(bytes.to_vec()),
     }
 }

@@ -1,0 +1,52 @@
+/*! PGP verification and decryption for a loaded message. */
+
+use crate::mail::model::{BodyDocument, MessageDocument};
+use crate::mail::pgp::{self, InlinePgp};
+use crate::mail::security::Protection;
+
+/// Verify or decrypt PGP on a message, returning a status line.
+pub(super) fn process_pgp(message: &mut MessageDocument) -> Option<String> {
+    let keyring = pgp::Keyring::load(&pgp_keys_dir());
+
+    if message.protection() == Some(Protection::PgpSigned) {
+        if let Some(raw) = message.raw.as_deref() {
+            let fingerprints = pgp::verify_mime(raw, &keyring.public).unwrap_or_default();
+            return Some(if fingerprints.is_empty() {
+                "PGP/MIME signature could not be verified".to_string()
+            } else {
+                format!("PGP/MIME signature valid: {}", fingerprints.join(", "))
+            });
+        }
+    }
+
+    let body = message.plain_body.clone()?;
+    let kind = pgp::detect_inline(&body)?;
+
+    match kind {
+        InlinePgp::Signed => {
+            let fingerprints = pgp::verify_cleartext(&body, &keyring.public);
+            Some(if fingerprints.is_empty() {
+                "PGP signature could not be verified".to_string()
+            } else {
+                format!("PGP signature valid: {}", fingerprints.join(", "))
+            })
+        }
+        InlinePgp::Encrypted => match pgp::decrypt_inline(&body, &keyring.secret, "") {
+            Some(data) => {
+                let text = String::from_utf8_lossy(&data).to_string();
+                message.body = BodyDocument::from_plain(&text);
+                message.plain_body = Some(text);
+                Some("PGP encrypted message decrypted".to_string())
+            }
+            None => Some("PGP encrypted (no usable secret key)".to_string()),
+        },
+    }
+}
+
+fn pgp_keys_dir() -> std::path::PathBuf {
+    dirs::data_dir()
+        .unwrap_or_else(|| std::path::PathBuf::from("."))
+        .join("solverforge")
+        .join("mail")
+        .join("keys")
+}
