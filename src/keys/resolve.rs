@@ -3,7 +3,7 @@
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
 use super::action::{Action, ComposeFocus, ComposeKeyContext, View};
-use super::resolve_accounts::{resolve_account_edit, resolve_account_list};
+use super::resolve_accounts::{resolve_account_edit, resolve_account_list, resolve_file_picker};
 use super::resolve_contacts::{
     resolve_compose, resolve_contact_edit, resolve_contact_search, resolve_contacts,
     resolve_identity_edit, resolve_identity_list,
@@ -20,6 +20,7 @@ pub fn resolve(view: View, key: KeyEvent) -> Action {
         View::IdentityEdit => return resolve_identity_edit(key),
         View::MessageSearch => return resolve_message_search(key),
         View::AccountEdit => return resolve_account_edit(key),
+        View::FilePicker => return resolve_file_picker(key),
         View::LinkList => return resolve_link_list(key),
         View::SieveScripts => return resolve_sieve_scripts(key),
         View::SieveName => return resolve_sieve_name(key),
@@ -61,7 +62,8 @@ pub fn resolve(view: View, key: KeyEvent) -> Action {
         | View::SieveScripts
         | View::SieveName
         | View::SieveEdit
-        | View::AccountEdit => Action::None,
+        | View::AccountEdit
+        | View::FilePicker => Action::None,
     }
 }
 

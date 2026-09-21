@@ -59,3 +59,23 @@ fn account_form_keys() {
         Action::AccountEditDiscover
     );
 }
+
+#[test]
+fn file_picker_keys() {
+    assert_eq!(
+        resolve(View::FilePicker, key(KeyCode::Char('j'))),
+        Action::FilePickerNext
+    );
+    assert_eq!(
+        resolve(View::FilePicker, key(KeyCode::Enter)),
+        Action::FilePickerEnter
+    );
+    assert_eq!(
+        resolve(View::FilePicker, key(KeyCode::Backspace)),
+        Action::FilePickerUp
+    );
+    assert_eq!(
+        resolve(View::FilePicker, key(KeyCode::Esc)),
+        Action::FilePickerClose
+    );
+}

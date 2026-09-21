@@ -8,6 +8,8 @@ pub enum View {
     AccountList,
     /// Account add/edit form.
     AccountEdit,
+    /// Filesystem picker for attachment paths.
+    FilePicker,
     Search,
     Help,
     MovePrompt,
@@ -140,6 +142,13 @@ pub enum Action {
     AccountEditCancel,
     /// Auto-detect provider settings for the typed login.
     AccountEditDiscover,
+    // ── File picker ───────────────────────────────────────────────────
+    OpenFilePicker,
+    FilePickerNext,
+    FilePickerPrev,
+    FilePickerEnter,
+    FilePickerUp,
+    FilePickerClose,
     // ── Folder management ─────────────────────────────────────────────
     FolderNew,
     FolderRename,

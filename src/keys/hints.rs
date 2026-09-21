@@ -70,6 +70,11 @@ pub fn hints(view: View) -> Vec<(&'static str, &'static str)> {
         ],
         View::SieveName => vec![("Enter", "create"), ("Esc", "cancel")],
         View::SieveEdit => vec![("Ctrl+s", "save"), ("Esc", "back")],
+        View::FilePicker => vec![
+            ("Enter", "open/attach"),
+            ("Backspace", "up"),
+            ("Esc", "cancel"),
+        ],
         View::AccountEdit => vec![
             ("Tab", "field"),
             ("Ctrl+d", "detect"),

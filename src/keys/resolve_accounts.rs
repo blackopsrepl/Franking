@@ -19,6 +19,17 @@ pub(super) fn resolve_account_list(key: KeyEvent) -> Action {
     }
 }
 
+pub(super) fn resolve_file_picker(key: KeyEvent) -> Action {
+    match key.code {
+        KeyCode::Char('j') | KeyCode::Down => Action::FilePickerNext,
+        KeyCode::Char('k') | KeyCode::Up => Action::FilePickerPrev,
+        KeyCode::Enter => Action::FilePickerEnter,
+        KeyCode::Backspace | KeyCode::Left => Action::FilePickerUp,
+        KeyCode::Esc | KeyCode::Char('q') => Action::FilePickerClose,
+        _ => Action::None,
+    }
+}
+
 pub(super) fn resolve_account_edit(key: KeyEvent) -> Action {
     if key
         .modifiers

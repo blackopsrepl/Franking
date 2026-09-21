@@ -182,6 +182,8 @@ pub struct App {
 
     /// Account add/edit form state.
     pub account_edit_state: Option<crate::account_edit::AccountEditState>,
+    /// Filesystem picker used to choose an attachment path.
+    pub(crate) file_picker: Option<crate::file_picker::FilePickerState>,
 }
 
 impl App {
@@ -254,6 +256,7 @@ impl App {
             identities: Vec::new(),
             identity_index: None,
             account_edit_state: None,
+            file_picker: None,
             identity_edit_state: None,
         }
     }

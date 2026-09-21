@@ -42,3 +42,63 @@ fn compose_attachment_list_removes_entries() {
     app.handle_key(key(KeyCode::Esc));
     assert!(app.compose_state.is_some());
 }
+
+#[test]
+fn tab_in_the_attach_prompt_opens_the_file_picker() {
+    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+
+    use crate::compose::{ComposeMode, ComposeState};
+    use crate::keys::View;
+
+    use super::super::App;
+
+    let mut app = App::new(None);
+    app.compose_state = Some(ComposeState::new(ComposeMode::New, None));
+    app.view = View::Compose;
+    app.compose_state.as_mut().unwrap().attach_input = Some(String::new());
+
+    app.handle_key(KeyEvent::new(KeyCode::Tab, KeyModifiers::NONE));
+    assert_eq!(app.view, View::FilePicker);
+    assert!(app.file_picker.is_some());
+    assert!(app.compose_state.is_some(), "compose state survives");
+
+    app.handle_key(KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE));
+    assert_eq!(app.view, View::Compose);
+}
+
+#[test]
+fn picking_a_file_attaches_it() {
+    use crate::compose::{ComposeMode, ComposeState};
+    use crate::file_picker::FilePickerState;
+
+    use super::super::App;
+
+    let root = std::env::temp_dir().join(format!(
+        "sfmail-pick-attach-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_nanos())
+            .unwrap_or_default()
+    ));
+    std::fs::create_dir_all(&root).unwrap();
+    std::fs::write(root.join("report.pdf"), b"pdf").unwrap();
+
+    let mut app = App::new(None);
+    let mut state = ComposeState::new(ComposeMode::New, None);
+    state.attach_input = Some(String::new());
+    app.compose_state = Some(state);
+    app.file_picker = Some(FilePickerState::open(Some(root.clone())));
+
+    app.file_picker_enter();
+    let cs = app.compose_state.as_ref().expect("compose");
+    assert_eq!(
+        cs.attachments,
+        vec![root.join("report.pdf").display().to_string()]
+    );
+    assert!(cs.dirty);
+    assert!(cs.attach_input.is_none());
+    assert!(app.file_picker.is_none());
+
+    let _ = std::fs::remove_dir_all(&root);
+}

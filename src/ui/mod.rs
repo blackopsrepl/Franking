@@ -6,6 +6,7 @@ mod compose;
 mod contact_edit;
 mod contacts;
 mod envelope_list;
+mod file_picker;
 mod folder_list;
 mod folder_prompt;
 mod help;
@@ -39,6 +40,10 @@ pub fn render(app: &mut App, frame: &mut Frame) {
         }
         View::SieveScripts | View::SieveName | View::SieveEdit => {
             sieve::render(app, frame);
+            return;
+        }
+        View::FilePicker => {
+            file_picker::render(app, frame);
             return;
         }
         View::Contacts | View::ContactSearch => {
