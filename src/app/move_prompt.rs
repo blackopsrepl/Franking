@@ -6,9 +6,19 @@ use super::model::App;
 
 impl App {
     pub(crate) fn enter_move_prompt(&mut self) {
+        self.open_folder_picker(false);
+    }
+
+    /// Open the folder picker in copy mode.
+    pub(crate) fn enter_copy_prompt(&mut self) {
+        self.open_folder_picker(true);
+    }
+
+    fn open_folder_picker(&mut self, copy: bool) {
         if self.selected_envelope_id().is_some() {
             self.move_target.clear();
             self.move_index = 0;
+            self.move_is_copy = copy;
             self.view = View::MovePrompt;
         }
     }
@@ -59,6 +69,18 @@ impl App {
             self.view = View::EnvelopeList;
             let account = self.acct_owned();
             let folder = self.current_folder.clone();
+
+            if self.move_is_copy {
+                // A copy leaves the original in place, so there is nothing to undo.
+                if ids.len() == 1 {
+                    self.worker.copy_message(account, folder, target, id);
+                } else {
+                    self.selected.clear();
+                    self.worker.copy_messages(account, folder, target, ids);
+                }
+                return;
+            }
+
             self.pending_undo = Some(super::undo::UndoOp::Move {
                 from: folder.clone(),
                 to: target.clone(),

@@ -41,6 +41,7 @@ pub fn render(app: &App, frame: &mut Frame) {
         binding("Enter", "Read message"),
         binding("d", "Delete message"),
         binding("m", "Move to folder"),
+        binding("C", "Copy to folder"),
         binding("!", "Toggle flagged"),
         binding("/", "Search"),
         binding("Space", "Select / deselect message"),

@@ -239,6 +239,10 @@ fn envelope_list_selects_for_batch_actions() {
         Action::Archive
     );
     assert_eq!(
+        resolve(View::EnvelopeList, key(KeyCode::Char('C'))),
+        Action::CopyMessage
+    );
+    assert_eq!(
         resolve(View::EnvelopeList, key(KeyCode::Char(']'))),
         Action::ExpandThread
     );

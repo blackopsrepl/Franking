@@ -112,6 +112,7 @@ impl App {
             Action::ScrollUp => self.scroll(-1),
             Action::ScrollDown => self.scroll(1),
             Action::MoveMessage => self.enter_move_prompt(),
+            Action::CopyMessage => self.enter_copy_prompt(),
             Action::MoveInput(c) => self.move_prompt_input(c),
             Action::MoveNext => self.move_next_candidate(),
             Action::MovePrev => self.move_prev_candidate(),

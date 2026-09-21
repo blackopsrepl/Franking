@@ -111,6 +111,7 @@ pub enum Action {
     FocusFolders,
     FocusEnvelopes,
     MoveMessage,
+    CopyMessage,
     MoveInput(char),
     MoveBackspace,
     MoveNext,

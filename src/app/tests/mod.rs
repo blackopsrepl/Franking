@@ -2,6 +2,7 @@
 
 mod archive;
 mod compose;
+mod copy_move;
 mod core;
 mod crypto;
 mod mail_ui;

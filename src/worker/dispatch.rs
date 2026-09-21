@@ -206,60 +206,6 @@ impl Worker {
         });
     }
 
-    /// Fetch a compose template (new message).
-    pub fn download_attachments(&self, account: Option<String>, folder: String, id: String) {
-        self.spawn_action(move |service| {
-            service
-                .download_attachments(account.as_deref(), &folder, &id)
-                .map(|saved| format!("Attachments: {}", saved.trim()))
-        });
-    }
-
-    pub fn fetch_template_write(&self, account: Option<String>) {
-        let tx = self.tx.clone();
-        let service = self.service.clone();
-        thread::spawn(move || {
-            let result = service.template_write(account.as_deref());
-            let _ = tx.send(WorkerResult::Template(result));
-        });
-    }
-
-    /// Fetch a reply template.
-    pub fn fetch_template_reply(
-        &self,
-        account: Option<String>,
-        folder: String,
-        id: String,
-        all: bool,
-    ) {
-        let tx = self.tx.clone();
-        let service = self.service.clone();
-        thread::spawn(move || {
-            let result = service.template_reply(account.as_deref(), &folder, &id, all);
-            let _ = tx.send(WorkerResult::Template(result));
-        });
-    }
-
-    /// Fetch a resume template for a stored draft.
-    pub fn fetch_draft_template(&self, account: Option<String>, folder: String, id: String) {
-        let tx = self.tx.clone();
-        let service = self.service.clone();
-        thread::spawn(move || {
-            let result = service.draft_template(account.as_deref(), &folder, &id);
-            let _ = tx.send(WorkerResult::Template(result));
-        });
-    }
-
-    /// Fetch a forward template.
-    pub fn fetch_template_forward(&self, account: Option<String>, folder: String, id: String) {
-        let tx = self.tx.clone();
-        let service = self.service.clone();
-        thread::spawn(move || {
-            let result = service.template_forward(account.as_deref(), &folder, &id);
-            let _ = tx.send(WorkerResult::Template(result));
-        });
-    }
-
     /// Send a compiled template.
     pub fn send_template(&self, account: Option<String>, template: String, options: SendOptions) {
         let tx = self.tx.clone();

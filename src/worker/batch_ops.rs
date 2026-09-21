@@ -56,6 +56,28 @@ impl Worker {
         });
     }
 
+    pub fn copy_messages(
+        &self,
+        account: Option<String>,
+        folder: String,
+        target: String,
+        ids: Vec<String>,
+    ) {
+        let total = ids.len();
+        self.spawn_action(move |service| {
+            let mut failed = 0;
+            for id in &ids {
+                if service
+                    .copy_message(account.as_deref(), &folder, &target, id)
+                    .is_err()
+                {
+                    failed += 1;
+                }
+            }
+            Ok(summary(&format!("Copied to {target}:"), total, failed))
+        });
+    }
+
     pub fn flag_messages(
         &self,
         account: Option<String>,

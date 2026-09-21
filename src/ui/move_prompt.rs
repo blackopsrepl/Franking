@@ -27,7 +27,14 @@ pub fn render(app: &App, frame: &mut Frame, area: Rect) {
         let list = List::new(items)
             .block(
                 Block::default()
-                    .title(Span::styled(" Move to ", t.popup_title()))
+                    .title(Span::styled(
+                        if app.move_is_copy {
+                            " Copy to "
+                        } else {
+                            " Move to "
+                        },
+                        t.popup_title(),
+                    ))
                     .borders(Borders::ALL)
                     .border_style(t.border_focused())
                     .style(t.popup()),
@@ -46,7 +53,14 @@ pub fn render(app: &App, frame: &mut Frame, area: Rect) {
     };
 
     let spans = vec![
-        Span::styled(" Move to: ", t.status_key()),
+        Span::styled(
+            if app.move_is_copy {
+                " Copy to: "
+            } else {
+                " Move to: "
+            },
+            t.status_key(),
+        ),
         Span::styled(
             format!("{}{cursor_char}", app.move_target),
             t.search_input(),
