@@ -15,7 +15,7 @@ use super::wizard::{
     prompt_required_with_default, selectable_remote_accounts,
 };
 
-pub(super) fn configure_oauth_account(
+pub(crate) fn configure_oauth_account(
     accounts: &[Account],
     provider: &OAuthProvider,
 ) -> Result<()> {

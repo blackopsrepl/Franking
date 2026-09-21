@@ -2,6 +2,7 @@
 
 mod accounts;
 mod config;
+mod discovered;
 mod oauth_setup;
 mod wizard;
 

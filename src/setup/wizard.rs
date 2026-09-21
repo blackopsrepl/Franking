@@ -9,6 +9,7 @@ use crate::mail::types::Account;
 
 use super::accounts::{configure_icloud_account, configure_password_account};
 use super::config::mail_service;
+use super::discovered::configure_discovered_account;
 use super::oauth_setup::configure_oauth_account;
 
 pub fn run_wizard() -> Result<Option<String>> {
@@ -27,11 +28,12 @@ pub fn run_wizard() -> Result<Option<String>> {
         println!("2) Add or update an iCloud account");
         println!("3) Add or update a Gmail OAuth account");
         println!("4) Add or update an Outlook OAuth account");
-        println!("5) Launch SolverForge Mail with the first working account");
-        println!("6) Exit");
+        println!("5) Add an account by email address (auto-discover)");
+        println!("6) Launch SolverForge Mail with the first working account");
+        println!("7) Exit");
         println!();
 
-        match prompt("Choice [1-6]: ")? {
+        match prompt("Choice [1-7]: ")? {
             choice if choice == "1" => {
                 if let Err(error) = configure_password_account(&inventory.accounts) {
                     println!("{error}");
@@ -57,9 +59,14 @@ pub fn run_wizard() -> Result<Option<String>> {
                 }
             }
             choice if choice == "5" => {
+                if let Err(error) = configure_discovered_account(&inventory.accounts) {
+                    println!("{error}");
+                }
+            }
+            choice if choice == "6" => {
                 return Ok(Some(first_working_account(&inventory.accounts)?))
             }
-            choice if choice == "6" || choice.is_empty() => return Ok(None),
+            choice if choice == "7" || choice.is_empty() => return Ok(None),
             _ => println!("Invalid choice."),
         }
 
