@@ -28,7 +28,7 @@ pub fn render(app: &App, frame: &mut Frame, area: Rect) {
             t.search_input(),
         ),
         Span::styled(
-            "  (matches subject, sender, date, id; use 'flag seen' or 'not flag seen')",
+            "  (text · subject X · from X · to X · body X · flag seen/flagged · join with 'and')",
             t.dimmed(),
         ),
     ];

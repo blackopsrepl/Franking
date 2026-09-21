@@ -29,6 +29,14 @@ fn search_criteria_translate_the_app_query_grammar() {
     );
     assert_eq!(search_criteria(Some("revenue")), "TEXT \"revenue\"");
     assert_eq!(
+        search_criteria(Some("body standing order")),
+        "BODY \"standing order\""
+    );
+    assert_eq!(
+        search_criteria(Some("to bob@example.com")),
+        "TO \"bob@example.com\""
+    );
+    assert_eq!(
         search_criteria(Some("subject \"quoted\"")),
         "SUBJECT \"\\\"quoted\\\"\""
     );

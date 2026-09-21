@@ -20,7 +20,12 @@ pub(super) fn search_criteria(query: Option<&str>) -> String {
                     criteria.push(format!("SUBJECT {}", imap_quote(value.trim())));
                 } else if let Some(value) = other.strip_prefix("from ") {
                     criteria.push(format!("FROM {}", imap_quote(value.trim())));
+                } else if let Some(value) = other.strip_prefix("to ") {
+                    criteria.push(format!("TO {}", imap_quote(value.trim())));
+                } else if let Some(value) = other.strip_prefix("body ") {
+                    criteria.push(format!("BODY {}", imap_quote(value.trim())));
                 } else {
+                    // Free text searches headers and body on the server.
                     criteria.push(format!("TEXT {}", imap_quote(other)));
                 }
             }
