@@ -116,6 +116,8 @@ impl StoredMessage {
             folder: folder.to_string(),
             uid: envelope.id.clone(),
             subject: envelope.subject.clone(),
+            message_id: envelope.message_id.clone(),
+            in_reply_to: envelope.in_reply_to.clone(),
             from_display: envelope.sender.display(),
             from_email,
             date_epoch: parse_date_epoch(&envelope.date),
@@ -131,6 +133,8 @@ impl StoredMessage {
             subject: self.subject.clone(),
             sender: Sender::Plain(self.from_display.clone()),
             date: self.date_epoch.and_then(format_date).unwrap_or_default(),
+            message_id: self.message_id.clone(),
+            in_reply_to: self.in_reply_to.clone(),
         }
     }
 }

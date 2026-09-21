@@ -71,6 +71,8 @@ fn cached_envelopes_serve_listings_and_search_offline() {
             subject: subject.to_string(),
             sender: Sender::Plain("alice@example.com".to_string()),
             date: "2026-04-13 09:00:00+00:00".to_string(),
+            message_id: None,
+            in_reply_to: None,
         };
         upsert_envelope(
             &conn,

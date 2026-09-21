@@ -94,6 +94,10 @@ pub struct Envelope {
     pub subject: String,
     pub sender: Sender,
     pub date: String,
+    /// RFC 5322 Message-ID, bracket-stripped.
+    pub message_id: Option<String>,
+    /// Parent Message-ID from In-Reply-To, bracket-stripped.
+    pub in_reply_to: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -207,6 +211,8 @@ impl From<crate::himalaya::types::Envelope> for Envelope {
             subject: value.subject,
             sender: value.sender.into(),
             date: value.date,
+            message_id: None,
+            in_reply_to: None,
         }
     }
 }

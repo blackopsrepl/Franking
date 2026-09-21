@@ -120,6 +120,8 @@ pub(super) fn list_message_entries(dir: &Path) -> MailResult<Vec<MessageEntry>> 
                         parsed.header_value("From").unwrap_or_default().to_string(),
                     ),
                     date: parsed.header_value("Date").unwrap_or_default().to_string(),
+                    message_id: parsed.headers.message_id.clone(),
+                    in_reply_to: parsed.headers.in_reply_to.first().cloned(),
                 },
             });
         }

@@ -55,12 +55,23 @@ fn fetch_to_envelope(fetch: &imap::types::Fetch) -> Envelope {
         })
         .unwrap_or_default();
 
+    let message_id = fetch
+        .envelope()
+        .and_then(|envelope| envelope.message_id)
+        .and_then(|bytes| normalize_message_id(&String::from_utf8_lossy(bytes)));
+    let in_reply_to = fetch
+        .envelope()
+        .and_then(|envelope| envelope.in_reply_to)
+        .and_then(|bytes| normalize_message_id(&String::from_utf8_lossy(bytes)));
+
     Envelope {
         id: fetch.uid.unwrap_or(fetch.message).to_string(),
         flags: fetch.flags().iter().map(imap_flag_name).collect(),
         subject,
         sender,
         date,
+        message_id,
+        in_reply_to,
     }
 }
 
@@ -92,4 +103,14 @@ fn sender_from_addresses(addresses: &[imap_proto::types::Address<'_>]) -> Sender
     } else {
         Sender::Unknown
     }
+}
+
+fn normalize_message_id(value: &str) -> Option<String> {
+    let trimmed = value
+        .trim()
+        .trim_start_matches('<')
+        .trim_end_matches('>')
+        .trim()
+        .to_string();
+    (!trimmed.is_empty()).then_some(trimmed)
 }

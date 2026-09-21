@@ -132,6 +132,8 @@ fn envelope_metadata_update_keeps_cached_body_and_raw() {
         subject: "updated subject".to_string(),
         sender: Sender::Plain("alice@example.com".to_string()),
         date: "2026-04-13 09:00:00+00:00".to_string(),
+        message_id: None,
+        in_reply_to: None,
     };
     upsert_envelope(
         &conn,
@@ -155,6 +157,8 @@ fn envelope_round_trips_through_the_store_shape() {
         subject: "hi".to_string(),
         sender: Sender::Plain("Bob <bob@example.com>".to_string()),
         date: "2026-04-13 09:00:00+00:00".to_string(),
+        message_id: None,
+        in_reply_to: None,
     };
 
     let stored = StoredMessage::from_envelope("work", "INBOX", &envelope);
