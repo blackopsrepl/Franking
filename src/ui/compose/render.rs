@@ -24,7 +24,9 @@ use crate::theme::theme;
 
 /// Render the full compose view.
 use super::body::{render_body, render_compose_action_bar};
-use super::overlays::{render_autocomplete, render_discard_confirm, render_error};
+use super::overlays::{
+    render_attach_prompt, render_autocomplete, render_discard_confirm, render_error,
+};
 
 pub fn render(app: &App, frame: &mut Frame) {
     let state = match &app.compose_state {
@@ -57,6 +59,9 @@ pub fn render(app: &App, frame: &mut Frame) {
     }
     if let Some(err) = &state.send_error {
         render_error(err, frame, area);
+    }
+    if let Some(input) = &state.attach_input {
+        render_attach_prompt(input, frame, area);
     }
 }
 

@@ -65,9 +65,9 @@ pub(super) fn render_compose_action_bar(state: &ComposeState, frame: &mut Frame,
             disabled: false,
         },
         Button {
-            label: &format!("{} Attach (soon)", ICON_ATTACH),
+            label: &format!("{} Attach", ICON_ATTACH),
             focused: state.focused == FocusedField::Attach,
-            disabled: true,
+            disabled: false,
         },
         Button {
             label: &format!("{} Discard", ICON_DISCARD),

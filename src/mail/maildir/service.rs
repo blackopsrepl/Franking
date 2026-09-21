@@ -237,7 +237,7 @@ impl MailService for MaildirService {
 
     fn template_send(&self, _account: Option<&str>, template: &str) -> MailResult<String> {
         self.ensure_ready()?;
-        let raw = render_outgoing(&parse_template_message(template));
+        let raw = render_outgoing(&parse_template_message(template))?;
         let sent_dir = self.folder_path("Sent")?;
         let destination = next_message_path(&sent_dir, &['S']);
         fs::write(&destination, raw)
@@ -247,7 +247,7 @@ impl MailService for MaildirService {
 
     fn save_draft(&self, _account: Option<&str>, template: &str) -> MailResult<String> {
         self.ensure_ready()?;
-        let raw = render_outgoing(&parse_template_message(template));
+        let raw = render_outgoing(&parse_template_message(template))?;
         let drafts_dir = self.folder_path("Drafts")?;
         let destination = next_message_path(&drafts_dir, &['D']);
         fs::write(&destination, raw)

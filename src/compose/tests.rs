@@ -20,3 +20,20 @@ fn template_round_trip_preserves_threading_headers() {
     assert!(rebuilt.contains("In-Reply-To: <child@example.com>"));
     assert!(rebuilt.contains("References: <root@example.com> <child@example.com>"));
 }
+
+#[test]
+fn template_round_trip_preserves_attachments() {
+    let raw = "To: bob@example.com\nSubject: Files\nAttachment: /tmp/a.txt\nAttachment: /tmp/b.pdf\n\nbody";
+    let mut state = ComposeState::new(ComposeMode::New, None);
+
+    populate_from_template(&mut state, raw);
+
+    assert_eq!(
+        state.attachments,
+        vec!["/tmp/a.txt".to_string(), "/tmp/b.pdf".to_string()]
+    );
+
+    let rebuilt = reassemble_template(&state);
+    assert!(rebuilt.contains("Attachment: /tmp/a.txt"));
+    assert!(rebuilt.contains("Attachment: /tmp/b.pdf"));
+}

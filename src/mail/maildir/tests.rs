@@ -183,3 +183,36 @@ fn extracts_attachment_payloads_from_a_message() {
     assert_eq!(payloads[0].0, "report.pdf");
     assert_eq!(payloads[0].1, b"PDFDATA");
 }
+
+#[test]
+fn sent_message_with_attachment_is_multipart() {
+    let root = temp_maildir();
+    let service = MaildirService::new("test", &root).with_default(true);
+    service.ensure_ready().unwrap();
+
+    let attachment = root.join("note.txt");
+    fs::write(&attachment, b"hello attachment").unwrap();
+
+    let template = format!(
+        "To: bob@example.com\nSubject: With file\nAttachment: {}\n\nsee attached",
+        attachment.display()
+    );
+    service.template_send(Some("test"), &template).unwrap();
+
+    let sent = service
+        .list_envelopes(Some("test"), "Sent", 1, 50, None)
+        .unwrap();
+    assert_eq!(sent.len(), 1);
+
+    let raw = service
+        .read_message_raw(Some("test"), "Sent", &sent[0].id)
+        .unwrap();
+    let document = mime::parse_message(&raw).unwrap();
+    assert_eq!(document.attachments.len(), 1);
+    assert_eq!(
+        document.attachments[0].file_name.as_deref(),
+        Some("note.txt")
+    );
+
+    let _ = fs::remove_dir_all(root);
+}

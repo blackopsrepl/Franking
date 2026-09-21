@@ -39,6 +39,9 @@ impl App {
     }
 
     pub fn handle_key(&mut self, key: KeyEvent) {
+        if self.view == View::Compose && self.compose_handle_attach_input(key) {
+            return;
+        }
         let action = if self.view == View::Compose {
             let ctx = self.compose_key_context();
             keys::resolve_compose_with_context(key, ctx)

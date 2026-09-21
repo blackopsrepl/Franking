@@ -13,6 +13,7 @@ pub(crate) struct ParsedHeaders {
     subject: String,
     in_reply_to: Option<String>,
     references: Option<String>,
+    attachments: Vec<String>,
     /// All unrecognised header lines (preserved verbatim).
     extra: Vec<String>,
 }
@@ -37,6 +38,7 @@ pub(crate) fn parse_template(raw: &str) -> (ParsedHeaders, String) {
     let mut subject = String::new();
     let mut in_reply_to = None;
     let mut references = None;
+    let mut attachments = Vec::new();
     let mut extra = Vec::new();
     let mut body_lines = Vec::new();
     let mut in_body = false;
@@ -62,6 +64,7 @@ pub(crate) fn parse_template(raw: &str) -> (ParsedHeaders, String) {
                 "subject" => subject = value,
                 "in-reply-to" => in_reply_to = Some(value),
                 "references" => references = Some(value),
+                "attachment" => attachments.push(value),
                 _ => extra.push(line.to_string()),
             }
         } else {
@@ -79,6 +82,7 @@ pub(crate) fn parse_template(raw: &str) -> (ParsedHeaders, String) {
             subject,
             in_reply_to,
             references,
+            attachments,
             extra,
         },
         body,
@@ -94,6 +98,7 @@ pub fn populate_from_template(state: &mut ComposeState, raw: &str) {
     state.subject = headers.subject;
     state.in_reply_to = headers.in_reply_to;
     state.references = headers.references;
+    state.attachments = headers.attachments;
 
     state.body = ComposeEditor::from_text(&body);
 
@@ -151,6 +156,11 @@ pub fn reassemble_template(state: &ComposeState) -> String {
         .filter(|value| !value.is_empty())
     {
         out.push_str(&format!("References: {references}\n"));
+    }
+    for attachment in &state.attachments {
+        if !attachment.trim().is_empty() {
+            out.push_str(&format!("Attachment: {}\n", attachment.trim()));
+        }
     }
 
     out.push('\n'); // blank line separating headers from body

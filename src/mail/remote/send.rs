@@ -4,7 +4,7 @@ use std::time::Duration;
 
 use imap::types::Flag;
 
-use lettre::message::header::ContentType;
+use lettre::message::{header::ContentType, Attachment, MultiPart, SinglePart};
 use lettre::transport::smtp::authentication::{Credentials, Mechanism};
 use lettre::transport::smtp::client::{Tls, TlsParameters};
 use lettre::{Message, SmtpTransport, Transport};
@@ -141,8 +141,40 @@ impl ImapSmtpService {
             builder = builder.references(value.to_string());
         }
 
+        let attachments = draft
+            .headers
+            .iter()
+            .filter(|(key, _)| key.eq_ignore_ascii_case("attachment"))
+            .map(|(_, value)| value.clone())
+            .filter(|value| !value.trim().is_empty())
+            .collect::<Vec<_>>();
+
+        if attachments.is_empty() {
+            return builder
+                .body(draft.body)
+                .map_err(|err| MailError::invalid_input(err.to_string()));
+        }
+
+        let text_part = SinglePart::builder()
+            .header(ContentType::TEXT_PLAIN)
+            .body(draft.body);
+        let mut multipart = MultiPart::mixed().singlepart(text_part);
+        for path in attachments {
+            let bytes = std::fs::read(&path).map_err(|err| {
+                MailError::invalid_input(format!("cannot read attachment {path}: {err}"))
+            })?;
+            let file_name = std::path::Path::new(&path)
+                .file_name()
+                .and_then(|name| name.to_str())
+                .unwrap_or("attachment")
+                .to_string();
+            let content_type = ContentType::parse("application/octet-stream")
+                .map_err(|err| MailError::invalid_input(err.to_string()))?;
+            multipart = multipart.singlepart(Attachment::new(file_name).body(bytes, content_type));
+        }
+
         builder
-            .body(draft.body)
+            .multipart(multipart)
             .map_err(|err| MailError::invalid_input(err.to_string()))
     }
 

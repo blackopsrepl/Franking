@@ -156,6 +156,10 @@ pub struct ComposeState {
     /// Threading headers carried from a reply/forward template (RFC 5322).
     pub in_reply_to: Option<String>,
     pub references: Option<String>,
+    /// Files to attach, as absolute or working-directory-relative paths.
+    pub attachments: Vec<String>,
+    /// Active attach-path prompt, if the user is entering one.
+    pub attach_input: Option<String>,
     /// Compose editor state for the message body.
     pub body: ComposeEditor,
     /// Which field has keyboard focus
@@ -188,6 +192,8 @@ impl ComposeState {
             subject: String::new(),
             in_reply_to: None,
             references: None,
+            attachments: Vec::new(),
+            attach_input: None,
             body: ComposeEditor::default(),
             focused: FocusedField::From,
             autocomplete: None,

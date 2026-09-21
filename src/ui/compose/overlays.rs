@@ -118,3 +118,23 @@ pub(super) fn render_autocomplete(
     let list = List::new(items).block(block);
     frame.render_widget(list, popup_rect);
 }
+
+/// Prompt for a file path to attach.
+pub(super) fn render_attach_prompt(input: &str, frame: &mut Frame, area: Rect) {
+    let t = theme();
+    use crate::ui::util::centered_rect;
+
+    let popup = centered_rect(60, 3, area);
+    frame.render_widget(Clear, popup);
+    let block = Block::default()
+        .title(Span::styled(" Attach file ", t.popup_title()))
+        .borders(Borders::ALL)
+        .border_style(t.border_focused())
+        .style(t.popup());
+    frame.render_widget(block.clone(), popup);
+    let inner = block.inner(popup);
+    frame.render_widget(
+        Paragraph::new(format!(" {input}_")).style(t.normal()),
+        inner,
+    );
+}

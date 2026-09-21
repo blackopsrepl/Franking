@@ -1,6 +1,11 @@
 /*! Reply/forward/outgoing template assembly and attachment payloads. */
 
+use std::fs;
+use std::path::Path;
+
 use chrono::Local;
+
+use crate::mail::errors::{MailError, MailResult};
 
 use crate::mail::model::{MessageDocument, PartBody};
 
@@ -71,7 +76,7 @@ pub(super) fn parse_template_message(raw: &str) -> TemplateMessage {
     }
 }
 
-pub(super) fn render_outgoing(parsed: &TemplateMessage) -> String {
+pub(super) fn render_outgoing(parsed: &TemplateMessage) -> MailResult<String> {
     let header = |name: &str| {
         parsed
             .headers
@@ -117,9 +122,60 @@ pub(super) fn render_outgoing(parsed: &TemplateMessage) -> String {
         raw.push_str(&format!("References: {references}\n"));
     }
     raw.push_str(&format!("Message-ID: {}\n", local_message_id()));
-    raw.push_str(&format!("Date: {date}\n\n"));
-    raw.push_str(&parsed.body);
-    raw
+    raw.push_str(&format!("Date: {date}\n"));
+
+    let attachments = parsed
+        .headers
+        .iter()
+        .filter(|(key, _)| key.eq_ignore_ascii_case("attachment"))
+        .map(|(_, value)| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+        .collect::<Vec<_>>();
+
+    if attachments.is_empty() {
+        raw.push('\n');
+        raw.push_str(&parsed.body);
+        return Ok(raw);
+    }
+
+    let boundary = format!(
+        "solverforge-{}",
+        local_message_id().trim_matches(['<', '>'])
+    );
+    raw.push_str(&format!(
+        "Content-Type: multipart/mixed; boundary=\"{boundary}\"\n\n"
+    ));
+    raw.push_str(&format!(
+        "--{boundary}\nContent-Type: text/plain; charset=utf-8\n\n{}\n",
+        parsed.body
+    ));
+    for path in attachments {
+        let bytes = fs::read(&path).map_err(|err| {
+            MailError::invalid_input(format!("cannot read attachment {path}: {err}"))
+        })?;
+        let file_name = Path::new(&path)
+            .file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or("attachment");
+        raw.push_str(&format!(
+            "--{boundary}\nContent-Type: application/octet-stream; name=\"{file_name}\"\nContent-Disposition: attachment; filename=\"{file_name}\"\nContent-Transfer-Encoding: base64\n\n"
+        ));
+        raw.push_str(&wrap_base64(&bytes));
+        raw.push('\n');
+    }
+    raw.push_str(&format!("--{boundary}--\n"));
+    Ok(raw)
+}
+
+fn wrap_base64(bytes: &[u8]) -> String {
+    use base64::Engine;
+    let encoded = base64::engine::general_purpose::STANDARD.encode(bytes);
+    encoded
+        .as_bytes()
+        .chunks(76)
+        .map(|chunk| String::from_utf8_lossy(chunk).to_string())
+        .collect::<Vec<_>>()
+        .join("\n")
 }
 
 pub(super) fn render_template(headers: &[(&str, String)], body: &str) -> String {
