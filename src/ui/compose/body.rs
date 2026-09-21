@@ -42,6 +42,15 @@ pub(super) fn render_compose_action_bar(state: &ComposeState, frame: &mut Frame,
     } else {
         (" COMPOSE ".to_string(), theme().mode_nav())
     };
+    let status_label = if state.attachments.is_empty() {
+        status_label
+    } else {
+        format!(
+            "{} · {} attached ",
+            status_label.trim_end(),
+            state.attachments.len()
+        )
+    };
 
     // Determine which button index is focused (None when a non-button field is focused).
     // Buttons order: Send(0) Draft(1) Attach(2) Discard(3)
