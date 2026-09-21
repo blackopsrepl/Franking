@@ -60,6 +60,19 @@ pub fn render(app: &App, frame: &mut Frame, area: Rect) {
         t.dimmed(),
     )));
 
+    if app.show_html_source {
+        let html = message.html_body.clone().unwrap_or_default();
+        for raw_line in html.lines() {
+            lines.push(Line::from(Span::styled(raw_line.to_string(), t.normal())));
+        }
+        let paragraph = Paragraph::new(lines)
+            .block(block)
+            .wrap(Wrap { trim: false })
+            .scroll((app.message_scroll, 0));
+        frame.render_widget(paragraph, area);
+        return;
+    }
+
     let mut hidden_quoted = 0usize;
     for raw_line in app
         .render_message_body(area.width.saturating_sub(4) as usize)

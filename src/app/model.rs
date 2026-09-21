@@ -72,6 +72,8 @@ pub struct App {
 
     pub(crate) show_all_headers: bool,
     pub(crate) collapse_quotes: bool,
+    /// Whether the message view shows the raw HTML source.
+    pub(crate) show_html_source: bool,
 
     pub search_query: String,
     pub active_query: Option<String>,

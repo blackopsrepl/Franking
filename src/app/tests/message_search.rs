@@ -178,3 +178,43 @@ fn the_search_prompt_toggles_scope_between_folder_and_all() {
     app.handle_key(KeyEvent::new(KeyCode::Tab, KeyModifiers::NONE));
     assert!(!app.search_all_folders);
 }
+
+#[test]
+fn toggles_between_rendered_text_and_html_source() {
+    use crate::keys::View;
+
+    use super::super::App;
+
+    let raw = b"From: a@example.com\r\nSubject: Rich\r\nContent-Type: text/html; charset=utf-8\r\n\r\n<p>Hello <b>world</b></p>\r\n";
+    let mut document = crate::mail::mime::parse_message(raw).unwrap();
+    document.raw = Some(raw.to_vec());
+
+    let mut app = App::new(None);
+    app.view = View::MessageView;
+    app.message_content = Some(document);
+
+    assert!(!app.show_html_source);
+    app.toggle_html_source();
+    assert!(app.show_html_source);
+
+    app.toggle_html_source();
+    assert!(!app.show_html_source);
+}
+
+#[test]
+fn html_toggle_reports_plain_text_messages() {
+    use crate::keys::View;
+
+    use super::super::App;
+
+    let raw = b"From: a@example.com\r\nSubject: Plain\r\n\r\njust text\r\n";
+    let mut document = crate::mail::mime::parse_message(raw).unwrap();
+    document.raw = Some(raw.to_vec());
+
+    let mut app = App::new(None);
+    app.view = View::MessageView;
+    app.message_content = Some(document);
+    app.toggle_html_source();
+    assert!(!app.show_html_source);
+    assert!(app.status_message.contains("no HTML part"));
+}

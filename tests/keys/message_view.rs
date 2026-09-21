@@ -51,6 +51,14 @@ fn message_view_archives() {
 }
 
 #[test]
+fn message_view_toggles_html_source() {
+    assert_eq!(
+        resolve(View::MessageView, key(KeyCode::Char('H'))),
+        Action::ToggleHtmlSource
+    );
+}
+
+#[test]
 fn message_view_toggles_quoted_lines() {
     assert_eq!(
         resolve(View::MessageView, key(KeyCode::Char('Q'))),

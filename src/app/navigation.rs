@@ -268,3 +268,21 @@ impl App {
 
     // ── Editor key forwarding ────────────────────────────────────────
 }
+
+impl App {
+    /// Toggle between the rendered message text and the original HTML source.
+    pub(crate) fn toggle_html_source(&mut self) {
+        let has_html = self
+            .message_content
+            .as_ref()
+            .and_then(|message| message.html_body.as_deref())
+            .is_some_and(|html| !html.trim().is_empty());
+        if !has_html {
+            self.show_html_source = false;
+            self.set_status("This message has no HTML part.");
+            return;
+        }
+        self.show_html_source = !self.show_html_source;
+        self.message_scroll = 0;
+    }
+}

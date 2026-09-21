@@ -43,6 +43,7 @@ pub fn hints(view: View) -> Vec<(&'static str, &'static str)> {
             ("l", "links"),
             ("h", "headers"),
             ("Q", "quotes"),
+            ("H", "html"),
             ("v", "invite"),
             ("s", "save .eml"),
             ("z", "undo"),

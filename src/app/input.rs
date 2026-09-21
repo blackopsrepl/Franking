@@ -88,6 +88,7 @@ impl App {
             Action::ToggleHelp => self.toggle_help(),
             Action::ToggleHeaders => self.toggle_headers(),
             Action::ToggleQuotes => self.toggle_quotes(),
+            Action::ToggleHtmlSource => self.toggle_html_source(),
             Action::SaveMessage => self.save_message(),
             Action::Undo => self.undo(),
             Action::Archive => self.archive(),

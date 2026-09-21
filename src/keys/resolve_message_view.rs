@@ -21,6 +21,7 @@ pub(super) fn resolve_message_view(key: KeyEvent) -> Action {
         KeyCode::Char('o') => Action::OpenAttachments,
         KeyCode::Char('h') => Action::ToggleHeaders,
         KeyCode::Char('Q') => Action::ToggleQuotes,
+        KeyCode::Char('H') => Action::ToggleHtmlSource,
         KeyCode::Char('v') => Action::OpenInviteReply,
         KeyCode::Char('s') => Action::SaveMessage,
         KeyCode::Char('z') => Action::Undo,

@@ -143,6 +143,7 @@ impl App {
             sieve: Default::default(),
             show_all_headers: false,
             collapse_quotes: false,
+            show_html_source: false,
             search_query: String::new(),
             active_query: None,
             search_all_folders: false,

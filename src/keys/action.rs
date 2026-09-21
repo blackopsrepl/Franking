@@ -66,6 +66,8 @@ pub enum Action {
     ToggleHeaders,
     /// Collapse quoted lines in the message view.
     ToggleQuotes,
+    /// Show the raw HTML source instead of the rendered text.
+    ToggleHtmlSource,
     /// Save the loaded message as an .eml file.
     SaveMessage,
     FocusFolders,
