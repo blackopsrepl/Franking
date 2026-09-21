@@ -53,6 +53,8 @@ pub struct App {
     // ── Message view state ──────────────────────────────────────────
     pub message_content: Option<MessageDocument>,
     pub message_scroll: u16,
+    /// PGP verification/decryption result for the current message.
+    pub pgp_status: Option<String>,
 
     // ── Search state ────────────────────────────────────────────────
     pub search_query: String,
@@ -140,6 +142,7 @@ impl App {
             page: 1,
             message_content: None,
             message_scroll: 0,
+            pgp_status: None,
             search_query: String::new(),
             active_query: None,
             move_target: String::new(),

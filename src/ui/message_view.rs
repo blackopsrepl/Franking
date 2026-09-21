@@ -36,6 +36,9 @@ pub fn render(app: &App, frame: &mut Frame, area: Rect) {
     if let Some(protection) = message.protection() {
         lines.push(Line::from(Span::styled(protection.label(), t.dimmed())));
     }
+    if let Some(status) = &app.pgp_status {
+        lines.push(Line::from(Span::styled(status.clone(), t.dimmed())));
+    }
     if let Some(event) = message.invitation() {
         if let Some(summary) = event.summary_line() {
             lines.push(Line::from(Span::styled(

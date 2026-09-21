@@ -49,7 +49,8 @@ cargo run -- --setup
 - **Account discovery** - Add an account by email: Google/iCloud/Outlook presets, Mozilla autoconfig, Microsoft Autodiscover, then RFC 6186 SRV
 - **Attachments** - Attach files on send; download attachments from received mail
 - **Drafts** - Save a draft and resume it from the Drafts folder; the draft is removed after sending
-- **Security indicators** - SPF/DKIM/DMARC verdicts from `Authentication-Results`, plus PGP/MIME and S/MIME structure detection
+- **Security indicators** - SPF/DKIM/DMARC verdicts from `Authentication-Results`, PGP/MIME and S/MIME structure detection, and OpenPGP verification/decryption
+- **OpenPGP keyring** - armored/binary public and secret keys under `~/.local/share/solverforge/mail/keys` verify cleartext signatures and decrypt inline PGP
 - **Calendar invitations** - `text/calendar` events show their summary and start time
 - **Desktop notifications** - `notify-send` on new mail when the IDLE watcher fires
 - **Offline cache** - Listings and search fall back to the local store when the server is unreachable
