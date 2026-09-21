@@ -9,12 +9,15 @@ use super::model::App;
 impl App {
     /// Open the response prompt when the message holds a replyable invitation.
     pub(crate) fn open_invite_reply(&mut self) {
-        let Some(event) = self
+        let invitation = self
             .message_content
             .as_ref()
-            .and_then(|message| message.invitation())
-            .filter(|event| event.is_repliable())
-        else {
+            .and_then(|message| message.invitation());
+        if invitation.as_ref().is_some_and(|event| event.cancelled) {
+            self.set_status("This invitation was cancelled; there is nothing to answer.");
+            return;
+        }
+        let Some(event) = invitation.filter(|event| event.is_repliable()) else {
             self.set_status("This message has no replyable invitation.");
             return;
         };

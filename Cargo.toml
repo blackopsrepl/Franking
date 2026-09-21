@@ -49,6 +49,7 @@ hickory-resolver = "0.24"
 pgp = "0.20.0"
 openssl = "0.10"
 zip = { version = "8.6.0", default-features = false, features = ["deflate"] }
+chrono-tz = "0.10.4"
 
 [dev-dependencies]
 pretty_assertions = "1"

@@ -104,6 +104,9 @@ mod tests {
 
     fn event() -> Event {
         Event {
+            start_tz: None,
+            all_day: false,
+            cancelled: false,
             uid: Some("event-42@example.com".to_string()),
             organizer: Some("alice@example.com".to_string()),
             summary: Some("Standup".to_string()),
