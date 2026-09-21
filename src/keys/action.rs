@@ -105,6 +105,8 @@ pub enum Action {
     Search,
     SearchSubmit,
     SearchCancel,
+    /// Toggle searching every folder from the search prompt.
+    ToggleSearchScope,
     SearchInput(char),
     SearchBackspace,
     Refresh,

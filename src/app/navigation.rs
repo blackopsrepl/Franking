@@ -198,11 +198,34 @@ impl App {
         self.search_query.pop();
     }
 
+    /// Toggle whether the next search covers every folder.
+    pub(crate) fn toggle_search_scope(&mut self) {
+        self.search_all_folders = !self.search_all_folders;
+    }
+
     pub(crate) fn submit_search(&mut self) {
         let query = self.search_query.clone();
         self.active_query = if query.is_empty() { None } else { Some(query) };
         self.page = 1;
+        let all_folders = self.search_all_folders;
+        let query = self.active_query.clone();
         self.view = View::EnvelopeList;
+
+        if all_folders {
+            if let Some(query) = query {
+                let folders: Vec<String> = self
+                    .folders
+                    .iter()
+                    .filter(|folder| folder.name != super::model::UNIFIED_INBOX)
+                    .map(|folder| folder.name.clone())
+                    .collect();
+                self.loading = true;
+                self.set_status(&format!("Searching {} folders...", folders.len()));
+                self.worker
+                    .search_all_folders(self.acct_owned(), folders, query);
+                return;
+            }
+        }
         self.load_envelopes();
     }
 

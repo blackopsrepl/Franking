@@ -79,6 +79,7 @@ impl App {
             Action::ToggleThread => self.toggle_thread(),
             Action::Search => self.enter_search(),
             Action::SearchSubmit => self.submit_search(),
+            Action::ToggleSearchScope => self.toggle_search_scope(),
             Action::SearchCancel => self.cancel_search(),
             Action::SearchInput(c) => self.search_query.push(c),
             Action::SearchBackspace => self.search_backspace(),

@@ -14,8 +14,15 @@ pub fn render(app: &App, frame: &mut Frame, area: Rect) {
         " "
     }; // blinking block
 
+    let scope = if app.search_all_folders {
+        "  [all folders — Tab switches]"
+    } else {
+        "  [this folder — Tab switches]"
+    };
+
     let spans = vec![
         Span::styled(" / ", t.status_key()),
+        Span::styled(scope, t.accent_style()),
         Span::styled(
             format!("{}{cursor_char}", app.search_query),
             t.search_input(),

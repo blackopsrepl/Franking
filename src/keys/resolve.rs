@@ -216,6 +216,7 @@ fn resolve_folder_list(key: KeyEvent) -> Action {
 fn resolve_search(key: KeyEvent) -> Action {
     match key.code {
         KeyCode::Enter => Action::SearchSubmit,
+        KeyCode::Tab => Action::ToggleSearchScope,
         KeyCode::Esc => Action::SearchCancel,
         KeyCode::Backspace => Action::SearchBackspace,
         KeyCode::Char(c) => Action::SearchInput(c),

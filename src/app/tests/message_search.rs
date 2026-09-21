@@ -160,3 +160,21 @@ fn quoted_lines_collapse_on_request() {
     app.toggle_quotes();
     assert!(!app.collapse_quotes);
 }
+
+#[test]
+fn the_search_prompt_toggles_scope_between_folder_and_all() {
+    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+
+    use crate::keys::View;
+
+    use super::super::App;
+
+    let mut app = App::new(None);
+    app.view = View::Search;
+    assert!(!app.search_all_folders);
+
+    app.handle_key(KeyEvent::new(KeyCode::Tab, KeyModifiers::NONE));
+    assert!(app.search_all_folders);
+    app.handle_key(KeyEvent::new(KeyCode::Tab, KeyModifiers::NONE));
+    assert!(!app.search_all_folders);
+}

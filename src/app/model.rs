@@ -8,7 +8,6 @@ use rusqlite::Connection;
 use crate::compose::ComposeState;
 use crate::contact_edit::ContactEditState;
 use crate::contacts::Contact;
-use crate::db;
 use crate::identities::Identity;
 use crate::identity_edit::IdentityEditState;
 use crate::keys::View;
@@ -18,7 +17,7 @@ use crate::worker::Worker;
 
 pub(crate) const PAGE_SIZE: usize = 50;
 
-const AUTO_REFRESH_TICKS: u64 = 240;
+pub(crate) const AUTO_REFRESH_TICKS: u64 = 240;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PendingOpenCommand {
@@ -74,9 +73,9 @@ pub struct App {
     pub(crate) show_all_headers: bool,
     pub(crate) collapse_quotes: bool,
 
-    // Search state.
     pub search_query: String,
     pub active_query: Option<String>,
+    pub(crate) search_all_folders: bool,
 
     // ── Move prompt state ───────────────────────────────────────────
     pub move_target: String,
@@ -182,118 +181,4 @@ pub struct App {
 
     /// Queued messages and send state.
     pub(crate) outbox: super::outbox::OutboxState,
-}
-
-impl App {
-    pub fn new(initial_account: Option<String>) -> Self {
-        Self {
-            running: true,
-            view: View::EnvelopeList,
-            previous_view: None,
-            accounts: Vec::new(),
-            account_index: 0,
-            account_name: initial_account,
-            folders: Vec::new(),
-            folder_index: 0,
-            current_folder: "INBOX".to_string(),
-            envelopes: Vec::new(),
-            envelope_state: TableState::default(),
-            page: 1,
-            message_content: None,
-            message_scroll: 0,
-            pgp_status: None,
-            smime_signer: None,
-            attachment_index: 0,
-            folder_prompt: None,
-            pending_folder_refresh: false,
-            sieve: Default::default(),
-            show_all_headers: false,
-            collapse_quotes: false,
-            search_query: String::new(),
-            active_query: None,
-            move_target: String::new(),
-            move_index: 0,
-            move_is_copy: false,
-            crypto_passphrase: crate::mail::pgp::resolve_passphrase(),
-            unlock_input: String::new(),
-            threaded: false,
-            ticks_since_refresh: 0,
-            new_mail_count: 0,
-            folder_unread: HashMap::new(),
-            last_terminal_height: 24,
-            last_terminal_width: 80,
-            message_search: String::new(),
-            message_search_active: false,
-            message_matches: Vec::new(),
-            message_match_index: 0,
-            link_index: 0,
-            help_scroll: 0,
-            status_message: String::new(),
-            status_is_error: false,
-            loading: false,
-            tick_count: 0,
-            pending_open_command: None,
-            worker: Worker::new(),
-            pending_message_id: None,
-            pending_draft: None,
-            pending_return_to_list: false,
-            pending_refresh_after_action: false,
-            selected: Default::default(),
-            pending_undo: None,
-            pending_empty_folder: None,
-            pending_delete_account: None,
-            collapsed_threads: std::collections::HashMap::new(),
-            autosave_dir: super::autosave::default_dir(),
-            autosave_ticks: 0,
-            db: None,
-            compose_state: None,
-            contacts: Vec::new(),
-            contact_index: None,
-            contact_search: String::new(),
-            contact_search_active: false,
-            contact_edit_state: None,
-            identities: Vec::new(),
-            identity_index: None,
-            account_edit_state: None,
-            file_picker: None,
-            outbox: Default::default(),
-            identity_edit_state: None,
-        }
-    }
-
-    /// Initial startup: open the DB, recover an unsent message, load accounts.
-    pub fn init(&mut self) {
-        match db::open() {
-            Ok(conn) => {
-                self.db = Some(conn);
-            }
-            Err(e) => {
-                self.set_error(&format!("DB error: {e}"));
-            }
-        }
-        self.recover_autosave();
-        self.loading = true;
-        self.worker.fetch_accounts();
-    }
-
-    /// Handle a tick event: animate spinner + poll background results + auto-refresh.
-    pub fn tick(&mut self) {
-        self.tick_count = self.tick_count.wrapping_add(1);
-        self.poll_worker();
-        self.autosave_tick();
-
-        // Auto-refresh: only when idle (not loading, on envelope list, page 1, no search)
-        if !self.loading
-            && self.view == View::EnvelopeList
-            && self.page == 1
-            && self.active_query.is_none()
-            && self.compose_state.is_none()
-        {
-            self.ticks_since_refresh += 1;
-            if self.ticks_since_refresh >= AUTO_REFRESH_TICKS {
-                self.ticks_since_refresh = 0;
-                self.load_envelopes();
-            }
-        }
-    }
 }
