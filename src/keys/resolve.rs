@@ -39,6 +39,7 @@ pub fn resolve(view: View, key: KeyEvent) -> Action {
         View::Help => resolve_help(key),
         View::MovePrompt => resolve_move_prompt(key),
         View::PassphrasePrompt => resolve_unlock_prompt(key),
+        View::AttachmentList => resolve_attachment_list(key),
         View::ContactSearch => resolve_contact_search(key),
         View::ContactEdit => resolve_contact_edit(key),
         // Already handled above
@@ -144,6 +145,7 @@ fn resolve_message_view(key: KeyEvent) -> Action {
         KeyCode::Char('N') => Action::ToggleRead,
         KeyCode::Char('P') => Action::UnlockPrompt,
         KeyCode::Char('T') => Action::TrustSigner,
+        KeyCode::Char('o') => Action::OpenAttachments,
         KeyCode::Char('?') => Action::ToggleHelp,
         KeyCode::Char('g') => Action::JumpTop,
         KeyCode::Char('G') => Action::JumpBottom,
@@ -190,6 +192,17 @@ fn resolve_help(key: KeyEvent) -> Action {
         KeyCode::Esc | KeyCode::Char('q') | KeyCode::Char('?') => Action::ToggleHelp,
         KeyCode::Char('j') | KeyCode::Down => Action::ScrollDown,
         KeyCode::Char('k') | KeyCode::Up => Action::ScrollUp,
+        _ => Action::None,
+    }
+}
+
+fn resolve_attachment_list(key: KeyEvent) -> Action {
+    match key.code {
+        KeyCode::Char('j') | KeyCode::Down => Action::AttachmentNext,
+        KeyCode::Char('k') | KeyCode::Up => Action::AttachmentPrev,
+        KeyCode::Enter | KeyCode::Char('o') => Action::AttachmentOpen,
+        KeyCode::Char('s') => Action::AttachmentSave,
+        KeyCode::Esc | KeyCode::Char('q') => Action::AttachmentClose,
         _ => Action::None,
     }
 }

@@ -99,7 +99,7 @@ fn run(
             execute!(io::stdout(), EnterAlternateScreen, EnableMouseCapture)?;
             terminal.clear()?;
             match status {
-                Ok(s) if s.success() => app.set_status("Opened HTML in the external viewer."),
+                Ok(s) if s.success() => app.set_status("Opened externally."),
                 Ok(s) => app.set_status(&format!("Open command exited with {s}")),
                 Err(e) => app.set_status(&format!("Failed to launch external viewer: {e}")),
             }

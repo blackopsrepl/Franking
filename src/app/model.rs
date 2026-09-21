@@ -61,6 +61,10 @@ pub struct App {
     /// S/MIME signer awaiting a trust decision for the current message.
     pub(crate) smime_signer: Option<crate::mail::smime::SmimeSigner>,
 
+    // ── Attachment list ─────────────────────────────────────────────
+    /// Selected attachment index while the attachment list is open.
+    pub(crate) attachment_index: usize,
+
     // ── Search state ────────────────────────────────────────────────
     pub search_query: String,
     pub active_query: Option<String>,
@@ -156,6 +160,7 @@ impl App {
             message_scroll: 0,
             pgp_status: None,
             smime_signer: None,
+            attachment_index: 0,
             search_query: String::new(),
             active_query: None,
             move_target: String::new(),

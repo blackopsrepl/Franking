@@ -195,3 +195,40 @@ fn untrusted_smime_signer_is_offered_for_trust() {
     assert!(!signer.trusted);
     assert!(!signer.der.is_empty());
 }
+
+#[test]
+fn attachment_list_opens_navigates_and_closes() {
+    use crate::keys::View;
+
+    use super::App;
+
+    let raw = b"MIME-Version: 1.0\r\nContent-Type: multipart/mixed; boundary=\"m\"\r\n\r\n--m\r\nContent-Type: text/plain\r\n\r\nhello\r\n--m\r\nContent-Type: application/pdf; name=\"report.pdf\"\r\nContent-Disposition: attachment; filename=\"report.pdf\"\r\nContent-Transfer-Encoding: base64\r\n\r\nAAECAwQ=\r\n--m--\r\n";
+    let document = crate::mail::mime::parse_message(raw).unwrap();
+
+    let mut app = App::new(None);
+    app.message_content = Some(document);
+
+    app.open_attachments();
+    assert_eq!(app.view, View::AttachmentList);
+    assert_eq!(app.attachment_index, 0);
+
+    app.attachment_next();
+    assert_eq!(app.attachment_index, 0, "single attachment clamps");
+    app.attachment_prev();
+    assert_eq!(app.attachment_index, 0);
+
+    app.close_attachments();
+    assert_eq!(app.view, View::MessageView);
+}
+
+#[test]
+fn attachment_actions_without_a_message_report_status() {
+    use super::App;
+
+    let mut app = App::new(None);
+    app.open_attachments();
+    assert_eq!(app.view, crate::keys::View::EnvelopeList);
+
+    app.save_selected_attachment();
+    assert!(app.status_message.contains("No attachment is selected"));
+}

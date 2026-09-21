@@ -6,10 +6,41 @@ same. */
 use std::path::{Path, PathBuf};
 
 use super::errors::{MailError, MailResult};
+use super::model::{MessageDocument, PartBody};
+
+/// Named payloads for every attachment in a parsed message, in the same order
+/// as [`MessageDocument::attachments`].
+///
+/// Binary parts contribute their bytes; an attached message contributes its
+/// serialized source.
+pub fn payloads(document: &MessageDocument) -> Vec<(String, Vec<u8>)> {
+    let mut payloads = Vec::new();
+    let mut index = 0;
+    for part in &document.parts {
+        part.walk(&mut |part| {
+            if !part.is_attachment() {
+                return;
+            }
+            index += 1;
+            let name = part
+                .filename
+                .clone()
+                .filter(|name| !name.is_empty())
+                .unwrap_or_else(|| format!("attachment-{index}"));
+            let bytes = match &part.body {
+                PartBody::Binary(bytes) => bytes.clone(),
+                PartBody::Nested(nested) => nested.raw.clone().unwrap_or_default(),
+                _ => return,
+            };
+            payloads.push((name, bytes));
+        });
+    }
+    payloads
+}
 
 /// Write attachment payloads to the default downloads directory.
 pub fn save_to_downloads(items: Vec<(String, Vec<u8>)>) -> MailResult<String> {
-    save_attachments(items, &default_download_dir())
+    save_attachments(items, &downloads_dir())
 }
 
 /// Write attachment payloads into `base`, returning the saved paths.
@@ -33,7 +64,8 @@ pub fn save_attachments(items: Vec<(String, Vec<u8>)>, base: &Path) -> MailResul
     Ok(saved.join(", "))
 }
 
-fn default_download_dir() -> PathBuf {
+/// Directory where attachments are written when no explicit base is given.
+pub fn downloads_dir() -> PathBuf {
     dirs::download_dir()
         .or_else(dirs::data_dir)
         .unwrap_or_else(|| PathBuf::from("."))
@@ -137,6 +169,32 @@ mod tests {
         assert!(saved.contains(".._evil_name.txt"));
 
         let _ = std::fs::remove_dir_all(base);
+    }
+
+    #[test]
+    fn payloads_follow_the_message_attachment_order() {
+        let raw = b"MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary=\"m\"
+
+--m
+Content-Type: text/plain
+
+hello
+--m
+Content-Type: application/pdf; name=\"report.pdf\"
+Content-Disposition: attachment; filename=\"report.pdf\"
+Content-Transfer-Encoding: base64
+
+AAECAwQ=
+--m--
+";
+        let document = crate::mail::mime::parse_message(raw).unwrap();
+        assert_eq!(document.attachments.len(), 1);
+
+        let payloads = super::payloads(&document);
+        assert_eq!(payloads.len(), 1);
+        assert_eq!(payloads[0].0, "report.pdf");
+        assert_eq!(payloads[0].1, vec![0, 1, 2, 3, 4]);
     }
 
     #[test]

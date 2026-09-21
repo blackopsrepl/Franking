@@ -8,7 +8,7 @@ use chrono::Local;
 use crate::mail::errors::{MailError, MailResult};
 use crate::mail::service::SendOptions;
 
-use crate::mail::model::{MessageDocument, PartBody};
+use crate::mail::model::MessageDocument;
 
 use super::flags::local_message_id;
 
@@ -23,23 +23,7 @@ pub(super) fn ensure_no_pgp(options: &SendOptions) -> MailResult<()> {
 }
 
 pub(super) fn attachment_payloads(document: &MessageDocument) -> Vec<(String, Vec<u8>)> {
-    let mut payloads = Vec::new();
-    let mut index = 0;
-    for part in &document.parts {
-        part.walk(&mut |part| {
-            if let PartBody::Binary(bytes) = &part.body {
-                if part.is_attachment() {
-                    index += 1;
-                    let name = part
-                        .filename
-                        .clone()
-                        .unwrap_or_else(|| format!("attachment-{index}"));
-                    payloads.push((name, bytes.clone()));
-                }
-            }
-        });
-    }
-    payloads
+    crate::mail::attachments::payloads(document)
 }
 
 pub(super) fn parse_template_message(raw: &str) -> TemplateMessage {

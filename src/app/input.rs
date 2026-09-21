@@ -100,6 +100,12 @@ impl App {
             Action::UnlockSubmit => self.submit_unlock(),
             Action::UnlockCancel => self.cancel_unlock(),
             Action::TrustSigner => self.trust_signer(),
+            Action::OpenAttachments => self.open_attachments(),
+            Action::AttachmentNext => self.attachment_next(),
+            Action::AttachmentPrev => self.attachment_prev(),
+            Action::AttachmentOpen => self.open_selected_attachment(),
+            Action::AttachmentSave => self.save_selected_attachment(),
+            Action::AttachmentClose => self.close_attachments(),
 
             // ── Compose editor ───────────────────────────────────────
             Action::ComposeFieldNext => {

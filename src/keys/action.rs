@@ -11,6 +11,8 @@ pub enum View {
     MovePrompt,
     /// Passphrase prompt for unlocking PGP secret keys.
     PassphrasePrompt,
+    /// Attachment list overlay for the current message.
+    AttachmentList,
     /// Native compose / reply / forward editor.
     Compose,
     /// Address book browser.
@@ -105,6 +107,13 @@ pub enum Action {
     UnlockCancel,
     /// Trust the S/MIME signer certificate of the current message.
     TrustSigner,
+    // ── Attachment list ───────────────────────────────────────────────
+    OpenAttachments,
+    AttachmentNext,
+    AttachmentPrev,
+    AttachmentOpen,
+    AttachmentSave,
+    AttachmentClose,
     ScrollUp,
     ScrollDown,
     // ── Compose editor ────────────────────────────────────────────────

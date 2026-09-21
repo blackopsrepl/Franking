@@ -1,5 +1,6 @@
 mod account_list;
 pub mod action_bar;
+mod attachment_list;
 mod compose;
 mod contact_edit;
 mod contacts;
@@ -79,6 +80,9 @@ pub fn render(app: &mut App, frame: &mut Frame) {
     }
     if app.view == View::Help {
         help::render(app, frame);
+    }
+    if app.view == View::AttachmentList {
+        attachment_list::render(app, frame);
     }
     if app.view == View::ContactEdit {
         contact_edit::render(app, frame);
