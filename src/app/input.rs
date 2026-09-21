@@ -40,7 +40,6 @@ impl App {
                 confirm_discard_visible: false,
             })
     }
-
     pub fn handle_key(&mut self, key: KeyEvent) {
         if self.view == View::Compose && self.compose_handle_attach_list(key) {
             return;
@@ -54,7 +53,6 @@ impl App {
         } else {
             keys::resolve(self.view, key)
         };
-
         match action {
             Action::Quit => self.running = false,
             Action::Back => self.go_back(),
@@ -88,6 +86,7 @@ impl App {
             Action::SwitchAccount => self.enter_account_picker(),
             Action::ToggleHelp => self.toggle_help(),
             Action::ToggleHeaders => self.toggle_headers(),
+            Action::ToggleQuotes => self.toggle_quotes(),
             Action::SaveMessage => self.save_message(),
             Action::Undo => self.undo(),
             Action::Archive => self.archive(),

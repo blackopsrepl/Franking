@@ -139,3 +139,24 @@ fn opening_links_without_any_reports_status() {
     assert_eq!(app.view, View::MessageView);
     assert!(app.status_message.contains("no links"));
 }
+
+#[test]
+fn quoted_lines_collapse_on_request() {
+    use crate::keys::View;
+
+    use super::super::App;
+
+    let raw = b"From: a@example.com\r\nSubject: Thread\r\n\r\nmy reply\r\n> quoted one\r\n> quoted two\r\nnew text\r\n";
+    let mut document = crate::mail::mime::parse_message(raw).unwrap();
+    document.raw = Some(raw.to_vec());
+
+    let mut app = App::new(None);
+    app.view = View::MessageView;
+    app.message_content = Some(document);
+
+    assert!(!app.collapse_quotes);
+    app.toggle_quotes();
+    assert!(app.collapse_quotes);
+    app.toggle_quotes();
+    assert!(!app.collapse_quotes);
+}

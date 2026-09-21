@@ -60,16 +60,31 @@ pub fn render(app: &App, frame: &mut Frame, area: Rect) {
         t.dimmed(),
     )));
 
+    let mut hidden_quoted = 0usize;
     for raw_line in app
         .render_message_body(area.width.saturating_sub(4) as usize)
         .lines()
     {
-        let style = if raw_line.starts_with('>') {
-            t.dimmed()
-        } else {
-            t.normal()
-        };
+        let quoted = raw_line.starts_with('>');
+        if quoted && app.collapse_quotes {
+            hidden_quoted += 1;
+            continue;
+        }
+        if !quoted && hidden_quoted > 0 {
+            lines.push(Line::from(Span::styled(
+                format!("\u{2026} {hidden_quoted} quoted line(s) hidden (Q)"),
+                t.dimmed(),
+            )));
+            hidden_quoted = 0;
+        }
+        let style = if quoted { t.dimmed() } else { t.normal() };
         lines.push(Line::from(Span::styled(raw_line.to_string(), style)));
+    }
+    if hidden_quoted > 0 {
+        lines.push(Line::from(Span::styled(
+            format!("\u{2026} {hidden_quoted} quoted line(s) hidden (Q)"),
+            t.dimmed(),
+        )));
     }
 
     if !message.body.links.is_empty() {

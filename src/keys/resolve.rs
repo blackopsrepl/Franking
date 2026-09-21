@@ -180,6 +180,7 @@ fn resolve_message_view(key: KeyEvent) -> Action {
         KeyCode::Char('T') => Action::TrustSigner,
         KeyCode::Char('o') => Action::OpenAttachments,
         KeyCode::Char('h') => Action::ToggleHeaders,
+        KeyCode::Char('Q') => Action::ToggleQuotes,
         KeyCode::Char('s') => Action::SaveMessage,
         KeyCode::Char('z') => Action::Undo,
         KeyCode::Char('e') => Action::Archive,

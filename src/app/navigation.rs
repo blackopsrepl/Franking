@@ -222,6 +222,11 @@ impl App {
         self.show_all_headers = !self.show_all_headers;
     }
 
+    /// Collapse or expand quoted lines in the message view.
+    pub(crate) fn toggle_quotes(&mut self) {
+        self.collapse_quotes = !self.collapse_quotes;
+    }
+
     pub(crate) fn enter_account_picker(&mut self) {
         self.load_accounts();
         self.view = View::AccountList;

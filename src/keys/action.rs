@@ -112,6 +112,8 @@ pub enum Action {
     ToggleHelp,
     /// Show every raw header in the message view.
     ToggleHeaders,
+    /// Collapse quoted lines in the message view.
+    ToggleQuotes,
     /// Save the loaded message as an .eml file.
     SaveMessage,
     FocusFolders,

@@ -71,10 +71,10 @@ pub struct App {
     /// Server-side Sieve script browser and editor state.
     pub(crate) sieve: super::sieve::SieveState,
 
-    /// Whether the message view shows every raw header.
     pub(crate) show_all_headers: bool,
+    pub(crate) collapse_quotes: bool,
 
-    // ── Search state ────────────────────────────────────────────────
+    // Search state.
     pub search_query: String,
     pub active_query: Option<String>,
 
@@ -132,7 +132,6 @@ pub struct App {
     // ── Pending state for message view after background load ────────
     pub(crate) pending_message_id: Option<String>,
 
-    // ── Draft being resumed (folder, id), deleted after a successful send ──
     pub(crate) pending_draft: Option<(String, String)>,
 
     pub(crate) pending_return_to_list: bool,
@@ -209,6 +208,7 @@ impl App {
             pending_folder_refresh: false,
             sieve: Default::default(),
             show_all_headers: false,
+            collapse_quotes: false,
             search_query: String::new(),
             active_query: None,
             move_target: String::new(),

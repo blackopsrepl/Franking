@@ -51,6 +51,14 @@ fn message_view_archives() {
 }
 
 #[test]
+fn message_view_toggles_quoted_lines() {
+    assert_eq!(
+        resolve(View::MessageView, key(KeyCode::Char('Q'))),
+        Action::ToggleQuotes
+    );
+}
+
+#[test]
 fn message_view_searches_within_the_message() {
     assert_eq!(
         resolve(View::MessageView, key(KeyCode::Char('/'))),

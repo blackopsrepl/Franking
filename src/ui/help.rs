@@ -79,6 +79,7 @@ pub fn render(app: &App, frame: &mut Frame) {
         binding("T", "Trust the S/MIME signer certificate"),
         binding("o", "Open the attachment list"),
         binding("h", "Toggle all headers"),
+        binding("Q", "Collapse or expand quoted lines"),
         binding("/", "Find text in the message"),
         binding("l", "Open the link list"),
         binding("n / p", "Next / previous match"),
