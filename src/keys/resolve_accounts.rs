@@ -19,6 +19,22 @@ pub(super) fn resolve_account_list(key: KeyEvent) -> Action {
     }
 }
 
+pub(super) fn resolve_invite(key: KeyEvent) -> Action {
+    match key.code {
+        KeyCode::Char('a') => {
+            Action::InviteRespond(crate::mail::calendar_reply::PartStat::Accepted)
+        }
+        KeyCode::Char('t') => {
+            Action::InviteRespond(crate::mail::calendar_reply::PartStat::Tentative)
+        }
+        KeyCode::Char('d') => {
+            Action::InviteRespond(crate::mail::calendar_reply::PartStat::Declined)
+        }
+        KeyCode::Esc | KeyCode::Char('q') => Action::InviteCancel,
+        _ => Action::None,
+    }
+}
+
 pub(super) fn resolve_schedule(key: KeyEvent) -> Action {
     match key.code {
         KeyCode::Enter => Action::ScheduleSubmit,

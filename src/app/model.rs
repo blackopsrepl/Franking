@@ -80,6 +80,8 @@ pub struct App {
     pub(crate) notifications_enabled: bool,
     /// Buffered send-later delay input.
     pub(crate) schedule_input: String,
+    /// Invitation awaiting a response choice.
+    pub(crate) invite_pending: Option<crate::mail::calendar::Event>,
 
     // ── Move prompt state ───────────────────────────────────────────
     pub move_target: String,

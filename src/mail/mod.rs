@@ -2,6 +2,7 @@ pub mod account_store;
 pub mod attachments;
 pub mod autoconfig;
 pub mod calendar;
+pub mod calendar_reply;
 pub mod draft;
 pub mod errors;
 pub mod maildir;

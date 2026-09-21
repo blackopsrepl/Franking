@@ -1,6 +1,6 @@
 /*! Status-bar keybinding hints per view. */
 
-use super::action::View;
+use super::view::View;
 
 pub fn hints(view: View) -> Vec<(&'static str, &'static str)> {
     match view {
@@ -42,6 +42,7 @@ pub fn hints(view: View) -> Vec<(&'static str, &'static str)> {
             ("l", "links"),
             ("h", "headers"),
             ("Q", "quotes"),
+            ("v", "invite"),
             ("s", "save .eml"),
             ("z", "undo"),
             ("q", "back"),
@@ -73,6 +74,12 @@ pub fn hints(view: View) -> Vec<(&'static str, &'static str)> {
         View::SieveEdit => vec![("Ctrl+s", "save"), ("Esc", "back")],
         View::Settings => vec![("space", "toggle"), ("Esc", "close")],
         View::SchedulePrompt => vec![("Enter", "schedule"), ("Esc", "cancel")],
+        View::InviteReply => vec![
+            ("a", "accept"),
+            ("t", "tentative"),
+            ("d", "decline"),
+            ("Esc", "cancel"),
+        ],
         View::Outbox => vec![
             ("j/k", "nav"),
             ("Enter", "send now"),

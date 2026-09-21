@@ -1,53 +1,3 @@
-/// The current view determines which keybindings are active.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[allow(clippy::enum_variant_names)]
-pub enum View {
-    EnvelopeList,
-    MessageView,
-    FolderList,
-    AccountList,
-    /// Account add/edit form.
-    AccountEdit,
-    /// Filesystem picker for attachment paths.
-    FilePicker,
-    /// Outbox of messages waiting to be sent.
-    Outbox,
-    /// Preferences overlay.
-    Settings,
-    /// Prompt for a send-later delay.
-    SchedulePrompt,
-    Search,
-    Help,
-    MovePrompt,
-    /// Passphrase prompt for unlocking PGP secret keys.
-    PassphrasePrompt,
-    /// Attachment list overlay for the current message.
-    AttachmentList,
-    /// Folder management prompt (create, rename, delete).
-    FolderPrompt,
-    /// In-message search prompt.
-    MessageSearch,
-    /// Link list overlay for the current message.
-    LinkList,
-    /// Server-side Sieve script browser.
-    SieveScripts,
-    /// New-script name prompt.
-    SieveName,
-    /// Sieve script editor.
-    SieveEdit,
-    /// Native compose / reply / forward editor.
-    Compose,
-    /// Address book browser.
-    Contacts,
-    /// Contact search input mode (within the address book).
-    ContactSearch,
-    /// Contact add/edit form.
-    ContactEdit,
-    /// Identity list for the current account.
-    IdentityList,
-    /// Identity add/edit form.
-    IdentityEdit,
-}
 /// Editing mode for forms that still distinguish navigation vs text entry.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EditMode {
@@ -64,7 +14,6 @@ pub enum ComposeFocus {
     Body,
     ActionBar,
 }
-
 /// Runtime compose context needed to resolve keys correctly.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ComposeKeyContext {
@@ -79,7 +28,6 @@ pub struct ComposeKeyContext {
     /// Whether the discard-confirmation modal is currently shown.
     pub confirm_discard_visible: bool,
 }
-
 /// Actions the app can take in response to a key press.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Action {
@@ -176,6 +124,11 @@ pub enum Action {
     ScheduleBackspace,
     ScheduleSubmit,
     ScheduleCancel,
+    // ── Invitation replies ────────────────────────────────────────────
+    OpenInviteReply,
+    /// Respond to a calendar invitation with a participation status.
+    InviteRespond(crate::mail::calendar_reply::PartStat),
+    InviteCancel,
     // ── Folder management ─────────────────────────────────────────────
     FolderNew,
     FolderRename,

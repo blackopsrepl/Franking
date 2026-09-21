@@ -81,6 +81,7 @@ pub fn render(app: &App, frame: &mut Frame) {
         binding("o", "Open the attachment list"),
         binding("h", "Toggle all headers"),
         binding("Q", "Collapse or expand quoted lines"),
+        binding("v", "Answer a calendar invitation (a/t/d)"),
         binding("/", "Find text in the message"),
         binding("l", "Open the link list"),
         binding("n / p", "Next / previous match"),

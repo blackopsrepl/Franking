@@ -59,6 +59,30 @@ fn message_view_toggles_quoted_lines() {
 }
 
 #[test]
+fn message_view_answers_invitations() {
+    assert_eq!(
+        resolve(View::MessageView, key(KeyCode::Char('v'))),
+        Action::OpenInviteReply
+    );
+    assert_eq!(
+        resolve(View::InviteReply, key(KeyCode::Char('a'))),
+        Action::InviteRespond(solverforge_mail::mail::calendar_reply::PartStat::Accepted)
+    );
+    assert_eq!(
+        resolve(View::InviteReply, key(KeyCode::Char('t'))),
+        Action::InviteRespond(solverforge_mail::mail::calendar_reply::PartStat::Tentative)
+    );
+    assert_eq!(
+        resolve(View::InviteReply, key(KeyCode::Char('d'))),
+        Action::InviteRespond(solverforge_mail::mail::calendar_reply::PartStat::Declined)
+    );
+    assert_eq!(
+        resolve(View::InviteReply, key(KeyCode::Esc)),
+        Action::InviteCancel
+    );
+}
+
+#[test]
 fn message_view_searches_within_the_message() {
     assert_eq!(
         resolve(View::MessageView, key(KeyCode::Char('/'))),

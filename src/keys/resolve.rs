@@ -2,16 +2,17 @@
 
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
-use super::action::{Action, ComposeFocus, ComposeKeyContext, View};
+use super::action::{Action, ComposeFocus, ComposeKeyContext};
 use super::resolve_accounts::{
-    resolve_account_edit, resolve_account_list, resolve_file_picker, resolve_outbox,
-    resolve_schedule, resolve_settings,
+    resolve_account_edit, resolve_account_list, resolve_file_picker, resolve_invite,
+    resolve_outbox, resolve_schedule, resolve_settings,
 };
 use super::resolve_contacts::{
     resolve_compose, resolve_contact_edit, resolve_contact_search, resolve_contacts,
     resolve_identity_edit, resolve_identity_list,
 };
 use super::resolve_sieve::{resolve_sieve_edit, resolve_sieve_name, resolve_sieve_scripts};
+use super::view::View;
 
 pub fn resolve(view: View, key: KeyEvent) -> Action {
     match view {
@@ -27,6 +28,7 @@ pub fn resolve(view: View, key: KeyEvent) -> Action {
         View::Outbox => return resolve_outbox(key),
         View::Settings => return resolve_settings(key),
         View::SchedulePrompt => return resolve_schedule(key),
+        View::InviteReply => return resolve_invite(key),
         View::LinkList => return resolve_link_list(key),
         View::SieveScripts => return resolve_sieve_scripts(key),
         View::SieveName => return resolve_sieve_name(key),
@@ -70,7 +72,8 @@ pub fn resolve(view: View, key: KeyEvent) -> Action {
         | View::FilePicker
         | View::Outbox
         | View::Settings
-        | View::SchedulePrompt => Action::None,
+        | View::SchedulePrompt
+        | View::InviteReply => Action::None,
     }
 }
 /// Resolve compose keys with compose-state context.
@@ -110,7 +113,6 @@ pub fn resolve_compose_with_context(key: KeyEvent, ctx: ComposeKeyContext) -> Ac
             _ => {}
         }
     }
-
     match key.code {
         KeyCode::Tab if ctx.focus == ComposeFocus::Body && ctx.body_search_active => {
             Action::ComposeLeaveBodyNext
@@ -127,7 +129,6 @@ pub fn resolve_compose_with_context(key: KeyEvent, ctx: ComposeKeyContext) -> Ac
         _ => Action::EditorKey(key),
     }
 }
-
 fn resolve_envelope_list(key: KeyEvent) -> Action {
     match key.code {
         KeyCode::Char('q') => Action::Quit,
@@ -164,7 +165,6 @@ fn resolve_envelope_list(key: KeyEvent) -> Action {
         _ => Action::None,
     }
 }
-
 fn resolve_message_view(key: KeyEvent) -> Action {
     match key.code {
         KeyCode::Char('q') | KeyCode::Esc => Action::Back,
@@ -182,6 +182,7 @@ fn resolve_message_view(key: KeyEvent) -> Action {
         KeyCode::Char('o') => Action::OpenAttachments,
         KeyCode::Char('h') => Action::ToggleHeaders,
         KeyCode::Char('Q') => Action::ToggleQuotes,
+        KeyCode::Char('v') => Action::OpenInviteReply,
         KeyCode::Char('s') => Action::SaveMessage,
         KeyCode::Char('z') => Action::Undo,
         KeyCode::Char('e') => Action::Archive,

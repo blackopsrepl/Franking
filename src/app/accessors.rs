@@ -148,6 +148,7 @@ impl App {
             search_all_folders: false,
             notifications_enabled: true,
             schedule_input: String::new(),
+            invite_pending: None,
             move_target: String::new(),
             move_index: 0,
             move_is_copy: false,

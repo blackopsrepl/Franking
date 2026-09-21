@@ -17,6 +17,7 @@ mod file_picker;
 mod folders;
 mod identities;
 mod input;
+mod invite;
 mod links;
 mod loading;
 mod message_search;

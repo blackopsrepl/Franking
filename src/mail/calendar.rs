@@ -3,6 +3,10 @@
 /// A calendar event extracted from a `text/calendar` part.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Event {
+    /// `UID` property, needed to reply to the invitation.
+    pub uid: Option<String>,
+    /// `ORGANIZER` value (usually `mailto:...`).
+    pub organizer: Option<String>,
     pub summary: Option<String>,
     pub start: Option<String>,
     pub end: Option<String>,
@@ -12,6 +16,11 @@ pub struct Event {
 impl Event {
     pub fn is_empty(&self) -> bool {
         self.summary.is_none() && self.start.is_none() && self.end.is_none()
+    }
+
+    /// Whether the event carries what a reply needs.
+    pub fn is_repliable(&self) -> bool {
+        self.uid.is_some() && self.organizer.is_some()
     }
 
     pub fn summary_line(&self) -> Option<String> {
@@ -55,6 +64,8 @@ pub fn parse_invitation(text: &str) -> Option<Event> {
             continue;
         }
         match property.as_str() {
+            "UID" => event.uid = Some(value),
+            "ORGANIZER" => event.organizer = Some(value.trim_start_matches("mailto:").to_string()),
             "SUMMARY" => event.summary = Some(value),
             "DTSTART" => event.start = Some(value),
             "DTEND" => event.end = Some(value),
