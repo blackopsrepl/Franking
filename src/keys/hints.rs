@@ -12,6 +12,7 @@ pub fn hints(view: View) -> Vec<(&'static str, &'static str)> {
             ("m", "move"),
             ("!", "flag"),
             ("N", "read"),
+            ("S", "sync"),
             ("t", "thread"),
             ("/", "search"),
             ("Tab", "folders"),

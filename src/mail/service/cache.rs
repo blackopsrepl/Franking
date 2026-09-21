@@ -95,3 +95,15 @@ pub(super) fn cache_message(
     );
     store::upsert_message(conn, &stored)
 }
+
+/// Cache a listing and its sync cursor together.
+pub(super) fn record_listing(
+    conn: &rusqlite::Connection,
+    account: &str,
+    folder: &str,
+    envelopes: &[Envelope],
+    cursor: (Option<u32>, Option<u32>),
+) -> anyhow::Result<()> {
+    cache_envelopes(conn, account, folder, envelopes)?;
+    record_sync_cursor(conn, account, folder, cursor.0, cursor.1)
+}

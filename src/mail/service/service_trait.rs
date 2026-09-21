@@ -85,6 +85,12 @@ pub trait MailService: Send + Sync {
         -> MailResult<String>;
     fn template_send(&self, account: Option<&str>, template: &str) -> MailResult<String>;
 
+    /// Fetch every envelope in a folder so it can be cached for offline use.
+    fn sync_folder(&self, account: Option<&str>, folder: &str) -> MailResult<Vec<Envelope>> {
+        let _ = (account, folder);
+        Ok(Vec::new())
+    }
+
     /// Build a resume template from a stored draft message.
     fn draft_template(&self, account: Option<&str>, folder: &str, id: &str) -> MailResult<String> {
         let _ = (account, folder, id);

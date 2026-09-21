@@ -5,9 +5,7 @@ use crate::mail::session::IdleOutcome;
 use crate::mail::store;
 use crate::mail::types::{Account, Envelope, Folder};
 
-use super::cache::{
-    cache_envelopes, cache_message, cached_envelopes, is_offline, record_sync_cursor,
-};
+use super::cache::{cached_envelopes, is_offline, record_listing};
 use super::router::{Route, RouterMailService};
 use super::service_trait::MailService;
 
@@ -50,18 +48,13 @@ impl MailService for RouterMailService {
 
         match result {
             Ok(envelopes) => {
+                let cursor = self
+                    .folder_sync_cursor(Some(&record.name), folder)
+                    .unwrap_or((None, None));
                 let _ = self.with_db(|conn| {
-                    cache_envelopes(conn, &record.name, folder, &envelopes)
+                    record_listing(conn, &record.name, folder, &envelopes, cursor)
                         .map_err(|err| MailError::config_invalid(err.to_string()))
                 });
-                if let Ok((uid_validity, uid_next)) =
-                    self.folder_sync_cursor(Some(&record.name), folder)
-                {
-                    let _ = self.with_db(|conn| {
-                        record_sync_cursor(conn, &record.name, folder, uid_validity, uid_next)
-                            .map_err(|err| MailError::config_invalid(err.to_string()))
-                    });
-                }
                 Ok(envelopes)
             }
             Err(error) if is_offline(&error) => self.with_db(|conn| {
@@ -89,30 +82,7 @@ impl MailService for RouterMailService {
         folder: &str,
         id: &str,
     ) -> MailResult<Vec<u8>> {
-        let record = self.choose_account(account)?;
-        let result = match self.route_account(Some(&record.name))? {
-            Route::Maildir(service) => service.read_message_raw(account, folder, id),
-            Route::Remote(service) => service.read_message_raw(account, folder, id),
-        };
-
-        match result {
-            Ok(raw) => {
-                if let Ok(document) = crate::mail::mime::parse_message(&raw) {
-                    let _ = self.with_db(|conn| {
-                        cache_message(conn, &record.name, folder, id, &raw, &document)
-                            .map_err(|err| MailError::config_invalid(err.to_string()))
-                    });
-                }
-                Ok(raw)
-            }
-            Err(error) if is_offline(&error) => self.with_db(|conn| {
-                store::get_message(conn, &record.name, folder, id)
-                    .map_err(|err| MailError::config_invalid(err.to_string()))?
-                    .and_then(|message| message.raw)
-                    .ok_or(error)
-            }),
-            Err(error) => Err(error),
-        }
+        super::read::read_message_raw(self, account, folder, id)
     }
 
     fn delete_message(&self, account: Option<&str>, folder: &str, id: &str) -> MailResult<()> {
@@ -254,6 +224,23 @@ impl MailService for RouterMailService {
             Route::Maildir(service) => service.save_draft(account, template),
             Route::Remote(service) => service.save_draft(account, template),
         }
+    }
+
+    fn sync_folder(&self, account: Option<&str>, folder: &str) -> MailResult<Vec<Envelope>> {
+        let record = self.choose_account(account)?;
+        let envelopes = match self.route_account(Some(&record.name))? {
+            Route::Maildir(service) => service.sync_folder(account, folder),
+            Route::Remote(service) => service.sync_folder(account, folder),
+        }?;
+
+        let cursor = self
+            .folder_sync_cursor(Some(&record.name), folder)
+            .unwrap_or((None, None));
+        let _ = self.with_db(|conn| {
+            record_listing(conn, &record.name, folder, &envelopes, cursor)
+                .map_err(|err| MailError::config_invalid(err.to_string()))
+        });
+        Ok(envelopes)
     }
 
     fn draft_template(&self, account: Option<&str>, folder: &str, id: &str) -> MailResult<String> {

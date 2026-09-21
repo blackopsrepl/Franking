@@ -77,6 +77,13 @@ impl App {
         }
     }
 
+    pub(crate) fn sync_folder(&mut self) {
+        self.loading = true;
+        self.set_status("Caching folder for offline use...");
+        self.worker
+            .sync_folder(self.acct_owned(), self.current_folder.clone());
+    }
+
     pub(crate) fn toggle_read(&mut self) {
         if let Some(id) = self.selected_envelope_id().map(|s| s.to_string()) {
             let is_seen = self

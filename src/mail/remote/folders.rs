@@ -197,6 +197,30 @@ impl ImapSmtpService {
         Ok(mailbox.unseen.unwrap_or(0) as usize)
     }
 
+    /// Fetch every envelope in a folder for caching.
+    pub fn sync_folder(&self, account: Option<&str>, folder: &str) -> MailResult<Vec<Envelope>> {
+        self.ensure_requested_account(account)?;
+
+        fn exec<S: Read + Write>(
+            session: &mut imap::Session<S>,
+            folder: &str,
+        ) -> MailResult<Vec<Envelope>> {
+            session.select(folder).map_err(map_imap_error)?;
+            let uids = session
+                .uid_search("ALL")
+                .map_err(map_imap_error)?
+                .into_iter()
+                .collect::<Vec<_>>();
+            fetch_envelope_metadata(session, &uids)
+        }
+
+        self.pool
+            .with_connection(&self.account, |connection| match connection {
+                ConnectedImapSession::Plain(session) => exec(session, folder),
+                ConnectedImapSession::Tls(session) => exec(session, folder),
+            })
+    }
+
     /// Build a resume template from a stored draft message.
     pub fn draft_template(
         &self,
