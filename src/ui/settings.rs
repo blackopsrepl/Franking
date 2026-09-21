@@ -8,7 +8,7 @@ use crate::ui::util::centered_rect;
 /// Render the preferences overlay.
 pub fn render(app: &App, frame: &mut Frame) {
     let t = theme();
-    let popup = centered_rect(60, 30, frame.area());
+    let popup = centered_rect(60, 40, frame.area());
     frame.render_widget(Clear, popup);
 
     let block = Block::default()
@@ -19,20 +19,46 @@ pub fn render(app: &App, frame: &mut Frame) {
     let inner = block.inner(popup);
     frame.render_widget(block, popup);
 
-    let lines = vec![
-        Line::from(vec![
-            Span::styled(" Desktop notifications  ", t.header_label()),
-            Span::styled(
-                if app.notifications_enabled {
-                    "[x] on"
-                } else {
-                    "[ ] off"
-                },
-                t.normal(),
-            ),
-        ]),
-        Line::from(""),
-        Line::from(Span::styled("  Space toggles · Esc closes", t.dimmed())),
+    let autosave = if app.autosave_seconds == 0 {
+        "off".to_string()
+    } else {
+        format!("{}s", app.autosave_seconds)
+    };
+    let rows = [
+        (
+            "Desktop notifications".to_string(),
+            toggle_label(app.notifications_enabled),
+        ),
+        (
+            "Mark read on open".to_string(),
+            toggle_label(app.mark_read_on_open),
+        ),
+        ("Page size".to_string(), app.page_size.to_string()),
+        ("Compose autosave".to_string(), autosave),
     ];
+
+    let mut lines = Vec::new();
+    for (index, (label, value)) in rows.iter().enumerate() {
+        let focused = app.settings_index == index;
+        let style = if focused { t.selected() } else { t.normal() };
+        lines.push(Line::from(Span::styled(
+            format!(" {} {label:<22} {value}", if focused { "▸" } else { " " }),
+            style,
+        )));
+    }
+    lines.push(Line::from(""));
+    lines.push(Line::from(Span::styled(
+        "  j/k move · Space changes · Esc closes",
+        t.dimmed(),
+    )));
+
     frame.render_widget(Paragraph::new(lines), inner);
+}
+
+fn toggle_label(enabled: bool) -> String {
+    if enabled {
+        "[x] on".to_string()
+    } else {
+        "[ ] off".to_string()
+    }
 }
