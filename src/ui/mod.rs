@@ -19,6 +19,7 @@ mod move_prompt;
 mod outbox;
 mod passphrase_prompt;
 mod pgp_keys;
+mod saved_searches;
 mod search;
 mod settings;
 mod sieve;
@@ -48,6 +49,10 @@ pub fn render(app: &mut App, frame: &mut Frame) {
         }
         View::FilePicker => {
             file_picker::render(app, frame);
+            return;
+        }
+        View::SavedSearches => {
+            saved_searches::render(app, frame);
             return;
         }
         View::Keys | View::KeysPrompt => {

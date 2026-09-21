@@ -85,6 +85,13 @@ pub fn hints(view: View) -> Vec<(&'static str, &'static str)> {
             ("Esc", "close"),
         ],
         View::KeysPrompt => vec![("Enter", "confirm"), ("Esc", "cancel")],
+        View::SaveSearch => vec![("Enter", "save"), ("Esc", "cancel")],
+        View::SavedSearches => vec![
+            ("j/k", "nav"),
+            ("Enter", "run"),
+            ("d", "delete"),
+            ("Esc", "close"),
+        ],
         View::SieveEdit => vec![("Ctrl+s", "save"), ("Esc", "back")],
         View::Settings => vec![("space", "toggle"), ("Esc", "close")],
         View::SchedulePrompt => vec![("Enter", "schedule"), ("Esc", "cancel")],

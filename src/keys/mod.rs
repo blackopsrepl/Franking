@@ -7,6 +7,7 @@ mod resolve_accounts;
 mod resolve_contacts;
 mod resolve_keys;
 mod resolve_message_view;
+mod resolve_saved;
 mod resolve_sieve;
 mod view;
 

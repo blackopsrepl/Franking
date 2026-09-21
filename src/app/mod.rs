@@ -30,6 +30,7 @@ mod navigation;
 mod outbox;
 mod pgp;
 pub(crate) mod pgp_keys;
+mod saved_searches;
 mod selection;
 mod settings;
 mod sieve;

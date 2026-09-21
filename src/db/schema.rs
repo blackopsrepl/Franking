@@ -21,6 +21,7 @@ pub(super) fn reset_schema(conn: &Connection) -> Result<()> {
          DROP TABLE IF EXISTS accounts;
          DROP TABLE IF EXISTS credentials;
          DROP TABLE IF EXISTS outbox;
+         DROP TABLE IF EXISTS saved_searches;
          DROP TABLE IF EXISTS legacy_credentials_backup;
          DROP TABLE IF EXISTS meta;",
     )?;
@@ -202,6 +203,13 @@ pub(super) fn create_schema(conn: &Connection) -> Result<()> {
              created_at     TEXT    NOT NULL DEFAULT (datetime('now'))
          );
 
+         CREATE TABLE saved_searches (
+             name        TEXT PRIMARY KEY,
+             query       TEXT    NOT NULL,
+             all_folders INTEGER NOT NULL DEFAULT 0,
+             created_at  TEXT    NOT NULL DEFAULT (datetime('now'))
+         );
+
          CREATE TABLE sync_state (
              account        TEXT    NOT NULL,
              folder         TEXT    NOT NULL,
@@ -256,6 +264,14 @@ pub(super) fn migrate_schema(conn: &Connection) -> Result<()> {
     if !has_send_after {
         conn.execute_batch("ALTER TABLE outbox ADD COLUMN send_after TEXT;")?;
     }
+    conn.execute_batch(
+        "CREATE TABLE IF NOT EXISTS saved_searches (
+             name        TEXT PRIMARY KEY,
+             query       TEXT    NOT NULL,
+             all_folders INTEGER NOT NULL DEFAULT 0,
+             created_at  TEXT    NOT NULL DEFAULT (datetime('now'))
+         );",
+    )?;
     for column in [
         "ALTER TABLE outbox ADD COLUMN smime_sign INTEGER NOT NULL DEFAULT 0;",
         "ALTER TABLE outbox ADD COLUMN smime_encrypt INTEGER NOT NULL DEFAULT 0;",

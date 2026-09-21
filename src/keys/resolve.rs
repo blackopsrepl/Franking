@@ -13,6 +13,7 @@ use super::resolve_contacts::{
 };
 use super::resolve_keys::{resolve_keys, resolve_keys_prompt};
 use super::resolve_message_view::resolve_message_view;
+use super::resolve_saved::{resolve_save_search, resolve_saved_searches};
 use super::resolve_sieve::{resolve_sieve_edit, resolve_sieve_name, resolve_sieve_scripts};
 use super::view::View;
 
@@ -33,6 +34,15 @@ pub fn resolve(view: View, key: KeyEvent) -> Action {
         View::InviteReply => return resolve_invite(key),
         View::AttachmentView => return resolve_attachment_view(key),
         View::LinkList => return resolve_link_list(key),
+        View::SavedSearches => return resolve_saved_searches(key),
+        View::SaveSearch => return resolve_save_search(key),
+        View::Search => {
+            // While naming a search the prompt owns the keys.
+            if key.code == KeyCode::Char('s') && key.modifiers.contains(KeyModifiers::CONTROL) {
+                return Action::SaveSearch;
+            }
+            return resolve_search(key);
+        }
         View::Keys => return resolve_keys(key),
         View::KeysPrompt => return resolve_keys_prompt(key),
         View::SieveScripts => return resolve_sieve_scripts(key),
@@ -81,7 +91,9 @@ pub fn resolve(view: View, key: KeyEvent) -> Action {
         | View::InviteReply
         | View::AttachmentView
         | View::Keys
-        | View::KeysPrompt => Action::None,
+        | View::KeysPrompt
+        | View::SavedSearches
+        | View::SaveSearch => Action::None,
     }
 }
 /// Resolve compose keys with compose-state context.
@@ -150,6 +162,7 @@ fn resolve_envelope_list(key: KeyEvent) -> Action {
         KeyCode::Char('m') => Action::MoveMessage,
         KeyCode::Char('C') => Action::CopyMessage,
         KeyCode::Char('!') => Action::ToggleFlag,
+        KeyCode::Char('s') => Action::OpenSavedSearches,
         KeyCode::Char('N') => Action::ToggleRead,
         KeyCode::Char('S') => Action::SyncFolder,
         KeyCode::Char('A') => Action::MarkFolderRead,

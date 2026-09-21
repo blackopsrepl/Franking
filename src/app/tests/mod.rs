@@ -12,6 +12,7 @@ mod keys;
 mod mail_ui;
 mod message_search;
 mod move_prompt;
+mod saved_searches;
 mod settings;
 mod sieve;
 mod sieve_settings;

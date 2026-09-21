@@ -72,6 +72,8 @@ pub struct App {
     pub(crate) sieve: super::sieve::SieveState,
     /// PGP and S/MIME key material overlay.
     pub(crate) keys: super::pgp_keys::KeysState,
+    /// Saved searches overlay.
+    pub(crate) saved_searches: super::saved_searches::SavedSearchesState,
 
     pub(crate) show_all_headers: bool,
     pub(crate) collapse_quotes: bool,

@@ -57,4 +57,8 @@ pub enum View {
     Keys,
     /// Key import path or key-generation identity prompt.
     KeysPrompt,
+    /// Saved searches browser.
+    SavedSearches,
+    /// Naming the active search before saving it.
+    SaveSearch,
 }

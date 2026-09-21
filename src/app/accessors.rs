@@ -142,6 +142,7 @@ impl App {
             pending_folder_refresh: false,
             sieve: Default::default(),
             keys: Default::default(),
+            saved_searches: Default::default(),
             show_all_headers: false,
             collapse_quotes: false,
             show_html_source: false,

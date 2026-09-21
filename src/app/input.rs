@@ -223,6 +223,18 @@ impl App {
             Action::EditorKey(key_event) => {
                 self.handle_editor_key(key_event);
             }
+            // ── Saved searches ───────────────────────────────────────
+            Action::OpenSavedSearches
+            | Action::SaveSearch
+            | Action::SaveSearchInput(_)
+            | Action::SaveSearchBackspace
+            | Action::SaveSearchSubmit
+            | Action::SaveSearchCancel
+            | Action::SavedSearchNext
+            | Action::SavedSearchPrev
+            | Action::SavedSearchRun
+            | Action::SavedSearchDelete
+            | Action::SavedSearchClose => self.handle_saved_search_action(action),
             // ── Key material ─────────────────────────────────────────
             Action::OpenKeys
             | Action::KeysNext
