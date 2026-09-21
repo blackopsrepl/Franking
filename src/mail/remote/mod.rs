@@ -5,6 +5,7 @@ mod errors;
 mod folders;
 mod mailboxes;
 mod model;
+pub mod next;
 mod ops;
 mod roles;
 mod search;

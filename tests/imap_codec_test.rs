@@ -15,6 +15,7 @@ use imap_types::response::{Code, Data, Response};
 use imap_types::search::SearchKey;
 use imap_types::sequence::SequenceSet;
 use solverforge_mail::mail::account_store::AccountRecord;
+use solverforge_mail::mail::remote::next;
 use solverforge_mail::mail::session::{
     map_imap_error, open_imap_client, ConnectedImapSession, CredentialProvider, SessionPool,
 };
@@ -184,5 +185,92 @@ fn sorts_threads_and_tracks_modseq_over_the_codec_layer() {
         "no response line was skipped: {:?}",
         client.skipped_lines()
     );
+    client.logout();
+}
+
+/// The migration gate: the codec-based layer must return exactly what the
+/// legacy client returns for the same folders and messages.
+#[test]
+fn codec_layer_matches_the_legacy_client() {
+    let Some((host, port)) = test_address() else {
+        return;
+    };
+    let account = account(&host, port);
+    seed(&account);
+
+    let credentials = FixedCredentials;
+    let legacy = solverforge_mail::mail::remote::ImapSmtpService::new(
+        account.clone(),
+        Arc::new(SessionPool::with_credentials(Arc::new(FixedCredentials))),
+    );
+    let mut client = open_imap_client(&account, &credentials).expect("codec client");
+
+    // Folders, including special-use roles.
+    let new_folders = next::list_folders(&mut client).expect("new LIST");
+    let old_folders = legacy.list_folders(None).expect("legacy LIST");
+    let new_names: Vec<(String, String)> = new_folders
+        .iter()
+        .map(|folder| (folder.name.clone(), format!("{:?}", folder.role)))
+        .collect();
+    let old_names: Vec<(String, String)> = old_folders
+        .iter()
+        .map(|folder| (folder.name.clone(), format!("{:?}", folder.role)))
+        .collect();
+    assert_eq!(new_names, old_names, "folder names and roles agree");
+
+    // Envelopes for every message in INBOX.
+    next::select(&mut client, "INBOX").expect("select");
+    let uids = next::search_uids(&mut client, next::search::criteria(None)).expect("search");
+    let new_envelopes = next::fetch_envelopes(&mut client, &uids).expect("new FETCH");
+    let old_envelopes = legacy
+        .list_envelopes(None, "INBOX", 1, 1000, None)
+        .expect("legacy listing");
+
+    let summarize = |envelopes: &[solverforge_mail::mail::types::Envelope]| {
+        let mut rows: Vec<(String, String, String, bool, bool)> = envelopes
+            .iter()
+            .map(|envelope| {
+                (
+                    envelope.subject.clone(),
+                    envelope.sender_display(),
+                    envelope.date.clone(),
+                    envelope.is_seen(),
+                    envelope.is_flagged(),
+                )
+            })
+            .collect();
+        rows.sort();
+        rows
+    };
+    assert_eq!(
+        summarize(&new_envelopes),
+        summarize(&old_envelopes),
+        "envelope metadata agrees"
+    );
+    assert!(
+        !new_envelopes.is_empty(),
+        "the inbox has messages to compare"
+    );
+
+    // Server-side ordering: newest first, which the legacy client cannot ask for.
+    let sorted = next::sort_uids(
+        &mut client,
+        Vec1::from(SortCriterion {
+            key: SortKey::Date,
+            reverse: true,
+        }),
+        Vec1::from(SearchKey::All),
+    )
+    .expect("SORT");
+    assert!(!sorted.is_empty());
+
+    // Raw body read, byte-identical to the legacy path.
+    let uid = uids.iter().copied().max().expect("a uid");
+    let new_raw = next::read_message_raw(&mut client, uid).expect("new raw read");
+    let old_raw = legacy
+        .read_message_raw(None, "INBOX", &uid.to_string())
+        .expect("legacy raw read");
+    assert_eq!(new_raw, old_raw, "raw message bytes agree");
+
     client.logout();
 }
