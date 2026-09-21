@@ -158,6 +158,7 @@ fn resolve_envelope_list(key: KeyEvent) -> Action {
         KeyCode::Char('e') => Action::Archive,
         KeyCode::Char('E') => Action::EmptyFolder,
         KeyCode::Char('O') => Action::OpenOutbox,
+        KeyCode::Char('o') => Action::CycleSortOrder,
         KeyCode::Char('P') => Action::OpenSettings,
         KeyCode::Char('[') | KeyCode::Left => Action::CollapseThread,
         KeyCode::Char(']') | KeyCode::Right => Action::ExpandThread,

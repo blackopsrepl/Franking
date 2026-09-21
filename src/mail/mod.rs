@@ -20,6 +20,7 @@ pub mod service;
 pub mod session;
 pub mod sieve;
 pub mod smime;
+pub mod sort;
 pub mod store;
 pub mod types;
 

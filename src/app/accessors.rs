@@ -151,6 +151,7 @@ impl App {
             mark_read_on_open: true,
             settings_index: 0,
             folder_jump: String::new(),
+            sort_order: Default::default(),
             schedule_input: String::new(),
             invite_pending: None,
             move_target: String::new(),

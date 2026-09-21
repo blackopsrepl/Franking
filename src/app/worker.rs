@@ -187,6 +187,10 @@ impl App {
         let selection = self.envelope_state.selected();
 
         self.envelopes = envelopes;
+        if !self.threaded {
+            let order = self.sort_order;
+            order.apply(&mut self.envelopes);
+        }
 
         if !self.envelopes.is_empty() {
             // Preserve selection position on auto-refresh if possible

@@ -86,6 +86,8 @@ pub struct App {
     pub(crate) settings_index: usize,
     /// Incremental folder-search query.
     pub(crate) folder_jump: String,
+    /// Ordering applied to the listed page.
+    pub(crate) sort_order: crate::mail::sort::SortOrder,
     /// Buffered send-later delay input.
     pub(crate) schedule_input: String,
     /// Invitation awaiting a response choice.

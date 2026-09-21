@@ -153,6 +153,8 @@ pub enum Action {
     FolderJumpInput(char),
     FolderJumpBackspace,
     FolderJumpClear,
+    /// Cycle the message-list ordering.
+    CycleSortOrder,
     /// Move the selection to the archive folder.
     Archive,
     /// Make the highlighted account the default.

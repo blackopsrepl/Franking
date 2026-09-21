@@ -107,3 +107,11 @@ fn unread_navigation_keys() {
         Action::PrevUnread
     );
 }
+
+#[test]
+fn sort_order_key() {
+    assert_eq!(
+        resolve(View::EnvelopeList, key(KeyCode::Char('o'))),
+        Action::CycleSortOrder
+    );
+}

@@ -97,6 +97,7 @@ impl App {
             Action::FolderJumpInput(c) => self.folder_jump_input(c),
             Action::FolderJumpBackspace => self.folder_jump_backspace(),
             Action::FolderJumpClear => self.folder_jump_clear(),
+            Action::CycleSortOrder => self.cycle_sort_order(),
             Action::SetDefaultAccount => self.set_default_account(),
             Action::DeleteAccount => self.delete_account(),
             Action::AccountNew => self.open_account_new(),

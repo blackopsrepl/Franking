@@ -63,3 +63,57 @@ fn reports_when_everything_is_read() {
     app.jump_unread(true);
     assert!(app.status_message.contains("No unread messages"));
 }
+
+#[test]
+fn cycles_the_message_list_ordering() {
+    use crate::app::App;
+    use crate::mail::sort::{SortKey, SortOrder};
+    use crate::mail::types::{Envelope, Sender};
+
+    let envelope = |id: &str, sender: &str, date: &str| Envelope {
+        id: id.to_string(),
+        flags: Vec::new(),
+        subject: format!("Subject {id}"),
+        sender: Sender::Plain(sender.to_string()),
+        date: date.to_string(),
+        message_id: None,
+        in_reply_to: None,
+        account: None,
+        folder: None,
+    };
+
+    let mut app = App::new(None);
+    app.envelopes = vec![
+        envelope("1", "carol@example.com", "2026-01-01"),
+        envelope("2", "alice@example.com", "2026-01-03"),
+    ];
+
+    assert_eq!(app.sort_order, SortOrder::default());
+    app.cycle_sort_order();
+    assert_eq!(app.sort_order.key, SortKey::Date);
+    assert!(!app.sort_order.descending);
+    let ids: Vec<&str> = app.envelopes.iter().map(|e| e.id.as_str()).collect();
+    assert_eq!(ids, vec!["1", "2"], "oldest first");
+
+    app.cycle_sort_order();
+    assert_eq!(app.sort_order.key, SortKey::Sender);
+    let ids: Vec<&str> = app.envelopes.iter().map(|e| e.id.as_str()).collect();
+    assert_eq!(ids, vec!["2", "1"], "alice before carol");
+    assert!(app.status_message.contains("sender"));
+
+    // Threaded view keeps the server order.
+    app.threaded = true;
+    let before = app
+        .envelopes
+        .iter()
+        .map(|e| e.id.clone())
+        .collect::<Vec<_>>();
+    app.cycle_sort_order();
+    let after = app
+        .envelopes
+        .iter()
+        .map(|e| e.id.clone())
+        .collect::<Vec<_>>();
+    assert_eq!(before, after);
+    assert!(app.status_message.contains("threaded view"));
+}

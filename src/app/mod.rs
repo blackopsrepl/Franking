@@ -34,6 +34,7 @@ mod settings;
 mod sieve;
 mod sieve_actions;
 mod smime;
+mod sort_order;
 mod threads;
 mod undo;
 mod unread;

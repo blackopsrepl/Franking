@@ -21,6 +21,7 @@ pub fn hints(view: View) -> Vec<(&'static str, &'static str)> {
             ("u", "clear sel"),
             ("z", "undo"),
             ("< >", "unread"),
+            ("o", "sort"),
             ("/", "search"),
             ("Tab", "folders"),
             ("Ctrl+b", "contacts"),
