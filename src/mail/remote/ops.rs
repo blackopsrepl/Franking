@@ -1,33 +1,21 @@
 /*! Probe, flag, and mutation operations. */
 
-use std::io::{Read, Write};
-
 use crate::mail::errors::{MailError, MailResult};
-use crate::mail::session::{map_imap_error, ConnectedImapSession};
 
 use super::errors::map_smtp_error;
 use super::model::ImapSmtpService;
-use super::search::imap_flag;
+use super::next::{self, FlagChange};
 use super::template::extract_attachments;
 
 impl ImapSmtpService {
     /// Mark every message in a folder as seen.
     pub fn mark_folder_seen(&self, account: Option<&str>, folder: &str) -> MailResult<()> {
         self.ensure_requested_account(account)?;
-
-        fn exec<S: Read + Write>(session: &mut imap::Session<S>, folder: &str) -> MailResult<()> {
-            session.select(folder).map_err(map_imap_error)?;
-            session
-                .uid_store("1:*", "+FLAGS.SILENT (\\Seen)")
-                .map_err(map_imap_error)?;
-            Ok(())
-        }
-
-        self.pool
-            .with_connection(&self.account, |connection| match connection {
-                ConnectedImapSession::Plain(session) => exec(session, folder),
-                ConnectedImapSession::Tls(session) => exec(session, folder),
-            })
+        let seen = next::flag_of("seen")?;
+        self.pool.with_client(&self.account, |client| {
+            next::select(client, folder)?;
+            next::store_flags(client, "1:*", FlagChange::Add, vec![seen.clone()], true)
+        })
     }
 
     pub fn probe_account(&self, account: &str) -> MailResult<()> {
@@ -38,16 +26,9 @@ impl ImapSmtpService {
     }
 
     fn probe_imap(&self) -> MailResult<()> {
-        fn exec<S: Read + Write>(session: &mut imap::Session<S>) -> MailResult<()> {
-            session.list(None, Some("*")).map_err(map_imap_error)?;
-            Ok(())
-        }
-
-        self.pool
-            .with_connection(&self.account, |connection| match connection {
-                ConnectedImapSession::Plain(session) => exec(session),
-                ConnectedImapSession::Tls(session) => exec(session),
-            })
+        self.pool.with_client(&self.account, |client| {
+            next::list_folders(client).map(|_| ())
+        })
     }
 
     fn probe_smtp(&self) -> MailResult<()> {
@@ -63,30 +44,16 @@ impl ImapSmtpService {
     }
 
     fn set_flag(&self, folder: &str, id: &str, flag: &str, add: bool) -> MailResult<()> {
-        let op = if add {
-            "+FLAGS.SILENT"
+        let flag = next::flag_of(flag)?;
+        let change = if add {
+            FlagChange::Add
         } else {
-            "-FLAGS.SILENT"
+            FlagChange::Remove
         };
-        let mapped = imap_flag(flag);
-        let command = format!("{op} ({mapped})");
-
-        fn exec<S: Read + Write>(
-            session: &mut imap::Session<S>,
-            folder: &str,
-            id: &str,
-            command: &str,
-        ) -> MailResult<()> {
-            session.select(folder).map_err(map_imap_error)?;
-            session.uid_store(id, command).map_err(map_imap_error)?;
-            Ok(())
-        }
-
-        self.pool
-            .with_connection(&self.account, |connection| match connection {
-                ConnectedImapSession::Plain(session) => exec(session, folder, id, &command),
-                ConnectedImapSession::Tls(session) => exec(session, folder, id, &command),
-            })
+        self.pool.with_client(&self.account, |client| {
+            next::select(client, folder)?;
+            next::store_flags(client, id, change, vec![flag.clone()], true)
+        })
     }
 
     pub fn delete_message(&self, account: Option<&str>, folder: &str, id: &str) -> MailResult<()> {
@@ -97,25 +64,12 @@ impl ImapSmtpService {
             .unwrap_or_else(|| "Trash".to_string());
 
         if folder.eq_ignore_ascii_case(&trash) {
-            fn exec<S: Read + Write>(
-                session: &mut imap::Session<S>,
-                folder: &str,
-                id: &str,
-            ) -> MailResult<()> {
-                session.select(folder).map_err(map_imap_error)?;
-                session
-                    .uid_store(id, "+FLAGS.SILENT (\\Deleted)")
-                    .map_err(map_imap_error)?;
-                session.uid_expunge(id).map_err(map_imap_error)?;
-                Ok(())
-            }
-
-            return self
-                .pool
-                .with_connection(&self.account, |connection| match connection {
-                    ConnectedImapSession::Plain(session) => exec(session, folder, id),
-                    ConnectedImapSession::Tls(session) => exec(session, folder, id),
-                });
+            let deleted = next::flag_of("deleted")?;
+            return self.pool.with_client(&self.account, |client| {
+                next::select(client, folder)?;
+                next::store_flags(client, id, FlagChange::Add, vec![deleted.clone()], true)?;
+                next::expunge_uids(client, id)
+            });
         }
 
         self.move_message(account, folder, &trash, id)
@@ -129,32 +83,18 @@ impl ImapSmtpService {
         id: &str,
     ) -> MailResult<()> {
         self.ensure_requested_account(account)?;
+        let deleted = next::flag_of("deleted")?;
 
-        fn exec<S: Read + Write>(
-            session: &mut imap::Session<S>,
-            folder: &str,
-            target: &str,
-            id: &str,
-        ) -> MailResult<()> {
-            session.select(folder).map_err(map_imap_error)?;
-            match session.mv(id, target) {
-                Ok(()) => Ok(()),
-                Err(_) => {
-                    session.uid_copy(id, target).map_err(map_imap_error)?;
-                    session
-                        .uid_store(id, "+FLAGS.SILENT (\\Deleted)")
-                        .map_err(map_imap_error)?;
-                    session.uid_expunge(id).map_err(map_imap_error)?;
-                    Ok(())
-                }
+        self.pool.with_client(&self.account, |client| {
+            next::select(client, folder)?;
+            // UID MOVE when the server has it, COPY + STORE + EXPUNGE otherwise.
+            if next::move_messages(client, id, target).is_ok() {
+                return Ok(());
             }
-        }
-
-        self.pool
-            .with_connection(&self.account, |connection| match connection {
-                ConnectedImapSession::Plain(session) => exec(session, folder, target, id),
-                ConnectedImapSession::Tls(session) => exec(session, folder, target, id),
-            })
+            next::copy(client, id, target)?;
+            next::store_flags(client, id, FlagChange::Add, vec![deleted.clone()], true)?;
+            next::expunge_uids(client, id)
+        })
     }
 
     pub fn copy_message(
@@ -165,23 +105,10 @@ impl ImapSmtpService {
         id: &str,
     ) -> MailResult<()> {
         self.ensure_requested_account(account)?;
-
-        fn exec<S: Read + Write>(
-            session: &mut imap::Session<S>,
-            folder: &str,
-            target: &str,
-            id: &str,
-        ) -> MailResult<()> {
-            session.select(folder).map_err(map_imap_error)?;
-            session.uid_copy(id, target).map_err(map_imap_error)?;
-            Ok(())
-        }
-
-        self.pool
-            .with_connection(&self.account, |connection| match connection {
-                ConnectedImapSession::Plain(session) => exec(session, folder, target, id),
-                ConnectedImapSession::Tls(session) => exec(session, folder, target, id),
-            })
+        self.pool.with_client(&self.account, |client| {
+            next::select(client, folder)?;
+            next::copy(client, id, target).map(|_| ())
+        })
     }
 
     pub fn flag_add(
@@ -213,32 +140,15 @@ impl ImapSmtpService {
         id: &str,
     ) -> MailResult<String> {
         self.ensure_requested_account(account)?;
+        let uid = id
+            .parse::<u32>()
+            .map_err(|_| MailError::invalid_input(format!("invalid message id {id}")))?;
 
-        fn exec<S: Read + Write>(
-            session: &mut imap::Session<S>,
-            folder: &str,
-            id: &str,
-        ) -> MailResult<Vec<(String, Vec<u8>)>> {
-            session.select(folder).map_err(map_imap_error)?;
-            let fetches = session
-                .uid_fetch(id, "BODY.PEEK[]")
-                .map_err(map_imap_error)?;
-            let raw = fetches
-                .iter()
-                .find_map(|fetch| fetch.body())
-                .ok_or_else(|| {
-                    MailError::other("message body was not returned by the IMAP server")
-                })?;
-            extract_attachments(raw)
-        }
-
-        let attachments =
-            self.pool
-                .with_connection(&self.account, |connection| match connection {
-                    ConnectedImapSession::Plain(session) => exec(session, folder, id),
-                    ConnectedImapSession::Tls(session) => exec(session, folder, id),
-                })?;
-
+        let raw = self.pool.with_client(&self.account, |client| {
+            next::select(client, folder)?;
+            next::read_message_raw(client, uid)
+        })?;
+        let attachments = extract_attachments(&raw)?;
         crate::mail::attachments::save_to_downloads(attachments)
     }
 }

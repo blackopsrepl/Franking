@@ -16,9 +16,7 @@ use imap_types::search::SearchKey;
 use imap_types::sequence::SequenceSet;
 use solverforge_mail::mail::account_store::AccountRecord;
 use solverforge_mail::mail::remote::next;
-use solverforge_mail::mail::session::{
-    map_imap_error, open_imap_client, ConnectedImapSession, CredentialProvider, SessionPool,
-};
+use solverforge_mail::mail::session::{open_imap_client, CredentialProvider, SessionPool};
 use solverforge_mail::mail::MailResult;
 
 #[derive(Debug)]
@@ -66,13 +64,8 @@ fn seed(account: &AccountRecord) {
     let pool = Arc::new(SessionPool::with_credentials(Arc::new(FixedCredentials)));
     let raw = b"From: alice@example.com\r\nTo: test@example.com\r\nSubject: Codec probe\r\nMessage-ID: <codec-probe@example.com>\r\nDate: 2026-04-13 09:00:00+00:00\r\n\r\nhello from the codec test";
     for _ in 0..2 {
-        pool.with_connection(account, |connection| match connection {
-            ConnectedImapSession::Plain(session) => session
-                .append("INBOX", raw.as_slice())
-                .map_err(map_imap_error),
-            ConnectedImapSession::Tls(session) => session
-                .append("INBOX", raw.as_slice())
-                .map_err(map_imap_error),
+        pool.with_client(account, |client| {
+            next::append(client, "INBOX", vec![], raw).map(|_| ())
         })
         .expect("seed append");
     }

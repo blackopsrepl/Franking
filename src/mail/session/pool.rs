@@ -1,4 +1,4 @@
-/*! Per-account session reuse and reconnect. */
+/*! Per-account client reuse, reconnect, and IDLE. */
 
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -7,16 +7,20 @@ use std::time::Duration;
 use crate::mail::account_store::AccountRecord;
 use crate::mail::errors::{MailError, MailResult};
 
-use super::connection::{
-    idle_wait, select_mailbox, ConnectedImapSession, IdleOutcome, ImapSession,
-};
+use super::client::ImapClient;
+use super::client_connect::open_imap_client;
 use super::credentials::{CredentialProvider, KeyringCredentials};
+use super::idle::{self, IdleOutcome};
+use super::transport::ReadWrite;
+
+/// An app-owned IMAP client over any transport.
+pub type CodecClient = ImapClient<Box<dyn ReadWrite>>;
 
 #[derive(Debug)]
 pub struct SessionPool {
     credentials: Arc<dyn CredentialProvider>,
-    sessions: Mutex<HashMap<String, ImapSession>>,
-    watchers: Mutex<HashMap<String, ImapSession>>,
+    clients: Mutex<HashMap<String, CodecClient>>,
+    watchers: Mutex<HashMap<String, CodecClient>>,
 }
 
 impl Default for SessionPool {
@@ -33,7 +37,7 @@ impl SessionPool {
     pub fn with_credentials(credentials: Arc<dyn CredentialProvider>) -> Self {
         Self {
             credentials,
-            sessions: Mutex::new(HashMap::new()),
+            clients: Mutex::new(HashMap::new()),
             watchers: Mutex::new(HashMap::new()),
         }
     }
@@ -42,119 +46,67 @@ impl SessionPool {
         &self.credentials
     }
 
-    pub fn with_connection<T>(
+    /// Run an operation against the pooled app-owned client, reconnecting once
+    /// when a transport failure discards it.
+    pub fn with_client<T>(
         &self,
         account: &AccountRecord,
-        mut operation: impl FnMut(&mut ConnectedImapSession) -> MailResult<T>,
+        mut operation: impl FnMut(&mut CodecClient) -> MailResult<T>,
     ) -> MailResult<T> {
-        let mut attempts = 0;
-        loop {
-            let mut sessions = self
-                .sessions
-                .lock()
-                .map_err(|_| MailError::other("session pool lock was poisoned"))?;
-
-            if !sessions.contains_key(&account.name) {
-                sessions.insert(
-                    account.name.clone(),
-                    ImapSession::connect(account, self.credentials.as_ref())?,
-                );
-            }
-
-            let session = sessions
-                .get_mut(&account.name)
-                .expect("session inserted immediately above");
-
-            match operation(session.connection()) {
-                Ok(value) => return Ok(value),
-                Err(error) if error.is_transport() => {
-                    sessions.remove(&account.name);
-                    drop(sessions);
-                    if attempts == 0 {
-                        attempts += 1;
-                        continue;
-                    }
-                    return Err(error);
-                }
-                Err(error) => return Err(error),
-            }
-        }
+        self.with_cached(&self.clients, account, &mut operation)
     }
 
+    /// Wait for a change in a folder over a dedicated IDLE connection, so a
+    /// long wait never blocks the operation client for the same account.
     pub fn idle_wait(
         &self,
         account: &AccountRecord,
         folder: &str,
         timeout: Duration,
     ) -> MailResult<IdleOutcome> {
-        // A dedicated connection is used for IDLE so a long wait never blocks
-        // the operation sessions for the same account.
-        let mut watchers = self
-            .watchers
-            .lock()
-            .map_err(|_| MailError::other("session pool lock was poisoned"))?;
-
-        if !watchers.contains_key(&account.name) {
-            watchers.insert(
-                account.name.clone(),
-                ImapSession::connect(account, self.credentials.as_ref())?,
-            );
-        }
-        let session = watchers
-            .get_mut(&account.name)
-            .expect("session inserted immediately above");
-
-        let result = (|| {
-            select_mailbox(session.connection(), folder)?;
-            idle_wait(session.connection(), timeout)
-        })();
-
-        if let Err(error) = &result {
-            if error.is_transport() {
-                watchers.remove(&account.name);
-            }
-        }
-
-        result
+        self.with_cached(&self.watchers, account, &mut |client| {
+            idle::select(client, folder)?;
+            idle::wait(client, timeout)
+        })
     }
 
     pub fn invalidate(&self, account: &str) {
-        if let Ok(mut sessions) = self.sessions.lock() {
-            sessions.remove(account);
+        if let Ok(mut clients) = self.clients.lock() {
+            clients.remove(account);
+        }
+        if let Ok(mut watchers) = self.watchers.lock() {
+            watchers.remove(account);
         }
     }
-}
 
-impl SessionPool {
-    /// Run an operation against the pooled session, exposing capabilities.
-    pub fn with_session<T>(
+    fn with_cached<T>(
         &self,
+        cache: &Mutex<HashMap<String, CodecClient>>,
         account: &AccountRecord,
-        mut operation: impl FnMut(&mut ImapSession) -> MailResult<T>,
+        operation: &mut impl FnMut(&mut CodecClient) -> MailResult<T>,
     ) -> MailResult<T> {
         let mut attempts = 0;
         loop {
-            let mut sessions = self
-                .sessions
+            let mut clients = cache
                 .lock()
                 .map_err(|_| MailError::other("session pool lock was poisoned"))?;
 
-            if !sessions.contains_key(&account.name) {
-                sessions.insert(
+            if !clients.contains_key(&account.name) {
+                clients.insert(
                     account.name.clone(),
-                    ImapSession::connect(account, self.credentials.as_ref())?,
+                    open_imap_client(account, self.credentials.as_ref())?,
                 );
             }
 
-            let session = sessions
+            let client = clients
                 .get_mut(&account.name)
-                .expect("session inserted immediately above");
+                .expect("client inserted immediately above");
 
-            match operation(session) {
+            match operation(client) {
                 Ok(value) => return Ok(value),
                 Err(error) if error.is_transport() => {
-                    sessions.remove(&account.name);
-                    drop(sessions);
+                    clients.remove(&account.name);
+                    drop(clients);
                     if attempts == 0 {
                         attempts += 1;
                         continue;

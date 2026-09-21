@@ -1,14 +1,11 @@
 /*! Remote IMAP/SMTP backend module wiring. */
 
-mod envelope;
 mod errors;
 mod folders;
 mod mailboxes;
 mod model;
 pub mod next;
 mod ops;
-mod roles;
-mod search;
 mod send;
 mod smtp;
 mod template;

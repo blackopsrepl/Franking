@@ -4,12 +4,11 @@ use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use std::time::Duration;
 
-use solverforge_mail::mail::session::{
-    map_imap_error, ConnectedImapSession, IdleOutcome, SessionPool,
-};
+use solverforge_mail::mail::remote::next;
+use solverforge_mail::mail::session::{Capabilities, IdleOutcome, SessionPool};
 
 use super::fake_imap::{Behavior, FakeImap};
-use super::support::{account, select_inbox, FixedCredentials};
+use super::support::{account, FixedCredentials};
 
 #[test]
 fn append_delivers_the_message_to_the_sent_mailbox() {
@@ -18,17 +17,13 @@ fn append_delivers_the_message_to_the_sent_mailbox() {
     let account = account(server.port);
 
     let payload: &[u8] = b"From: alice@example.com\r\nSubject: Hi\r\n\r\nhello";
+    let appended = pool
+        .with_client(&account, |client| {
+            next::append(client, "Sent", vec![], payload)
+        })
+        .unwrap();
 
-    pool.with_connection(&account, |connection| match connection {
-        ConnectedImapSession::Plain(session) => {
-            session.append("Sent", payload).map_err(map_imap_error)
-        }
-        ConnectedImapSession::Tls(session) => {
-            session.append("Sent", payload).map_err(map_imap_error)
-        }
-    })
-    .unwrap();
-
+    assert_eq!(appended.map(|result| result.uid), Some(42));
     assert_eq!(server.appended.lock().unwrap().as_slice(), payload);
 }
 
@@ -39,7 +34,8 @@ fn session_pool_reuses_one_connection_across_operations() {
     let account = account(server.port);
 
     for _ in 0..2 {
-        pool.with_connection(&account, select_inbox).unwrap();
+        pool.with_client(&account, |client| next::select(client, "INBOX").map(|_| ()))
+            .unwrap();
     }
 
     assert_eq!(server.connections.load(Ordering::SeqCst), 1);
@@ -53,17 +49,11 @@ fn capabilities_are_probed_on_connect() {
     let account = account(server.port);
 
     let capabilities = pool
-        .with_connection(&account, |connection| {
-            Ok(match connection {
-                ConnectedImapSession::Plain(session) => {
-                    let caps = session.capabilities().map_err(map_imap_error)?;
-                    solverforge_mail::mail::session::Capabilities::from_imap(&caps)
-                }
-                ConnectedImapSession::Tls(session) => {
-                    let caps = session.capabilities().map_err(map_imap_error)?;
-                    solverforge_mail::mail::session::Capabilities::from_imap(&caps)
-                }
-            })
+        .with_client(&account, |client| {
+            client
+                .capability()
+                .map(|list| Capabilities::from_capabilities(&list))
+                .map_err(|error| solverforge_mail::mail::MailError::other(error.to_string()))
         })
         .unwrap();
 
@@ -92,8 +82,8 @@ fn transport_failure_is_retried_on_a_fresh_connection() {
     let pool = SessionPool::with_credentials(Arc::new(FixedCredentials));
     let account = account(server.port);
 
-    // The first SELECT drops the connection; the pool must reconnect and retry.
-    pool.with_connection(&account, select_inbox).unwrap();
+    pool.with_client(&account, |client| next::select(client, "INBOX").map(|_| ()))
+        .unwrap();
 
     assert_eq!(server.connections.load(Ordering::SeqCst), 2);
     assert_eq!(server.logins.load(Ordering::SeqCst), 2);

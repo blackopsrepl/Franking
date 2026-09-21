@@ -1,48 +1,15 @@
 /*! Folder and envelope listing plus raw message reads. */
 
-use std::io::{Read, Write};
-
-use crate::mail::errors::{MailError, MailResult};
-use crate::mail::session::{map_imap_error, ConnectedImapSession};
+use crate::mail::errors::MailResult;
 use crate::mail::types::{Envelope, Folder};
 
-use super::envelope::fetch_envelope_metadata;
 use super::model::ImapSmtpService;
-use super::roles::role_from_attributes;
-use super::search::search_criteria;
+use super::next;
 
 impl ImapSmtpService {
     pub fn list_folders(&self, account: Option<&str>) -> MailResult<Vec<Folder>> {
         self.ensure_requested_account(account)?;
-
-        fn exec<S: Read + Write>(session: &mut imap::Session<S>) -> MailResult<Vec<Folder>> {
-            let names = session
-                .list(None, Some("*"))
-                .map_err(map_imap_error)?
-                .into_iter()
-                .filter(|name| {
-                    !name
-                        .attributes()
-                        .iter()
-                        .any(|attr| matches!(attr, imap::types::NameAttribute::NoSelect))
-                })
-                .map(|name| {
-                    let role = role_from_attributes(name.attributes());
-                    Folder {
-                        name: name.name().to_string(),
-                        desc: role.description().map(str::to_string),
-                        role,
-                    }
-                })
-                .collect::<Vec<_>>();
-            Ok(names)
-        }
-
-        self.pool
-            .with_connection(&self.account, |connection| match connection {
-                ConnectedImapSession::Plain(session) => exec(session),
-                ConnectedImapSession::Tls(session) => exec(session),
-            })
+        self.pool.with_client(&self.account, next::list_folders)
     }
 
     pub fn list_envelopes(
@@ -55,21 +22,9 @@ impl ImapSmtpService {
     ) -> MailResult<Vec<Envelope>> {
         self.ensure_requested_account(account)?;
 
-        fn exec<S: Read + Write>(
-            session: &mut imap::Session<S>,
-            folder: &str,
-            page: usize,
-            page_size: usize,
-            query: Option<&str>,
-        ) -> MailResult<Vec<Envelope>> {
-            session.select(folder).map_err(map_imap_error)?;
-
-            let criteria = search_criteria(query);
-            let mut uids = session
-                .uid_search(&criteria)
-                .map_err(map_imap_error)?
-                .into_iter()
-                .collect::<Vec<_>>();
+        let mut envelopes = self.pool.with_client(&self.account, |client| {
+            next::select(client, folder)?;
+            let mut uids = next::search_uids(client, next::search::criteria(query))?;
             if uids.is_empty() {
                 return Ok(Vec::new());
             }
@@ -81,19 +36,8 @@ impl ImapSmtpService {
                 .skip(start)
                 .take(page_size)
                 .collect::<Vec<_>>();
-            fetch_envelope_metadata(session, &page_uids)
-        }
-
-        let mut envelopes =
-            self.pool
-                .with_connection(&self.account, |connection| match connection {
-                    ConnectedImapSession::Plain(session) => {
-                        exec(session, folder, page, page_size, query)
-                    }
-                    ConnectedImapSession::Tls(session) => {
-                        exec(session, folder, page, page_size, query)
-                    }
-                })?;
+            next::fetch_envelopes(client, &page_uids)
+        })?;
         self.tag(&mut envelopes, folder);
         Ok(envelopes)
     }
@@ -105,43 +49,26 @@ impl ImapSmtpService {
         query: Option<&str>,
     ) -> MailResult<Vec<Envelope>> {
         self.ensure_requested_account(account)?;
-        let criteria = search_criteria(query);
 
-        let threaded = self.pool.with_session(&self.account, |session| {
-            if !session.capabilities().thread {
-                return Ok(None);
-            }
-            match session.connection() {
-                ConnectedImapSession::Plain(session) => {
-                    session.select(folder).map_err(map_imap_error)?;
-                    Ok(Some(thread_uids(session, &criteria)?))
-                }
-                ConnectedImapSession::Tls(session) => {
-                    session.select(folder).map_err(map_imap_error)?;
-                    Ok(Some(thread_uids(session, &criteria)?))
-                }
-            }
+        let uids = self.pool.with_client(&self.account, |client| {
+            next::select(client, folder)?;
+            let groups = next::thread_uids(
+                client,
+                imap_types::extensions::thread::ThreadingAlgorithm::References,
+                next::search::criteria(query),
+            )?;
+            let mut uids: Vec<u32> = groups.into_iter().flatten().collect();
+            uids.dedup();
+            Ok(uids)
         })?;
-
-        let Some(uids) = threaded else {
-            return self.list_envelopes(account, folder, 1, usize::MAX, query);
-        };
         if uids.is_empty() {
             return Ok(Vec::new());
         }
 
-        let mut envelopes =
-            self.pool
-                .with_connection(&self.account, |connection| match connection {
-                    ConnectedImapSession::Plain(session) => {
-                        session.select(folder).map_err(map_imap_error)?;
-                        fetch_envelope_metadata(session, &uids)
-                    }
-                    ConnectedImapSession::Tls(session) => {
-                        session.select(folder).map_err(map_imap_error)?;
-                        fetch_envelope_metadata(session, &uids)
-                    }
-                })?;
+        let mut envelopes = self.pool.with_client(&self.account, |client| {
+            next::select(client, folder)?;
+            next::fetch_envelopes(client, &uids)
+        })?;
 
         let order: std::collections::HashMap<u32, usize> = uids
             .iter()
@@ -165,26 +92,13 @@ impl ImapSmtpService {
         id: &str,
     ) -> MailResult<Vec<u8>> {
         self.ensure_requested_account(account)?;
-
-        fn exec<S: Read + Write>(
-            session: &mut imap::Session<S>,
-            folder: &str,
-            id: &str,
-        ) -> MailResult<Vec<u8>> {
-            session.select(folder).map_err(map_imap_error)?;
-            let fetches = session.uid_fetch(id, "RFC822").map_err(map_imap_error)?;
-            fetches
-                .iter()
-                .find_map(|fetch| fetch.body())
-                .map(<[u8]>::to_vec)
-                .ok_or_else(|| MailError::other("message body was not returned by the IMAP server"))
-        }
-
-        self.pool
-            .with_connection(&self.account, |connection| match connection {
-                ConnectedImapSession::Plain(session) => exec(session, folder, id),
-                ConnectedImapSession::Tls(session) => exec(session, folder, id),
-            })
+        let uid = id.parse::<u32>().map_err(|_| {
+            crate::mail::errors::MailError::invalid_input(format!("invalid message id {id}"))
+        })?;
+        self.pool.with_client(&self.account, |client| {
+            next::select(client, folder)?;
+            next::read_message_raw(client, uid)
+        })
     }
 
     /// Tag envelopes with their source account and folder.
@@ -197,43 +111,20 @@ impl ImapSmtpService {
 
     pub fn folder_unread(&self, account: Option<&str>, folder: &str) -> MailResult<usize> {
         self.ensure_requested_account(account)?;
-
-        let mailbox = self
+        let status = self
             .pool
-            .with_connection(&self.account, |connection| match connection {
-                ConnectedImapSession::Plain(session) => {
-                    session.status(folder, "(UNSEEN)").map_err(map_imap_error)
-                }
-                ConnectedImapSession::Tls(session) => {
-                    session.status(folder, "(UNSEEN)").map_err(map_imap_error)
-                }
-            })?;
-        Ok(mailbox.unseen.unwrap_or(0) as usize)
+            .with_client(&self.account, |client| next::status(client, folder))?;
+        Ok(status.unseen.unwrap_or(0) as usize)
     }
 
     /// Fetch every envelope in a folder for caching.
     pub fn sync_folder(&self, account: Option<&str>, folder: &str) -> MailResult<Vec<Envelope>> {
         self.ensure_requested_account(account)?;
-
-        fn exec<S: Read + Write>(
-            session: &mut imap::Session<S>,
-            folder: &str,
-        ) -> MailResult<Vec<Envelope>> {
-            session.select(folder).map_err(map_imap_error)?;
-            let uids = session
-                .uid_search("ALL")
-                .map_err(map_imap_error)?
-                .into_iter()
-                .collect::<Vec<_>>();
-            fetch_envelope_metadata(session, &uids)
-        }
-
-        let mut envelopes =
-            self.pool
-                .with_connection(&self.account, |connection| match connection {
-                    ConnectedImapSession::Plain(session) => exec(session, folder),
-                    ConnectedImapSession::Tls(session) => exec(session, folder),
-                })?;
+        let mut envelopes = self.pool.with_client(&self.account, |client| {
+            next::select(client, folder)?;
+            let uids = next::search_uids(client, next::search::criteria(None))?;
+            next::fetch_envelopes(client, &uids)
+        })?;
         self.tag(&mut envelopes, folder);
         Ok(envelopes)
     }
@@ -257,43 +148,9 @@ impl ImapSmtpService {
         folder: &str,
     ) -> MailResult<(Option<u32>, Option<u32>)> {
         self.ensure_requested_account(account)?;
-
-        let mailbox = self
+        let status = self
             .pool
-            .with_connection(&self.account, |connection| match connection {
-                ConnectedImapSession::Plain(session) => {
-                    session.examine(folder).map_err(map_imap_error)
-                }
-                ConnectedImapSession::Tls(session) => {
-                    session.examine(folder).map_err(map_imap_error)
-                }
-            })?;
-        Ok((mailbox.uid_validity, mailbox.uid_next))
+            .with_client(&self.account, |client| next::status(client, folder))?;
+        Ok((status.uid_validity, status.uid_next))
     }
-}
-
-/// Run `UID THREAD REFERENCES` and flatten the thread groups into UID order.
-fn thread_uids<S: Read + Write>(
-    session: &mut imap::Session<S>,
-    criteria: &str,
-) -> MailResult<Vec<u32>> {
-    let response = session
-        .run_command_and_read_response(format!("UID THREAD REFERENCES UTF-8 {criteria}"))
-        .map_err(map_imap_error)?;
-    Ok(parse_thread_response(&String::from_utf8_lossy(&response)))
-}
-
-fn parse_thread_response(response: &str) -> Vec<u32> {
-    let mut uids = Vec::new();
-    for line in response.lines() {
-        let Some(rest) = line.strip_prefix("* THREAD") else {
-            continue;
-        };
-        for token in rest.split(|ch: char| !ch.is_ascii_digit()) {
-            if let Ok(uid) = token.parse() {
-                uids.push(uid);
-            }
-        }
-    }
-    uids
 }

@@ -1,7 +1,7 @@
 //! Shared helpers for the IMAP session integration tests.
 
 use solverforge_mail::mail::account_store::AccountRecord;
-use solverforge_mail::mail::session::{map_imap_error, ConnectedImapSession, CredentialProvider};
+use solverforge_mail::mail::session::CredentialProvider;
 use solverforge_mail::mail::MailResult;
 
 #[derive(Debug)]
@@ -35,16 +35,4 @@ pub(crate) fn account(port: u16) -> AccountRecord {
         keyring_imap_secret_id: Some("service".to_string()),
         keyring_smtp_secret_id: None,
     }
-}
-
-pub(crate) fn select_inbox(connection: &mut ConnectedImapSession) -> MailResult<()> {
-    match connection {
-        ConnectedImapSession::Plain(session) => {
-            session.select("INBOX").map_err(map_imap_error)?;
-        }
-        ConnectedImapSession::Tls(session) => {
-            session.select("INBOX").map_err(map_imap_error)?;
-        }
-    }
-    Ok(())
 }

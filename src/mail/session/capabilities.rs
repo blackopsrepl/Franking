@@ -1,4 +1,6 @@
-/*! Server capability decoding. */
+/*! Server capability decoding, from the codec's typed capability list. */
+
+use imap_types::response::Capability;
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Capabilities {
@@ -40,7 +42,7 @@ impl Capabilities {
             uidplus: has("UIDPLUS"),
             qresync: has("QRESYNC"),
             condstore: has("CONDSTORE"),
-            special_use: has("SPECIAL-USE"),
+            special_use: has("SPECIAL-USE") || has("SPECIAL-USE=EXTENDED"),
             sort: has("SORT"),
             thread: has("THREAD"),
             utf8_accept: has("UTF8=ACCEPT"),
@@ -51,13 +53,27 @@ impl Capabilities {
         }
     }
 
-    pub fn from_imap(capabilities: &imap::types::Capabilities) -> Self {
+    pub fn from_capabilities(capabilities: &[Capability<'_>]) -> Self {
         let names = capabilities
             .iter()
             .map(|capability| match capability {
-                imap_proto::types::Capability::Imap4rev1 => "IMAP4rev1".to_string(),
-                imap_proto::types::Capability::Auth(mechanism) => format!("AUTH={mechanism}"),
-                imap_proto::types::Capability::Atom(name) => name.to_string(),
+                Capability::Imap4Rev1 => "IMAP4rev1".to_string(),
+                Capability::Auth(mechanism) => format!("AUTH={mechanism}"),
+                Capability::Sort(Some(algorithm)) => format!("SORT={algorithm}"),
+                Capability::Thread(algorithm) => format!("THREAD={algorithm}"),
+                Capability::Idle => "IDLE".to_string(),
+                Capability::Move => "MOVE".to_string(),
+                Capability::UidPlus => "UIDPLUS".to_string(),
+                Capability::CondStore => "CONDSTORE".to_string(),
+                Capability::QResync => "QRESYNC".to_string(),
+                Capability::StartTls => "STARTTLS".to_string(),
+                Capability::LoginDisabled => "LOGINDISABLED".to_string(),
+                Capability::Other(other) => {
+                    // The wrapped atom is private; its Debug form names it.
+                    let debug = format!("{other:?}");
+                    debug.split('"').nth(1).unwrap_or_default().to_string()
+                }
+                other => format!("{other:?}"),
             })
             .collect::<Vec<_>>();
         Self::from_names(names)

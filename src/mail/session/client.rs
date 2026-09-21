@@ -3,6 +3,8 @@
 transport, tag allocation, literal continuations, and the mapping of failures
 into the app's error taxonomy. */
 
+use std::time::Duration;
+
 use anyhow::{anyhow, Context, Result};
 use imap_codec::encode::{Encoder, Fragment};
 use imap_codec::CommandCodec;
@@ -40,6 +42,11 @@ impl<S: ReadWrite + 'static> ImapClient<S> {
         ImapClient::new(Box::new(self.stream.into_inner()))
     }
 
+    /// Adjust the transport read timeout, used to bound IDLE waits.
+    pub fn set_read_timeout(&self, timeout: Option<Duration>) -> std::io::Result<()> {
+        self.stream.set_read_timeout(timeout)
+    }
+
     /// Undecodable response lines seen so far.
     pub fn skipped_lines(&self) -> &[String] {
         &self.stream.skipped
@@ -66,8 +73,10 @@ impl<S: ReadWrite + 'static> ImapClient<S> {
                             return Err(anyhow!("server refused the literal: {continuation}"));
                         }
                     }
+                    // The encoder emits the command's trailing CRLF as its
+                    // own Line fragment; adding one here would send a blank
+                    // line, which servers answer with an untagged BAD.
                     self.stream.write_all(&data)?;
-                    self.stream.write_all(b"\r\n")?;
                 }
             }
         }
@@ -220,6 +229,15 @@ impl<S: ReadWrite + 'static> ImapClient<S> {
     /// End the session politely.
     pub fn logout(&mut self) {
         let _ = self.run(CommandBody::Logout);
+    }
+}
+
+impl<S: ReadWrite + 'static> std::fmt::Debug for ImapClient<S> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ImapClient")
+            .field("tag", &self.tag)
+            .field("skipped", &self.stream.skipped.len())
+            .finish_non_exhaustive()
     }
 }
 

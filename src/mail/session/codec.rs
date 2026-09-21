@@ -5,6 +5,7 @@ parse, which desynchronized the reader; here an unparseable line is counted,
 logged, and skipped, and the next valid line still parses. */
 
 use std::io::{BufRead, BufReader, Read, Write};
+use std::time::Duration;
 
 use anyhow::{anyhow, Context, Result};
 use imap_codec::decode::Decoder;
@@ -14,6 +15,8 @@ use imap_types::command::Command;
 use imap_types::response::{Response, Status};
 
 use crate::mail::errors::{MailError, MailResult};
+
+use super::transport::ReadWrite;
 
 /// Bytes read from the socket at a time.
 const READ_CHUNK: usize = 8 * 1024;
@@ -156,6 +159,14 @@ impl<R: Read + Write> ResponseReader<R> {
 
     /// Read a whole line (including CRLF) straight from the socket, for use
     /// while a literal is being sent or a continuation is expected.
+    /// Adjust the read timeout of the underlying stream.
+    pub fn set_read_timeout(&self, timeout: Option<Duration>) -> std::io::Result<()>
+    where
+        R: ReadWrite,
+    {
+        self.reader.get_ref().set_read_timeout(timeout)
+    }
+
     pub fn read_raw_line(&mut self) -> Result<String> {
         let mut line = Vec::new();
         let read = self.reader.read_until(b'\n', &mut line)?;

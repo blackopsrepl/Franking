@@ -8,7 +8,7 @@
 //! printf 'auth_allow_cleartext = yes\n' > 99-test.conf
 //! podman run -d --name sfm-dovecot -p 1143:31143 -e USER_PASSWORD=password \
 //!   -v $PWD/99-test.conf:/etc/dovecot/conf.d/99-test.conf:Z dovecot/dovecot:latest
-//! SOLVERFORGE_IMAP_TEST_ADDR=127.0.0.1:1143 cargo test --test dovecot_test
+//! SOLVERFORGE_IMAP_TEST_ADDR=127.0.0.1:1153 cargo test --test dovecot_test
 //! ```
 //!
 //! Any username authenticates with that password; the drop-in allows cleartext
@@ -18,10 +18,9 @@ use std::sync::Arc;
 
 use solverforge_mail::mail::account_store::AccountRecord;
 use solverforge_mail::mail::mime;
+use solverforge_mail::mail::remote::next;
 use solverforge_mail::mail::remote::ImapSmtpService;
-use solverforge_mail::mail::session::{
-    map_imap_error, ConnectedImapSession, CredentialProvider, SessionPool,
-};
+use solverforge_mail::mail::session::{CredentialProvider, SessionPool};
 use solverforge_mail::mail::MailResult;
 
 #[derive(Debug)]
@@ -70,13 +69,8 @@ fn dovecot_append_list_read_and_flag() {
     let service = ImapSmtpService::new(account.clone(), pool.clone());
 
     let raw = b"From: alice@example.com\r\nTo: test@example.com\r\nSubject: Dovecot probe\r\nMessage-ID: <probe@example.com>\r\nDate: 2026-04-13 09:00:00+00:00\r\n\r\nhello from dovecot";
-    pool.with_connection(&account, |connection| match connection {
-        ConnectedImapSession::Plain(session) => session
-            .append("INBOX", raw.as_slice())
-            .map_err(map_imap_error),
-        ConnectedImapSession::Tls(session) => session
-            .append("INBOX", raw.as_slice())
-            .map_err(map_imap_error),
+    pool.with_client(&account, |client| {
+        next::append(client, "INBOX", vec![], raw).map(|_| ())
     })
     .expect("append");
 
@@ -129,13 +123,8 @@ fn dovecot_threads_messages() {
     let parent = b"From: alice@example.com\r\nTo: test@example.com\r\nSubject: Thread root\r\nMessage-ID: <root@example.com>\r\n\r\nroot";
     let child = b"From: bob@example.com\r\nTo: test@example.com\r\nSubject: Re: Thread root\r\nMessage-ID: <child@example.com>\r\nReferences: <root@example.com>\r\nIn-Reply-To: <root@example.com>\r\n\r\nreply";
     for raw in [parent.as_slice(), child.as_slice()] {
-        pool.with_connection(&account, |connection| match connection {
-            ConnectedImapSession::Plain(session) => {
-                session.append("INBOX", raw).map_err(map_imap_error)
-            }
-            ConnectedImapSession::Tls(session) => {
-                session.append("INBOX", raw).map_err(map_imap_error)
-            }
+        pool.with_client(&account, |client| {
+            next::append(client, "INBOX", vec![], raw).map(|_| ())
         })
         .expect("append");
     }

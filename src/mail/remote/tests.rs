@@ -1,8 +1,16 @@
 /*! Remote backend unit tests. */
 
-use super::roles::{pick_drafts_folder, pick_sent_folder, pick_trash_folder};
-use super::search::search_criteria;
+use super::send::pick_role_folder;
 use super::template::parse_template_message;
+use crate::mail::types::{Folder, FolderRole};
+
+fn folder(name: &str, role: FolderRole) -> Folder {
+    Folder {
+        name: name.to_string(),
+        desc: None,
+        role,
+    }
+}
 
 #[test]
 fn template_parser_splits_headers_and_body() {
@@ -13,85 +21,38 @@ fn template_parser_splits_headers_and_body() {
 }
 
 #[test]
-fn search_criteria_translate_the_app_query_grammar() {
-    assert_eq!(search_criteria(None), "ALL");
-    assert_eq!(search_criteria(Some("   ")), "ALL");
-    assert_eq!(search_criteria(Some("flag seen")), "SEEN");
-    assert_eq!(search_criteria(Some("not flag seen")), "UNSEEN");
-    assert_eq!(search_criteria(Some("flag flagged")), "FLAGGED");
+fn roles_prefer_special_use_attributes_over_names() {
+    let folders = vec![
+        folder("INBOX", FolderRole::Inbox),
+        folder("Gesendet", FolderRole::Sent),
+        folder("Sent", FolderRole::Other),
+    ];
     assert_eq!(
-        search_criteria(Some("subject quarterly")),
-        "SUBJECT \"quarterly\""
-    );
-    assert_eq!(
-        search_criteria(Some("from alice and not flag seen")),
-        "FROM \"alice\" UNSEEN"
-    );
-    assert_eq!(search_criteria(Some("revenue")), "TEXT \"revenue\"");
-    assert_eq!(
-        search_criteria(Some("body standing order")),
-        "BODY \"standing order\""
-    );
-    assert_eq!(
-        search_criteria(Some("to bob@example.com")),
-        "TO \"bob@example.com\""
-    );
-    assert_eq!(
-        search_criteria(Some("subject \"quoted\"")),
-        "SUBJECT \"\\\"quoted\\\"\""
+        pick_role_folder(&folders, FolderRole::Sent).as_deref(),
+        Some("Gesendet")
     );
 }
 
 #[test]
-fn sent_folder_prefers_special_use_over_names() {
+fn roles_fall_back_to_historical_and_localized_names() {
     let folders = vec![
-        ("INBOX".to_string(), Vec::new()),
-        ("Gesendet".to_string(), vec!["\\Sent".to_string()]),
-        ("Sent".to_string(), Vec::new()),
-    ];
-    assert_eq!(pick_sent_folder(&folders).as_deref(), Some("Gesendet"));
-
-    let fallback = vec![
-        ("INBOX".to_string(), Vec::new()),
-        ("Sent Items".to_string(), Vec::new()),
-    ];
-    assert_eq!(pick_sent_folder(&fallback).as_deref(), Some("Sent Items"));
-    assert!(pick_sent_folder(&[("INBOX".to_string(), Vec::new())]).is_none());
-}
-
-#[test]
-fn trash_folder_prefers_special_use_over_names() {
-    let folders = vec![
-        ("INBOX".to_string(), Vec::new()),
-        ("Papierkorb".to_string(), vec!["\\Trash".to_string()]),
-        ("Trash".to_string(), Vec::new()),
-    ];
-    assert_eq!(pick_trash_folder(&folders).as_deref(), Some("Papierkorb"));
-
-    let fallback = vec![
-        ("INBOX".to_string(), Vec::new()),
-        ("Deleted Items".to_string(), Vec::new()),
+        folder("INBOX", FolderRole::Inbox),
+        folder("Sent Items", FolderRole::Other),
+        folder("Papierkorb", FolderRole::Trash),
+        folder("Entwuerfe", FolderRole::Drafts),
     ];
     assert_eq!(
-        pick_trash_folder(&fallback).as_deref(),
-        Some("Deleted Items")
+        pick_role_folder(&folders, FolderRole::Sent).as_deref(),
+        Some("Sent Items"),
+        "name fallback finds senders without the RFC 6154 attribute"
     );
-    assert!(pick_trash_folder(&[("INBOX".to_string(), Vec::new())]).is_none());
-}
-
-#[test]
-fn drafts_folder_prefers_special_use_over_names() {
-    let folders = vec![
-        ("INBOX".to_string(), Vec::new()),
-        ("Entwuerfe".to_string(), vec!["\\Drafts".to_string()]),
-        ("Drafts".to_string(), Vec::new()),
-    ];
-    assert_eq!(pick_drafts_folder(&folders).as_deref(), Some("Entwuerfe"));
-
-    let fallback = vec![
-        ("INBOX".to_string(), Vec::new()),
-        ("Drafts".to_string(), Vec::new()),
-    ];
-    assert_eq!(pick_drafts_folder(&fallback).as_deref(), Some("Drafts"));
-    assert!(pick_drafts_folder(&[("INBOX".to_string(), Vec::new())]).is_none());
+    assert_eq!(
+        pick_role_folder(&folders, FolderRole::Trash).as_deref(),
+        Some("Papierkorb")
+    );
+    assert_eq!(
+        pick_role_folder(&folders, FolderRole::Drafts).as_deref(),
+        Some("Entwuerfe")
+    );
+    assert!(pick_role_folder(&[folder("INBOX", FolderRole::Inbox)], FolderRole::Sent).is_none());
 }

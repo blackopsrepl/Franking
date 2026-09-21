@@ -1,20 +1,17 @@
 /*! Compose templates, sending, drafts, and SMTP transport. */
 
-use imap::types::Flag;
-
 use lettre::message::{header::ContentType, Attachment, MultiPart, SinglePart};
 use lettre::{Message, Transport};
 
 use crate::mail::errors::{MailError, MailResult};
 use crate::mail::mime;
 use crate::mail::service::SendOptions;
-use crate::mail::session::{map_imap_error, ConnectedImapSession};
+
+use crate::mail::types::{Folder, FolderRole};
 
 use super::errors::map_smtp_error;
 use super::model::ImapSmtpService;
-use super::roles::{
-    list_folder_attributes, pick_drafts_folder, pick_sent_folder, pick_trash_folder,
-};
+use super::next;
 use super::template::{
     forward_subject, forwarded_body, parse_mailbox, parse_mailboxes, parse_template_message,
     quoted_reply_body, render_template, reply_subject,
@@ -111,15 +108,12 @@ impl ImapSmtpService {
         let Some(folder) = self.drafts_folder_name()? else {
             return Ok("Draft saved locally only (no Drafts mailbox found).".to_string());
         };
-        self.pool
-            .with_connection(&self.account, |connection| match connection {
-                ConnectedImapSession::Plain(session) => session
-                    .append_with_flags(&folder, message.formatted(), &[Flag::Draft])
-                    .map_err(map_imap_error),
-                ConnectedImapSession::Tls(session) => session
-                    .append_with_flags(&folder, message.formatted(), &[Flag::Draft])
-                    .map_err(map_imap_error),
-            })?;
+        let draft = next::flag_of("draft")?;
+        self.pool.with_client(&self.account, |client| {
+            let formatted = message.formatted();
+            next::append(client, &folder, vec![draft.clone()], &formatted)?;
+            Ok(())
+        })?;
         Ok("Draft saved.".to_string())
     }
 
@@ -210,44 +204,38 @@ impl ImapSmtpService {
         let Some(folder) = self.sent_folder_name()? else {
             return Ok(());
         };
-        self.pool
-            .with_connection(&self.account, |connection| match connection {
-                ConnectedImapSession::Plain(session) => {
-                    session.append(&folder, raw).map_err(map_imap_error)
-                }
-                ConnectedImapSession::Tls(session) => {
-                    session.append(&folder, raw).map_err(map_imap_error)
-                }
-            })
+        self.pool.with_client(&self.account, |client| {
+            next::append(client, &folder, vec![], raw).map(|_| ())
+        })
     }
 
     pub(super) fn drafts_folder_name(&self) -> MailResult<Option<String>> {
-        let folders = self
-            .pool
-            .with_connection(&self.account, |connection| match connection {
-                ConnectedImapSession::Plain(session) => list_folder_attributes(session),
-                ConnectedImapSession::Tls(session) => list_folder_attributes(session),
-            })?;
-        Ok(pick_drafts_folder(&folders))
+        self.role_folder_name(FolderRole::Drafts)
     }
 
     pub(super) fn sent_folder_name(&self) -> MailResult<Option<String>> {
-        let folders = self
-            .pool
-            .with_connection(&self.account, |connection| match connection {
-                ConnectedImapSession::Plain(session) => list_folder_attributes(session),
-                ConnectedImapSession::Tls(session) => list_folder_attributes(session),
-            })?;
-        Ok(pick_sent_folder(&folders))
+        self.role_folder_name(FolderRole::Sent)
     }
 
     pub(super) fn trash_folder_name(&self) -> MailResult<Option<String>> {
-        let folders = self
-            .pool
-            .with_connection(&self.account, |connection| match connection {
-                ConnectedImapSession::Plain(session) => list_folder_attributes(session),
-                ConnectedImapSession::Tls(session) => list_folder_attributes(session),
-            })?;
-        Ok(pick_trash_folder(&folders))
+        self.role_folder_name(FolderRole::Trash)
     }
+
+    fn role_folder_name(&self, role: FolderRole) -> MailResult<Option<String>> {
+        Ok(pick_role_folder(&self.list_folders(None)?, role))
+    }
+}
+
+/// Choose a role's mailbox, preferring the RFC 6154 attribute over localized or
+/// historical names, which is how servers without SPECIAL-USE are handled.
+pub(super) fn pick_role_folder(folders: &[Folder], role: FolderRole) -> Option<String> {
+    folders
+        .iter()
+        .find(|folder| folder.role == role)
+        .or_else(|| {
+            folders
+                .iter()
+                .find(|folder| FolderRole::from_name(&folder.name) == role)
+        })
+        .map(|folder| folder.name.clone())
 }
