@@ -94,16 +94,23 @@ impl MailService for RouterMailService {
         match result {
             Ok(raw) => {
                 if let Ok(document) = crate::mail::mime::parse_message(&raw) {
-                    let stored = StoredMessage::from_document(
-                        &record.name,
-                        folder,
-                        id,
-                        None,
-                        &[],
-                        &document,
-                        Some(raw.clone()),
-                    );
                     let _ = self.with_db(|conn| {
+                        let mut flags = store::get_message(conn, &record.name, folder, id)
+                            .map_err(|err| MailError::config_invalid(err.to_string()))?
+                            .map(|message| message.flags)
+                            .unwrap_or_default();
+                        if !flags.iter().any(|flag| flag.eq_ignore_ascii_case("seen")) {
+                            flags.push("Seen".to_string());
+                        }
+                        let stored = StoredMessage::from_document(
+                            &record.name,
+                            folder,
+                            id,
+                            None,
+                            &flags,
+                            &document,
+                            Some(raw.clone()),
+                        );
                         store::upsert_message(conn, &stored)
                             .map_err(|err| MailError::config_invalid(err.to_string()))
                     });
@@ -121,10 +128,16 @@ impl MailService for RouterMailService {
     }
 
     fn delete_message(&self, account: Option<&str>, folder: &str, id: &str) -> MailResult<()> {
-        match self.route_account(account)? {
+        let record = self.choose_account(account)?;
+        match self.route_account(Some(&record.name))? {
             Route::Maildir(service) => service.delete_message(account, folder, id),
             Route::Remote(service) => service.delete_message(account, folder, id),
-        }
+        }?;
+        let _ = self.with_db(|conn| {
+            store::delete_message(conn, &record.name, folder, id)
+                .map_err(|err| MailError::config_invalid(err.to_string()))
+        });
+        Ok(())
     }
 
     fn move_message(
@@ -134,10 +147,16 @@ impl MailService for RouterMailService {
         target: &str,
         id: &str,
     ) -> MailResult<()> {
-        match self.route_account(account)? {
+        let record = self.choose_account(account)?;
+        match self.route_account(Some(&record.name))? {
             Route::Maildir(service) => service.move_message(account, folder, target, id),
             Route::Remote(service) => service.move_message(account, folder, target, id),
-        }
+        }?;
+        let _ = self.with_db(|conn| {
+            store::move_message(conn, &record.name, folder, id, target)
+                .map_err(|err| MailError::config_invalid(err.to_string()))
+        });
+        Ok(())
     }
 
     fn copy_message(
@@ -160,10 +179,16 @@ impl MailService for RouterMailService {
         id: &str,
         flag: &str,
     ) -> MailResult<()> {
-        match self.route_account(account)? {
+        let record = self.choose_account(account)?;
+        match self.route_account(Some(&record.name))? {
             Route::Maildir(service) => service.flag_add(account, folder, id, flag),
             Route::Remote(service) => service.flag_add(account, folder, id, flag),
-        }
+        }?;
+        let _ = self.with_db(|conn| {
+            store::set_flag(conn, &record.name, folder, id, flag, true)
+                .map_err(|err| MailError::config_invalid(err.to_string()))
+        });
+        Ok(())
     }
 
     fn flag_remove(
@@ -173,10 +198,16 @@ impl MailService for RouterMailService {
         id: &str,
         flag: &str,
     ) -> MailResult<()> {
-        match self.route_account(account)? {
+        let record = self.choose_account(account)?;
+        match self.route_account(Some(&record.name))? {
             Route::Maildir(service) => service.flag_remove(account, folder, id, flag),
             Route::Remote(service) => service.flag_remove(account, folder, id, flag),
-        }
+        }?;
+        let _ = self.with_db(|conn| {
+            store::set_flag(conn, &record.name, folder, id, flag, false)
+                .map_err(|err| MailError::config_invalid(err.to_string()))
+        });
+        Ok(())
     }
 
     fn download_attachments(

@@ -1,8 +1,9 @@
 use rusqlite::Connection;
 
 use super::{
-    count_messages, delete_message, get_message, get_sync_state, list_messages, search_messages,
-    set_sync_state, thread_messages, upsert_envelope, upsert_message, StoredMessage, SyncState,
+    count_messages, delete_message, get_message, get_sync_state, list_messages, move_message,
+    search_messages, set_flag, set_sync_state, thread_messages, upsert_envelope, upsert_message,
+    StoredMessage, SyncState,
 };
 use crate::mail::types::{Envelope, Sender};
 
@@ -159,4 +160,24 @@ fn envelope_round_trips_through_the_store_shape() {
     let stored = StoredMessage::from_envelope("work", "INBOX", &envelope);
     assert_eq!(stored.from_email.as_deref(), Some("bob@example.com"));
     assert_eq!(stored.to_envelope(), envelope);
+}
+
+#[test]
+fn flag_and_move_updates_are_cached() {
+    let conn = store();
+    upsert_message(&conn, &message("1", "hi", "body")).unwrap();
+
+    set_flag(&conn, "work", "INBOX", "1", "Seen", true).unwrap();
+    set_flag(&conn, "work", "INBOX", "1", "Flagged", true).unwrap();
+    let loaded = get_message(&conn, "work", "INBOX", "1").unwrap().unwrap();
+    assert!(loaded.flags.iter().any(|flag| flag == "Seen"));
+    assert!(loaded.flags.iter().any(|flag| flag == "Flagged"));
+
+    set_flag(&conn, "work", "INBOX", "1", "Seen", false).unwrap();
+    let loaded = get_message(&conn, "work", "INBOX", "1").unwrap().unwrap();
+    assert!(!loaded.flags.iter().any(|flag| flag == "Seen"));
+
+    move_message(&conn, "work", "INBOX", "1", "Trash").unwrap();
+    assert!(get_message(&conn, "work", "INBOX", "1").unwrap().is_none());
+    assert!(get_message(&conn, "work", "Trash", "1").unwrap().is_some());
 }

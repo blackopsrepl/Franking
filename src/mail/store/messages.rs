@@ -232,3 +232,48 @@ pub fn retain_uids(conn: &Connection, account: &str, folder: &str, keep: &[Strin
     }
     Ok(())
 }
+
+/// Add or remove one flag on a cached message.
+pub fn set_flag(
+    conn: &Connection,
+    account: &str,
+    folder: &str,
+    uid: &str,
+    flag: &str,
+    present: bool,
+) -> Result<()> {
+    let Some(message) = get_message(conn, account, folder, uid)? else {
+        return Ok(());
+    };
+
+    let mut flags = message.flags;
+    flags.retain(|existing| !existing.eq_ignore_ascii_case(flag));
+    if present {
+        flags.push(flag.to_string());
+    }
+
+    conn.execute(
+        "UPDATE messages SET flags = ?4, updated_at = datetime('now')
+         WHERE account = ?1 AND folder = ?2 AND uid = ?3",
+        params![account, folder, uid, flags.join(" ")],
+    )
+    .context("failed to update cached flags")?;
+    Ok(())
+}
+
+/// Move a cached message to another folder.
+pub fn move_message(
+    conn: &Connection,
+    account: &str,
+    folder: &str,
+    uid: &str,
+    target: &str,
+) -> Result<()> {
+    conn.execute(
+        "UPDATE messages SET folder = ?4, updated_at = datetime('now')
+         WHERE account = ?1 AND folder = ?2 AND uid = ?3",
+        params![account, folder, uid, target],
+    )
+    .context("failed to move cached message")?;
+    Ok(())
+}
