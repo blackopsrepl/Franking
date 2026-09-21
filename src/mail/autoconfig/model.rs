@@ -19,6 +19,7 @@ pub enum DiscoverySource {
     Preset,
     MozillaAutoconfig,
     Autodiscover,
+    Srv,
 }
 
 /// Normalize a discovery socket type to the app's security vocabulary.

@@ -5,6 +5,7 @@ mod discover;
 mod model;
 mod mozilla;
 mod presets;
+mod srv;
 
 #[cfg(test)]
 mod tests;

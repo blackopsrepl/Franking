@@ -114,3 +114,102 @@ fn discover_prefers_presets_without_network() {
     assert_eq!(config.source, DiscoverySource::Preset);
     assert!(discover::discover("not-an-email").is_none());
 }
+
+mod srv_tests {
+    use super::super::discover;
+    use super::super::model::DiscoverySource;
+    use super::super::srv::{SrvLookup, SrvRecord};
+
+    struct MockSrv(Vec<(&'static str, Vec<SrvRecord>)>);
+
+    impl SrvLookup for MockSrv {
+        fn lookup(&self, name: &str) -> Vec<SrvRecord> {
+            self.0
+                .iter()
+                .find(|(candidate, _)| *candidate == name)
+                .map(|(_, records)| records.clone())
+                .unwrap_or_default()
+        }
+    }
+
+    fn record(priority: u16, weight: u16, port: u16, target: &str) -> SrvRecord {
+        SrvRecord {
+            priority,
+            weight,
+            port,
+            target: target.to_string(),
+        }
+    }
+
+    #[test]
+    fn srv_records_map_to_imap_and_submission_endpoints() {
+        let resolver = MockSrv(vec![
+            (
+                "_imaps._tcp.example.org",
+                vec![record(10, 5, 993, "imap1.example.org.")],
+            ),
+            (
+                "_submissions._tcp.example.org",
+                vec![record(10, 5, 465, "smtp1.example.org.")],
+            ),
+        ]);
+
+        let config = discover::discover_with("alice@example.org", &resolver).unwrap();
+        assert_eq!(config.imap_host, "imap1.example.org");
+        assert_eq!(config.imap_port, 993);
+        assert_eq!(config.imap_security, "tls");
+        assert_eq!(config.smtp_host, "smtp1.example.org");
+        assert_eq!(config.smtp_port, 465);
+        assert_eq!(config.source, DiscoverySource::Srv);
+    }
+
+    #[test]
+    fn srv_prefers_lower_priority_then_higher_weight() {
+        let resolver = MockSrv(vec![
+            (
+                "_imaps._tcp.example.org",
+                vec![
+                    record(20, 0, 993, "backup.example.org."),
+                    record(10, 1, 993, "low.example.org."),
+                    record(10, 9, 993, "high.example.org."),
+                ],
+            ),
+            (
+                "_submissions._tcp.example.org",
+                vec![record(10, 0, 587, "smtp.example.org.")],
+            ),
+        ]);
+
+        let config = discover::discover_with("alice@example.org", &resolver).unwrap();
+        assert_eq!(config.imap_host, "high.example.org");
+    }
+
+    #[test]
+    fn srv_falls_back_to_starttls_service_names() {
+        let resolver = MockSrv(vec![
+            (
+                "_imap._tcp.example.org",
+                vec![record(10, 0, 143, "imap.example.org.")],
+            ),
+            (
+                "_submission._tcp.example.org",
+                vec![record(10, 0, 587, "smtp.example.org.")],
+            ),
+        ]);
+
+        let config = discover::discover_with("alice@example.org", &resolver).unwrap();
+        assert_eq!(config.imap_port, 143);
+        assert_eq!(config.imap_security, "starttls");
+        assert_eq!(config.smtp_security, "starttls");
+    }
+
+    #[test]
+    fn srv_requires_both_endpoints() {
+        let resolver = MockSrv(vec![(
+            "_imaps._tcp.example.org",
+            vec![record(10, 0, 993, "imap.example.org.")],
+        )]);
+
+        assert!(discover::discover_with("alice@example.org", &resolver).is_none());
+    }
+}
