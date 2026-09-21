@@ -115,6 +115,14 @@ pub trait MailService: Send + Sync {
         ))
     }
 
+    /// Mark every message in a folder as seen.
+    fn mark_folder_seen(&self, account: Option<&str>, folder: &str) -> MailResult<()> {
+        let _ = (account, folder);
+        Err(MailError::unsupported_feature(
+            "marking a folder read is not supported by this backend",
+        ))
+    }
+
     /// UIDVALIDITY and UIDNEXT for a folder, when the backend can report them.
     fn folder_sync_cursor(
         &self,

@@ -268,6 +268,15 @@ impl MailService for MaildirService {
         self.list_envelopes(account, folder, 1, usize::MAX, None)
     }
 
+    fn mark_folder_seen(&self, _account: Option<&str>, folder: &str) -> MailResult<()> {
+        self.ensure_ready()?;
+        let dir = self.folder_path(folder)?;
+        for entry in list_message_entries(&dir)? {
+            update_flag(&find_message_path(&dir, &entry.envelope.id)?, "seen", true)?;
+        }
+        Ok(())
+    }
+
     fn draft_template(&self, _account: Option<&str>, folder: &str, id: &str) -> MailResult<String> {
         self.ensure_ready()?;
         let document = read_parsed_message(&find_message_path(&self.folder_path(folder)?, id)?)?;

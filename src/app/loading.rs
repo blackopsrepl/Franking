@@ -95,6 +95,16 @@ impl App {
         }
     }
 
+    pub(crate) fn mark_folder_read(&mut self) {
+        if self.current_folder == super::model::UNIFIED_INBOX {
+            return;
+        }
+        self.loading = true;
+        self.pending_refresh_after_action = true;
+        self.worker
+            .mark_folder_seen(self.acct_owned(), self.current_folder.clone());
+    }
+
     pub(crate) fn sync_folder(&mut self) {
         self.loading = true;
         self.set_status("Caching folder for offline use...");

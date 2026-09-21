@@ -277,3 +277,21 @@ pub fn move_message(
     .context("failed to move cached message")?;
     Ok(())
 }
+
+/// Mark every cached message in a folder as seen.
+pub fn mark_folder_seen(conn: &Connection, account: &str, folder: &str) -> Result<()> {
+    let uids = {
+        let mut statement = conn
+            .prepare("SELECT uid FROM messages WHERE account = ?1 AND folder = ?2")
+            .context("failed to prepare folder scan")?;
+        let rows = statement
+            .query_map(params![account, folder], |row| row.get::<_, String>(0))
+            .context("failed to scan folder messages")?;
+        rows.collect::<rusqlite::Result<Vec<_>>>()
+            .context("failed to read folder messages")?
+    };
+    for uid in uids {
+        set_flag(conn, account, folder, &uid, "seen", true)?;
+    }
+    Ok(())
+}

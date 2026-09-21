@@ -11,6 +11,25 @@ use super::search::imap_flag;
 use super::template::extract_attachments;
 
 impl ImapSmtpService {
+    /// Mark every message in a folder as seen.
+    pub fn mark_folder_seen(&self, account: Option<&str>, folder: &str) -> MailResult<()> {
+        self.ensure_requested_account(account)?;
+
+        fn exec<S: Read + Write>(session: &mut imap::Session<S>, folder: &str) -> MailResult<()> {
+            session.select(folder).map_err(map_imap_error)?;
+            session
+                .uid_store("1:*", "+FLAGS.SILENT (\\Seen)")
+                .map_err(map_imap_error)?;
+            Ok(())
+        }
+
+        self.pool
+            .with_connection(&self.account, |connection| match connection {
+                ConnectedImapSession::Plain(session) => exec(session, folder),
+                ConnectedImapSession::Tls(session) => exec(session, folder),
+            })
+    }
+
     pub fn probe_account(&self, account: &str) -> MailResult<()> {
         self.ensure_account(account)?;
         self.probe_imap()?;

@@ -68,6 +68,7 @@ impl App {
             Action::ToggleFlag => self.toggle_flag(),
             Action::ToggleRead => self.toggle_read(),
             Action::SyncFolder => self.sync_folder(),
+            Action::MarkFolderRead => self.mark_folder_read(),
             Action::DownloadAttachments => self.download_attachments(),
             Action::ToggleThread => self.toggle_thread(),
             Action::Search => self.enter_search(),

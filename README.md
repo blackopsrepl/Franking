@@ -72,6 +72,7 @@ cargo run -- --setup
 - `m` - Move to folder
 - `!` - Toggle flag
 - `N` - Toggle read/unread
+- `A` - Mark all read
 - `t` - Toggle threaded view
 - `/` - Search
 - `Tab` - Focus folders

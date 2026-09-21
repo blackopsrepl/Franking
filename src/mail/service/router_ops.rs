@@ -257,6 +257,19 @@ impl MailService for RouterMailService {
         }
     }
 
+    fn mark_folder_seen(&self, account: Option<&str>, folder: &str) -> MailResult<()> {
+        let record = self.choose_account(account)?;
+        match self.route_account(Some(&record.name))? {
+            Route::Maildir(service) => service.mark_folder_seen(account, folder),
+            Route::Remote(service) => service.mark_folder_seen(account, folder),
+        }?;
+        let _ = self.with_db(|conn| {
+            store::mark_folder_seen(conn, &record.name, folder)
+                .map_err(|err| MailError::config_invalid(err.to_string()))
+        });
+        Ok(())
+    }
+
     fn folder_sync_cursor(
         &self,
         account: Option<&str>,

@@ -267,18 +267,6 @@ impl Worker {
         });
     }
 
-    /// Cache every message in a folder for offline use.
-    pub fn sync_folder(&self, account: Option<String>, folder: String) {
-        let tx = self.tx.clone();
-        let service = self.service.clone();
-        thread::spawn(move || {
-            let result = service
-                .sync_folder(account.as_deref(), &folder)
-                .map(|envelopes| format!("Cached {} messages.", envelopes.len()));
-            let _ = tx.send(WorkerResult::ActionDone(result));
-        });
-    }
-
     /// Persist a compiled template as a draft.
     pub fn save_draft(&self, account: Option<String>, template: String) {
         let tx = self.tx.clone();

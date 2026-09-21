@@ -77,6 +77,7 @@ pub enum Action {
     ToggleFlag,
     ToggleRead,
     SyncFolder,
+    MarkFolderRead,
     DownloadAttachments,
     ToggleThread,
     Search,
