@@ -222,6 +222,22 @@ fn envelope_list_selects_for_batch_actions() {
         resolve(View::EnvelopeList, key(KeyCode::Char('z'))),
         Action::Undo
     );
+    assert_eq!(
+        resolve(View::EnvelopeList, key(KeyCode::Char('['))),
+        Action::CollapseThread
+    );
+    assert_eq!(
+        resolve(View::EnvelopeList, key(KeyCode::Left)),
+        Action::CollapseThread
+    );
+    assert_eq!(
+        resolve(View::EnvelopeList, key(KeyCode::Char(']'))),
+        Action::ExpandThread
+    );
+    assert_eq!(
+        resolve(View::EnvelopeList, key(KeyCode::Right)),
+        Action::ExpandThread
+    );
 }
 
 // ── Move prompt ─────────────────────────────────────────────────────

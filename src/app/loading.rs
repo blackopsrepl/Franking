@@ -218,6 +218,9 @@ impl App {
 
     pub(crate) fn toggle_thread(&mut self) {
         self.threaded = !self.threaded;
+        if !self.threaded {
+            self.clear_collapsed_threads();
+        }
         self.page = 1;
         self.load_envelopes();
         if self.threaded {

@@ -18,6 +18,7 @@ mod pgp;
 mod selection;
 mod sieve;
 mod smime;
+mod threads;
 mod undo;
 mod worker;
 

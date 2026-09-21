@@ -128,6 +128,9 @@ pub struct App {
     /// Reversible operation performed by the last destructive action.
     pub(crate) pending_undo: Option<super::undo::UndoOp>,
 
+    /// Envelopes hidden by collapsing a thread, keyed by thread root.
+    pub(crate) collapsed_threads: std::collections::HashMap<String, Vec<Envelope>>,
+
     // ── Compose autosave ────────────────────────────────────────────
     /// Directory holding the crash-safe autosave of the message in progress.
     pub(crate) autosave_dir: std::path::PathBuf,
@@ -205,6 +208,7 @@ impl App {
             pending_refresh_after_action: false,
             selected: Default::default(),
             pending_undo: None,
+            collapsed_threads: std::collections::HashMap::new(),
             autosave_dir: super::autosave::default_dir(),
             autosave_ticks: 0,
             db: None,

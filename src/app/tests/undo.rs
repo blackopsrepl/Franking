@@ -158,3 +158,71 @@ fn recovers_an_autosaved_message_at_startup() {
 
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+fn threaded_envelope(
+    id: &str,
+    message_id: &str,
+    parent: Option<&str>,
+) -> crate::mail::types::Envelope {
+    crate::mail::types::Envelope {
+        id: id.to_string(),
+        flags: Vec::new(),
+        subject: format!("Subject {id}"),
+        sender: crate::mail::types::Sender::Plain("alice@example.com".to_string()),
+        date: String::new(),
+        message_id: Some(message_id.to_string()),
+        in_reply_to: parent.map(str::to_string),
+        account: None,
+        folder: Some("INBOX".to_string()),
+    }
+}
+
+#[test]
+fn collapses_and_expands_a_thread() {
+    use super::super::App;
+
+    let mut app = App::new(None);
+    app.threaded = true;
+    app.envelopes = vec![
+        threaded_envelope("1", "a@example.com", None),
+        threaded_envelope("2", "b@example.com", Some("a@example.com")),
+        threaded_envelope("3", "c@example.com", Some("b@example.com")),
+        threaded_envelope("4", "d@example.com", None),
+    ];
+    app.envelope_state.select(Some(0));
+
+    app.collapse_thread();
+    assert_eq!(app.envelopes.len(), 2, "replies hidden");
+    assert_eq!(app.envelopes[1].id, "4");
+    assert!(app.collapsed_threads.contains_key("a@example.com"));
+
+    // Collapsing from a reply folds the whole thread.
+    app.envelope_state.select(Some(0));
+    app.expand_thread();
+    assert_eq!(app.envelopes.len(), 4);
+    assert!(app.collapsed_threads.is_empty());
+}
+
+#[test]
+fn collapsing_off_threading_reports_and_hides_nothing() {
+    use super::super::App;
+
+    let mut app = App::new(None);
+    app.threaded = false;
+    app.envelopes = vec![threaded_envelope("1", "a@example.com", None)];
+    app.envelope_state.select(Some(0));
+    app.collapse_thread();
+    assert_eq!(app.envelopes.len(), 1);
+    assert!(app.status_message.contains("Threading is off"));
+}
+
+#[test]
+fn expanding_without_a_collapsed_thread_reports_status() {
+    use super::super::App;
+
+    let mut app = App::new(None);
+    app.envelopes = vec![threaded_envelope("1", "a@example.com", None)];
+    app.envelope_state.select(Some(0));
+    app.expand_thread();
+    assert!(app.status_message.contains("No collapsed thread"));
+}

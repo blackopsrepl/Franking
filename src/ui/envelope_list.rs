@@ -68,6 +68,11 @@ pub fn render(app: &mut App, frame: &mut Frame, area: Rect) {
     } else {
         Vec::new()
     };
+    let root_keys = if app.threaded {
+        app.thread_root_keys()
+    } else {
+        Vec::new()
+    };
 
     let rows: Vec<Row> = app
         .envelopes
@@ -94,6 +99,13 @@ pub fn render(app: &mut App, frame: &mut Frame, area: Rect) {
                 format!("{}\u{21b3} {}", "  ".repeat(depth), env.subject)
             } else {
                 env.subject.clone()
+            };
+            let subject = match root_keys.get(index) {
+                Some(key) => match app.collapsed_threads.get(key) {
+                    Some(hidden) => format!("▸ {subject}  (+{})", hidden.len()),
+                    None => subject,
+                },
+                None => subject,
             };
             let subject_cell = Cell::from(subject).style(base_style);
             let date_cell = Cell::from(relative_date(&env.date, &now)).style(t.dimmed());

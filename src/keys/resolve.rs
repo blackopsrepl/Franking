@@ -136,6 +136,8 @@ fn resolve_envelope_list(key: KeyEvent) -> Action {
         KeyCode::Char(' ') => Action::ToggleSelect,
         KeyCode::Char('u') => Action::ClearSelection,
         KeyCode::Char('z') => Action::Undo,
+        KeyCode::Char('[') | KeyCode::Left => Action::CollapseThread,
+        KeyCode::Char(']') | KeyCode::Right => Action::ExpandThread,
         KeyCode::Char('?') => Action::ToggleHelp,
         KeyCode::Char('I') => Action::OpenIdentities,
         KeyCode::Tab => Action::FocusFolders,

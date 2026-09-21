@@ -131,6 +131,10 @@ pub enum Action {
     ToggleSelect,
     /// Reverse the last destructive action.
     Undo,
+    /// Hide the replies of the cursor's thread.
+    CollapseThread,
+    /// Restore a collapsed thread.
+    ExpandThread,
     ClearSelection,
     // ── Sieve filters ─────────────────────────────────────────────────
     OpenSieve,
