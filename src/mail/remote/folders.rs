@@ -197,6 +197,18 @@ impl ImapSmtpService {
         Ok(mailbox.unseen.unwrap_or(0) as usize)
     }
 
+    /// Build a resume template from a stored draft message.
+    pub fn draft_template(
+        &self,
+        account: Option<&str>,
+        folder: &str,
+        id: &str,
+    ) -> MailResult<String> {
+        let raw = self.read_message_raw(account, folder, id)?;
+        let document = crate::mail::mime::parse_message(&raw)?;
+        Ok(crate::mail::draft::draft_template(&document))
+    }
+
     /// UIDVALIDITY and UIDNEXT for a folder, used to seed sync cursors.
     pub fn folder_sync_cursor(
         &self,

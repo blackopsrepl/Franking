@@ -228,6 +228,16 @@ impl Worker {
         });
     }
 
+    /// Fetch a resume template for a stored draft.
+    pub fn fetch_draft_template(&self, account: Option<String>, folder: String, id: String) {
+        let tx = self.tx.clone();
+        let service = self.service.clone();
+        thread::spawn(move || {
+            let result = service.draft_template(account.as_deref(), &folder, &id);
+            let _ = tx.send(WorkerResult::Template(result));
+        });
+    }
+
     /// Fetch a forward template.
     pub fn fetch_template_forward(&self, account: Option<String>, folder: String, id: String) {
         let tx = self.tx.clone();

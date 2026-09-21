@@ -85,6 +85,14 @@ pub trait MailService: Send + Sync {
         -> MailResult<String>;
     fn template_send(&self, account: Option<&str>, template: &str) -> MailResult<String>;
 
+    /// Build a resume template from a stored draft message.
+    fn draft_template(&self, account: Option<&str>, folder: &str, id: &str) -> MailResult<String> {
+        let _ = (account, folder, id);
+        Err(MailError::unsupported_feature(
+            "resuming drafts is not supported by this backend",
+        ))
+    }
+
     /// Persist a compose template as a draft in the account's Drafts mailbox.
     fn save_draft(&self, account: Option<&str>, template: &str) -> MailResult<String> {
         let _ = (account, template);

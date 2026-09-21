@@ -97,6 +97,12 @@ fn dovecot_append_list_read_and_flag() {
     let document = mime::parse_message(&bytes).expect("parse");
     assert_eq!(document.subject(), "Dovecot probe");
 
+    let resume = service
+        .draft_template(None, "INBOX", &probe.id)
+        .expect("draft template");
+    assert!(resume.contains("Subject: Dovecot probe"));
+    assert!(resume.contains("To: test@example.com"));
+
     service
         .flag_add(None, "INBOX", &probe.id, "seen")
         .expect("flag");

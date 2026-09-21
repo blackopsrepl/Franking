@@ -259,6 +259,12 @@ impl MailService for MaildirService {
         Ok("Draft saved.".to_string())
     }
 
+    fn draft_template(&self, _account: Option<&str>, folder: &str, id: &str) -> MailResult<String> {
+        self.ensure_ready()?;
+        let document = read_parsed_message(&find_message_path(&self.folder_path(folder)?, id)?)?;
+        Ok(crate::mail::draft::draft_template(&document))
+    }
+
     fn folder_unread(&self, account: Option<&str>, folder: &str) -> MailResult<usize> {
         self.list_envelopes(account, folder, 1, usize::MAX, Some("not flag seen"))
             .map(|envelopes| envelopes.len())

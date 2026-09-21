@@ -1,6 +1,7 @@
 pub mod account_store;
 pub mod attachments;
 pub mod autoconfig;
+pub mod draft;
 pub mod errors;
 pub mod maildir;
 pub mod mime;

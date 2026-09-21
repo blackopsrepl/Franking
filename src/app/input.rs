@@ -121,6 +121,7 @@ impl App {
             Action::ComposeDiscard => self.compose_discard(),
             Action::ComposeConfirmDiscard => {
                 self.compose_state = None;
+                self.pending_draft = None;
                 self.view = View::EnvelopeList;
             }
             Action::ComposeCancelDiscard => {

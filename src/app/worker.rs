@@ -77,6 +77,9 @@ impl App {
                     self.loading = false;
                     self.compose_state = None;
                     self.view = View::EnvelopeList;
+                    if let Some((folder, id)) = self.pending_draft.take() {
+                        self.worker.delete_message(self.acct_owned(), folder, id);
+                    }
                     self.set_status(&msg);
                     self.refresh_envelopes();
                 }

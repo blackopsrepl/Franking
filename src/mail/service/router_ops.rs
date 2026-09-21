@@ -256,6 +256,13 @@ impl MailService for RouterMailService {
         }
     }
 
+    fn draft_template(&self, account: Option<&str>, folder: &str, id: &str) -> MailResult<String> {
+        match self.route_account(account)? {
+            Route::Maildir(service) => service.draft_template(account, folder, id),
+            Route::Remote(service) => service.draft_template(account, folder, id),
+        }
+    }
+
     fn folder_unread(&self, account: Option<&str>, folder: &str) -> MailResult<usize> {
         match self.route_account(account)? {
             Route::Maildir(service) => service.folder_unread(account, folder),

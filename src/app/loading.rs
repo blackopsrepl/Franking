@@ -1,6 +1,7 @@
 /*! Folder, envelope, and message loading plus item actions. */
 
 use crate::keys::View;
+use crate::mail::types::FolderRole;
 
 use super::model::{App, PAGE_SIZE};
 
@@ -43,10 +44,25 @@ impl App {
     pub(crate) fn load_message(&mut self) {
         if let Some(id) = self.selected_envelope_id().map(|s| s.to_string()) {
             self.loading = true;
+            if self.current_folder_is_drafts() {
+                self.pending_draft = Some((self.current_folder.clone(), id.clone()));
+                self.worker.fetch_draft_template(
+                    self.acct_owned(),
+                    self.current_folder.clone(),
+                    id,
+                );
+                return;
+            }
             self.pending_message_id = Some(id.clone());
             self.worker
                 .fetch_message(self.acct_owned(), self.current_folder.clone(), id);
         }
+    }
+
+    pub(crate) fn current_folder_is_drafts(&self) -> bool {
+        self.folders
+            .iter()
+            .any(|folder| folder.name == self.current_folder && folder.role == FolderRole::Drafts)
     }
 
     // ── Mouse handling ───────────────────────────────────────────────

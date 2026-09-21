@@ -92,6 +92,9 @@ pub struct App {
     // ── Pending state for message view after background load ────────
     pub(crate) pending_message_id: Option<String>,
 
+    // ── Draft being resumed (folder, id), deleted after a successful send ──
+    pub(crate) pending_draft: Option<(String, String)>,
+
     // ── Track if delete/move was from message view ──────────────────
     pub(crate) pending_return_to_list: bool,
     pub(crate) pending_refresh_after_action: bool,
@@ -153,6 +156,7 @@ impl App {
             pending_open_command: None,
             worker: Worker::new(),
             pending_message_id: None,
+            pending_draft: None,
             pending_return_to_list: false,
             pending_refresh_after_action: false,
             db: None,
