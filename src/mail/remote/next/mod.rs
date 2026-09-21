@@ -8,11 +8,15 @@ use imap_types::sequence::SequenceSet;
 use crate::mail::errors::{MailError, MailResult};
 use crate::mail::session::{map_codec_error, ImapClient, ReadWrite};
 
+mod condstore;
 mod map;
 mod read;
 pub mod search;
 mod write;
 
+pub use condstore::{
+    enable_qresync, fetch_changed_flags, select_condstore, SelectState, SyncAnchor,
+};
 pub use map::{envelopes_from_fetch, folders_from_list, thread_groups, uids_from_search};
 pub use read::{
     examine, fetch_envelopes, list_folders, read_message_raw, search_uids, select, sort_uids,

@@ -12,6 +12,21 @@ use super::super::session::SessionPool;
 use super::super::types::{sort_accounts, Account};
 use super::service_trait::MailService;
 
+/// Evaluate `$call` against the backend routed for `$account`.
+///
+/// The maildir and IMAP backends expose the same method surface but do not
+/// share a trait here, so the two arms are generated from one expression.
+macro_rules! route {
+    ($router:ident, $account:expr, $service:ident => $call:expr) => {
+        match $router.route_account($account)? {
+            $crate::mail::service::router::Route::Maildir($service) => $call,
+            $crate::mail::service::router::Route::Remote($service) => $call,
+        }
+    };
+}
+
+pub(crate) use route;
+
 pub fn default_mail_service() -> Arc<dyn MailService> {
     Arc::new(RouterMailService::default())
 }

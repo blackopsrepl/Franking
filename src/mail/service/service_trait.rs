@@ -117,6 +117,22 @@ pub trait MailService: Send + Sync {
         Ok(Vec::new())
     }
 
+    /// Report folder changes since an anchor, when the backend can.
+    ///
+    /// Backends that cannot report deltas return `full_resync`.
+    fn sync_folder_delta(
+        &self,
+        account: Option<&str>,
+        folder: &str,
+        anchor: Option<crate::mail::remote::next::SyncAnchor>,
+    ) -> MailResult<crate::mail::types::FolderDelta> {
+        let _ = (account, folder, anchor);
+        Ok(crate::mail::types::FolderDelta {
+            full_resync: true,
+            ..crate::mail::types::FolderDelta::default()
+        })
+    }
+
     /// Build a resume template from a stored draft message.
     fn draft_template(&self, account: Option<&str>, folder: &str, id: &str) -> MailResult<String> {
         let _ = (account, folder, id);

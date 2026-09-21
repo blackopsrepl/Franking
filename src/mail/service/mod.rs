@@ -5,6 +5,7 @@ mod read;
 mod router;
 mod router_ops;
 mod router_sieve;
+mod router_sync;
 mod service_trait;
 
 #[cfg(test)]

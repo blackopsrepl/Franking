@@ -6,21 +6,8 @@ use crate::mail::store;
 use crate::mail::types::{Account, Envelope, Folder};
 
 use super::cache::{cached_envelopes, is_offline, record_listing};
-use super::router::{Route, RouterMailService};
+use super::router::{route, RouterMailService};
 use super::service_trait::{MailService, SendOptions};
-
-/// Evaluate `$call` against the backend routed for `$account`.
-///
-/// The maildir and IMAP backends expose the same method surface but do not
-/// share a trait here, so the two arms are generated from one expression.
-macro_rules! route {
-    ($router:ident, $account:expr, $service:ident => $call:expr) => {
-        match $router.route_account($account)? {
-            Route::Maildir($service) => $call,
-            Route::Remote($service) => $call,
-        }
-    };
-}
 
 impl MailService for RouterMailService {
     fn list_accounts(&self) -> MailResult<Vec<Account>> {
@@ -198,18 +185,7 @@ impl MailService for RouterMailService {
     }
 
     fn sync_folder(&self, account: Option<&str>, folder: &str) -> MailResult<Vec<Envelope>> {
-        let record = self.choose_account(account)?;
-        let envelopes =
-            route!(self, Some(&record.name), service => service.sync_folder(account, folder))?;
-
-        let cursor = self
-            .folder_sync_cursor(Some(&record.name), folder)
-            .unwrap_or((None, None));
-        let _ = self.with_db(|conn| {
-            record_listing(conn, &record.name, folder, &envelopes, cursor)
-                .map_err(|err| MailError::config_invalid(err.to_string()))
-        });
-        Ok(envelopes)
+        self.sync_folder_cached(account, folder)
     }
 
     fn draft_template(&self, account: Option<&str>, folder: &str, id: &str) -> MailResult<String> {

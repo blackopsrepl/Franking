@@ -1,8 +1,4 @@
-//! Live verification of the app-owned IMAP command layer.
-//!
-//! Runs only when `SOLVERFORGE_IMAP_TEST_ADDR` points at a Dovecot test
-//! container, per the recipe in `dovecot_test.rs`. It exercises exactly what
-//! the legacy `imap` crate could not: SORT, THREAD, CONDSTORE and QRESYNC.
+//! Command-layer behavior and the legacy equivalence gate.
 
 use std::sync::Arc;
 
@@ -14,68 +10,17 @@ use imap_types::fetch::{MacroOrMessageDataItemNames, MessageDataItemName};
 use imap_types::response::{Code, Data, Response};
 use imap_types::search::SearchKey;
 use imap_types::sequence::SequenceSet;
-use solverforge_mail::mail::account_store::AccountRecord;
 use solverforge_mail::mail::remote::next;
-use solverforge_mail::mail::session::{open_imap_client, CredentialProvider, SessionPool};
-use solverforge_mail::mail::MailResult;
+use solverforge_mail::mail::session::{open_imap_client, SessionPool};
 
-#[derive(Debug)]
-struct FixedCredentials;
-
-impl CredentialProvider for FixedCredentials {
-    fn lookup(&self, _service: &str, _username: &str) -> MailResult<String> {
-        Ok("password".to_string())
-    }
-}
-
-fn account(host: &str, port: u16) -> AccountRecord {
-    AccountRecord {
-        name: "dovecot".to_string(),
-        backend_kind: "imap".to_string(),
-        provider_kind: "generic".to_string(),
-        enabled: true,
-        is_default: true,
-        maildir_path: None,
-        imap_host: Some(host.to_string()),
-        imap_port: Some(port),
-        imap_security: Some("plain".to_string()),
-        smtp_host: None,
-        smtp_port: None,
-        smtp_security: None,
-        sieve_host: None,
-        sieve_port: None,
-        sieve_security: None,
-        auth_mode: Some("password".to_string()),
-        username: Some("test".to_string()),
-        keyring_imap_secret_id: Some("dovecot".to_string()),
-        keyring_smtp_secret_id: None,
-    }
-}
-
-fn test_address() -> Option<(String, u16)> {
-    let address = std::env::var("SOLVERFORGE_IMAP_TEST_ADDR").ok()?;
-    let (host, port) = address.rsplit_once(':')?;
-    Some((host.to_string(), port.parse().ok()?))
-}
-
-/// Seed two messages through the legacy append path, which the pool already
-/// exercises, so this test only depends on its own client for reads.
-fn seed(account: &AccountRecord) {
-    let pool = Arc::new(SessionPool::with_credentials(Arc::new(FixedCredentials)));
-    let raw = b"From: alice@example.com\r\nTo: test@example.com\r\nSubject: Codec probe\r\nMessage-ID: <codec-probe@example.com>\r\nDate: 2026-04-13 09:00:00+00:00\r\n\r\nhello from the codec test";
-    for _ in 0..2 {
-        pool.with_client(account, |client| {
-            next::append(client, "INBOX", vec![], raw).map(|_| ())
-        })
-        .expect("seed append");
-    }
-}
+use super::support::{account, mailbox_lock, seed, test_address, FixedCredentials};
 
 #[test]
 fn sorts_threads_and_tracks_modseq_over_the_codec_layer() {
     let Some((host, port)) = test_address() else {
         return;
     };
+    let _guard = mailbox_lock();
     let account = account(&host, port);
     seed(&account);
 

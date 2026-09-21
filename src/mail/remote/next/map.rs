@@ -198,7 +198,7 @@ fn mailbox_name(mailbox: &Mailbox<'_>) -> String {
     }
 }
 
-fn flag_name(flag: &FlagFetch<'_>) -> String {
+pub fn flag_name(flag: &FlagFetch<'_>) -> String {
     match flag {
         FlagFetch::Recent => "Recent".to_string(),
         FlagFetch::Flag(Flag::Seen) => "Seen".to_string(),

@@ -8,6 +8,7 @@ pub mod next;
 mod ops;
 mod send;
 mod smtp;
+mod sync;
 mod template;
 
 #[cfg(test)]

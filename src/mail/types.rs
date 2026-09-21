@@ -104,6 +104,20 @@ pub struct Envelope {
     pub folder: Option<String>,
 }
 
+/// The changes a server reported for a cached folder since a sync anchor.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct FolderDelta {
+    /// True when the anchor could not be used and a full listing is required.
+    pub full_resync: bool,
+    pub uid_validity: Option<u32>,
+    pub uid_next: Option<u32>,
+    pub highest_modseq: Option<u64>,
+    /// UIDs the server no longer has.
+    pub vanished: Vec<u32>,
+    /// UIDs whose flags changed, with their current flags.
+    pub changed_flags: Vec<(u32, Vec<String>)>,
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub enum Sender {
     Plain(String),
