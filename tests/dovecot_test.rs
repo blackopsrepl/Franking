@@ -97,6 +97,9 @@ fn dovecot_append_list_read_and_flag() {
     let document = mime::parse_message(&bytes).expect("parse");
     assert_eq!(document.subject(), "Dovecot probe");
 
+    let cached = service.sync_folder(None, "INBOX").expect("sync folder");
+    assert!(!cached.is_empty(), "sync_folder should return envelopes");
+
     let resume = service
         .draft_template(None, "INBOX", &probe.id)
         .expect("draft template");
