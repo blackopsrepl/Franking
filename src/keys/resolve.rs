@@ -289,6 +289,8 @@ fn resolve_move_prompt(key: KeyEvent) -> Action {
         KeyCode::Enter => Action::MoveSubmit,
         KeyCode::Esc => Action::MoveCancel,
         KeyCode::Backspace => Action::MoveBackspace,
+        KeyCode::Char('j') | KeyCode::Down => Action::MoveNext,
+        KeyCode::Char('k') | KeyCode::Up => Action::MovePrev,
         KeyCode::Char(c) => Action::MoveInput(c),
         _ => Action::None,
     }

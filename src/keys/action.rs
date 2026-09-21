@@ -109,6 +109,8 @@ pub enum Action {
     MoveMessage,
     MoveInput(char),
     MoveBackspace,
+    MoveNext,
+    MovePrev,
     MoveSubmit,
     MoveCancel,
     // ── Crypto unlock prompt ──────────────────────────────────────────

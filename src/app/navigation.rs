@@ -233,44 +233,5 @@ impl App {
         }
     }
 
-    pub(crate) fn enter_move_prompt(&mut self) {
-        if self.selected_envelope_id().is_some() {
-            self.move_target.clear();
-            self.view = View::MovePrompt;
-        }
-    }
-
-    pub(crate) fn submit_move(&mut self) {
-        let target = self.move_target.clone();
-        if target.is_empty() {
-            self.set_status("No target folder specified.");
-            self.view = View::EnvelopeList;
-            return;
-        }
-        let ids = self.target_ids();
-        if let Some(id) = ids.first().cloned() {
-            self.loading = true;
-            self.pending_refresh_after_action = true;
-            self.view = View::EnvelopeList;
-            let account = self.acct_owned();
-            let folder = self.current_folder.clone();
-            self.pending_undo = Some(super::undo::UndoOp::Move {
-                from: folder.clone(),
-                to: target.clone(),
-                ids: ids.clone(),
-            });
-            if ids.len() == 1 {
-                self.worker.move_message(account, folder, target, id);
-            } else {
-                self.selected.clear();
-                self.worker.move_messages(account, folder, target, ids);
-            }
-        }
-    }
-
-    pub(crate) fn cancel_move(&mut self) {
-        self.view = View::EnvelopeList;
-    }
-
     // ── Editor key forwarding ────────────────────────────────────────
 }

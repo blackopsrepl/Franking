@@ -81,6 +81,8 @@ pub struct App {
 
     // ── Move prompt state ───────────────────────────────────────────
     pub move_target: String,
+    /// Highlighted row in the move-to-folder picker.
+    pub(crate) move_index: usize,
 
     // ── Crypto unlock state ─────────────────────────────────────────
     /// Passphrase for PGP secret keys, seeded from the environment or the
@@ -188,6 +190,7 @@ impl App {
             search_query: String::new(),
             active_query: None,
             move_target: String::new(),
+            move_index: 0,
             crypto_passphrase: crate::mail::pgp::resolve_passphrase(),
             unlock_input: String::new(),
             threaded: false,

@@ -99,10 +99,10 @@ impl App {
             Action::ScrollUp => self.scroll(-1),
             Action::ScrollDown => self.scroll(1),
             Action::MoveMessage => self.enter_move_prompt(),
-            Action::MoveInput(c) => self.move_target.push(c),
-            Action::MoveBackspace => {
-                self.move_target.pop();
-            }
+            Action::MoveInput(c) => self.move_prompt_input(c),
+            Action::MoveNext => self.move_next_candidate(),
+            Action::MovePrev => self.move_prev_candidate(),
+            Action::MoveBackspace => self.move_prompt_backspace(),
             Action::MoveSubmit => self.submit_move(),
             Action::MoveCancel => self.cancel_move(),
             Action::UnlockPrompt => self.enter_unlock_prompt(),

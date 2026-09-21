@@ -13,6 +13,7 @@ mod input;
 mod loading;
 mod model;
 mod mouse;
+mod move_prompt;
 mod navigation;
 mod pgp;
 mod selection;

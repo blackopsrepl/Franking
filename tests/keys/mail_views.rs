@@ -260,6 +260,14 @@ fn move_prompt_input() {
         resolve(View::MovePrompt, key(KeyCode::Esc)),
         Action::MoveCancel
     );
+    assert_eq!(
+        resolve(View::MovePrompt, key(KeyCode::Char('j'))),
+        Action::MoveNext
+    );
+    assert_eq!(
+        resolve(View::MovePrompt, key(KeyCode::Up)),
+        Action::MovePrev
+    );
 }
 
 // ── Passphrase unlock prompt ────────────────────────────────────────
