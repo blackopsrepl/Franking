@@ -194,10 +194,12 @@ pub(super) fn create_schema(conn: &Connection) -> Result<()> {
              id         INTEGER PRIMARY KEY AUTOINCREMENT,
              account    TEXT,
              template   TEXT    NOT NULL,
-             sign       INTEGER NOT NULL DEFAULT 0,
-             encrypt    INTEGER NOT NULL DEFAULT 0,
-             send_after TEXT,
-             created_at TEXT    NOT NULL DEFAULT (datetime('now'))
+             sign           INTEGER NOT NULL DEFAULT 0,
+             encrypt        INTEGER NOT NULL DEFAULT 0,
+             smime_sign     INTEGER NOT NULL DEFAULT 0,
+             smime_encrypt  INTEGER NOT NULL DEFAULT 0,
+             send_after     TEXT,
+             created_at     TEXT    NOT NULL DEFAULT (datetime('now'))
          );
 
          CREATE TABLE sync_state (
@@ -213,6 +215,20 @@ pub(super) fn create_schema(conn: &Connection) -> Result<()> {
     Ok(())
 }
 
+/// The table and column named by an `ALTER TABLE … ADD COLUMN …` statement.
+fn added_column(statement: &str) -> Option<(&str, &str)> {
+    let table = statement
+        .strip_prefix("ALTER TABLE ")?
+        .split_whitespace()
+        .next()?;
+    let column = statement
+        .split("ADD COLUMN ")
+        .nth(1)?
+        .split_whitespace()
+        .next()?;
+    Some((table, column))
+}
+
 /// Add columns introduced after the first schema without resetting local data.
 pub(super) fn migrate_schema(conn: &Connection) -> Result<()> {
     let has_signature: bool = conn
@@ -226,9 +242,11 @@ pub(super) fn migrate_schema(conn: &Connection) -> Result<()> {
              id         INTEGER PRIMARY KEY AUTOINCREMENT,
              account    TEXT,
              template   TEXT    NOT NULL,
-             sign       INTEGER NOT NULL DEFAULT 0,
-             encrypt    INTEGER NOT NULL DEFAULT 0,
-             send_after TEXT,
+             sign           INTEGER NOT NULL DEFAULT 0,
+             encrypt        INTEGER NOT NULL DEFAULT 0,
+             smime_sign     INTEGER NOT NULL DEFAULT 0,
+             smime_encrypt  INTEGER NOT NULL DEFAULT 0,
+             send_after     TEXT,
              created_at TEXT    NOT NULL DEFAULT (datetime('now'))
          );",
     )?;
@@ -239,18 +257,21 @@ pub(super) fn migrate_schema(conn: &Connection) -> Result<()> {
         conn.execute_batch("ALTER TABLE outbox ADD COLUMN send_after TEXT;")?;
     }
     for column in [
+        "ALTER TABLE outbox ADD COLUMN smime_sign INTEGER NOT NULL DEFAULT 0;",
+        "ALTER TABLE outbox ADD COLUMN smime_encrypt INTEGER NOT NULL DEFAULT 0;",
         "ALTER TABLE account_endpoints ADD COLUMN sieve_host TEXT;",
         "ALTER TABLE account_endpoints ADD COLUMN sieve_port INTEGER;",
         "ALTER TABLE account_endpoints ADD COLUMN sieve_security TEXT;",
     ] {
-        let name = column
-            .split("ADD COLUMN ")
-            .nth(1)
-            .and_then(|rest| rest.split_whitespace().next())
-            .unwrap_or_default();
+        let Some((table, name)) = added_column(column) else {
+            continue;
+        };
+        // Guard against the column's own table: an earlier version checked
+        // every statement against one table, so adding a column to any other
+        // table ran an ALTER that the CREATE had already covered.
         let exists: bool = conn
-            .prepare("SELECT 1 FROM pragma_table_info('account_endpoints') WHERE name = ?1")?
-            .exists([name])?;
+            .prepare("SELECT 1 FROM pragma_table_info(?1) WHERE name = ?2")?
+            .exists([table, name])?;
         if !exists {
             conn.execute_batch(column)?;
         }

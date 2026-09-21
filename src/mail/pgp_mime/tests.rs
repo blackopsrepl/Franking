@@ -35,38 +35,6 @@ fn keyring(uid: &str) -> (pgp::Keyring, ::pgp::composed::SignedSecretKey) {
 }
 
 #[test]
-fn splits_envelope_headers_from_the_mime_entity() {
-    let message = split_message(&sample_message());
-    assert!(message.envelope.iter().any(|h| h.starts_with("From:")));
-    assert!(message.envelope.iter().any(|h| h.starts_with("To:")));
-    assert!(!message
-        .mime_headers
-        .iter()
-        .any(|h| h.to_ascii_lowercase().starts_with("from:")));
-    assert_eq!(message.recipients(), vec!["bob@example.com"]);
-}
-
-#[test]
-fn extracts_addresses_from_display_names_and_lists() {
-    assert_eq!(
-        extract_addresses("Alice <alice@example.com>, Bob <BOB@example.com>"),
-        vec!["alice@example.com", "bob@example.com"]
-    );
-    assert_eq!(
-        extract_addresses("carol@example.com"),
-        vec!["carol@example.com"]
-    );
-    assert!(extract_addresses("undisclosed-recipients:;").is_empty());
-}
-
-#[test]
-fn crlf_normalization_is_idempotent() {
-    assert_eq!(crlf("a\nb"), "a\r\nb");
-    assert_eq!(crlf("a\r\nb"), "a\r\nb");
-    assert_eq!(crlf("a\r\nb\nc"), "a\r\nb\r\nc");
-}
-
-#[test]
 fn signed_message_verifies_against_its_signer() {
     let (keys, _) = keyring("Alice <alice@example.com>");
     let wrapped = wrap(&sample_message(), &options(true, false), &keys).expect("wrap");
@@ -95,7 +63,14 @@ fn signed_then_encrypted_message_round_trips() {
     assert!(contains(&wrapped, b"multipart/encrypted"));
 
     let decrypted = pgp::decrypt_mime(&wrapped, &[secret], "").expect("decrypt");
-    assert!(contains(&decrypted, b"multipart/signed"));
+    assert!(
+        decrypted.starts_with(b"Content-Type: multipart/signed"),
+        "the inner entity carries its own Content-Type header: {}",
+        String::from_utf8_lossy(&decrypted[..decrypted.len().min(80)])
+    );
+    // The inner entity must verify on its own, which needs that header.
+    let fingerprints = pgp::verify_mime(&decrypted, &keys.public).expect("inner verify");
+    assert_eq!(fingerprints.len(), 1);
 }
 
 #[test]

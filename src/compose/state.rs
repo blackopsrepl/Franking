@@ -38,6 +38,8 @@ pub enum FocusedField {
     Files,
     Sign,
     Encrypt,
+    SmimeSign,
+    SmimeEncrypt,
     Discard,
 }
 
@@ -55,7 +57,9 @@ impl FocusedField {
             FocusedField::Attach => FocusedField::Files,
             FocusedField::Files => FocusedField::Sign,
             FocusedField::Sign => FocusedField::Encrypt,
-            FocusedField::Encrypt => FocusedField::Discard,
+            FocusedField::Encrypt => FocusedField::SmimeSign,
+            FocusedField::SmimeSign => FocusedField::SmimeEncrypt,
+            FocusedField::SmimeEncrypt => FocusedField::Discard,
             FocusedField::Discard => FocusedField::From,
         }
     }
@@ -74,7 +78,9 @@ impl FocusedField {
             FocusedField::Files => FocusedField::Attach,
             FocusedField::Sign => FocusedField::Files,
             FocusedField::Encrypt => FocusedField::Sign,
-            FocusedField::Discard => FocusedField::Encrypt,
+            FocusedField::Discard => FocusedField::SmimeEncrypt,
+            FocusedField::SmimeEncrypt => FocusedField::SmimeSign,
+            FocusedField::SmimeSign => FocusedField::Encrypt,
         }
     }
 
@@ -92,6 +98,8 @@ impl FocusedField {
             FocusedField::Files => "Files",
             FocusedField::Sign => "Sign",
             FocusedField::Encrypt => "Encrypt",
+            FocusedField::SmimeSign => "S/MIME Sign",
+            FocusedField::SmimeEncrypt => "S/MIME Encrypt",
             FocusedField::Discard => "Discard",
         }
     }
@@ -106,55 +114,16 @@ impl FocusedField {
                 | FocusedField::Files
                 | FocusedField::Sign
                 | FocusedField::Encrypt
+                | FocusedField::SmimeSign
+                | FocusedField::SmimeEncrypt
                 | FocusedField::Discard
         )
     }
 }
 
-/// Autocomplete suggestion popup state.
-#[derive(Debug, Clone)]
-pub struct AutocompleteState {
-    /// The suggestions (name, email).
-    pub suggestions: Vec<(Option<String>, String)>,
-    /// Currently selected index.
-    pub selected: usize,
-    /// The field that triggered autocomplete.
-    pub field: FocusedField,
-}
+mod autocomplete;
 
-impl AutocompleteState {
-    pub fn new(field: FocusedField, suggestions: Vec<(Option<String>, String)>) -> Self {
-        Self {
-            suggestions,
-            selected: 0,
-            field,
-        }
-    }
-
-    pub fn move_up(&mut self) {
-        if self.suggestions.is_empty() {
-            return;
-        }
-        self.selected = self.selected.saturating_sub(1);
-    }
-
-    pub fn move_down(&mut self) {
-        if self.suggestions.is_empty() {
-            return;
-        }
-        self.selected = (self.selected + 1).min(self.suggestions.len() - 1);
-    }
-
-    /// Formatted display for the currently selected suggestion.
-    pub fn current(&self) -> Option<String> {
-        self.suggestions
-            .get(self.selected)
-            .map(|(name, email)| match name {
-                Some(n) if !n.is_empty() => format!("\"{}\" <{}>", n, email),
-                _ => email.clone(),
-            })
-    }
-}
+pub use autocomplete::AutocompleteState;
 
 /// Full state of the compose editor.
 pub struct ComposeState {
@@ -199,6 +168,10 @@ pub struct ComposeState {
     pub sign: bool,
     /// Encrypt the outgoing message to its recipients as PGP/MIME.
     pub encrypt: bool,
+    /// Sign the outgoing message with S/MIME.
+    pub smime_sign: bool,
+    /// Encrypt the outgoing message to its recipients with S/MIME.
+    pub smime_encrypt: bool,
     /// Send error message to display
     pub send_error: Option<String>,
     /// Nav/Insert modal editing mode (for header fields and action-bar nav)
@@ -231,6 +204,8 @@ impl ComposeState {
             dirty: false,
             sign: false,
             encrypt: false,
+            smime_sign: false,
+            smime_encrypt: false,
             send_error: None,
             edit_mode: EditMode::Nav,
         }
@@ -281,6 +256,8 @@ impl ComposeState {
             | FocusedField::Files
             | FocusedField::Sign
             | FocusedField::Encrypt
+            | FocusedField::SmimeSign
+            | FocusedField::SmimeEncrypt
             | FocusedField::Discard => None,
         }
     }

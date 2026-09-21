@@ -73,10 +73,15 @@ impl ImapSmtpService {
         let message = self.build_outgoing_message(template)?;
         let transport = self.smtp_transport()?;
 
-        let raw = if options.is_pgp() {
-            self.wrap_pgp(&message.formatted(), options)?
-        } else {
-            message.formatted()
+        let raw = match (options.is_pgp(), options.is_smime()) {
+            (true, false) => self.wrap_pgp(&message.formatted(), options)?,
+            (false, true) => self.wrap_smime(&message.formatted(), options)?,
+            (false, false) => message.formatted(),
+            (true, true) => {
+                return Err(MailError::invalid_input(
+                    "choose either PGP/MIME or S/MIME for one message, not both",
+                ))
+            }
         };
 
         transport
@@ -98,6 +103,17 @@ impl ImapSmtpService {
             .unwrap_or_else(crate::mail::pgp::default_keys_dir);
         let keyring = crate::mail::pgp::Keyring::load(&keys_dir);
         crate::mail::pgp_mime::wrap(raw, options, &keyring)
+            .map_err(|err| MailError::invalid_input(err.to_string()))
+    }
+
+    /// Wrap an outgoing message as S/MIME per `options`.
+    fn wrap_smime(&self, raw: &[u8], options: &SendOptions) -> MailResult<Vec<u8>> {
+        let keys_dir = options
+            .keys_dir
+            .clone()
+            .unwrap_or_else(crate::mail::pgp::default_keys_dir);
+        let keyring = crate::mail::smime::SmimeKeyring::load(&keys_dir);
+        crate::mail::smime_mime::wrap(raw, options, &keyring)
             .map_err(|err| MailError::invalid_input(err.to_string()))
     }
 

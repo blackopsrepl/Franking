@@ -1,47 +1,17 @@
-/*! S/MIME round-trip tests using a generated certificate. */
+//! Verification, decryption, and trust handling.
 
-use openssl::asn1::{Asn1Integer, Asn1Time};
-use openssl::bn::BigNum;
-use openssl::hash::MessageDigest;
 use openssl::pkcs7::{Pkcs7, Pkcs7Flags};
 use openssl::pkey::PKey;
-use openssl::rsa::Rsa;
 use openssl::stack::Stack;
-use openssl::x509::{X509NameBuilder, X509};
+use openssl::x509::X509;
 
 use base64::Engine;
 
-use super::{
+use super::helpers::certificate;
+use crate::mail::smime::{
     decrypt_enveloped, trust_certificate, verify_detailed, verify_mime, verify_signed_data,
     SmimeKeyring,
 };
-
-fn certificate() -> (PKey<openssl::pkey::Private>, X509) {
-    let rsa = Rsa::generate(2048).unwrap();
-    let key = PKey::from_rsa(rsa).unwrap();
-
-    let mut name = X509NameBuilder::new().unwrap();
-    name.append_entry_by_text("CN", "Alice").unwrap();
-    name.append_entry_by_text("emailAddress", "alice@example.com")
-        .unwrap();
-    let name = name.build();
-
-    let mut builder = X509::builder().unwrap();
-    builder.set_version(2).unwrap();
-    let serial = Asn1Integer::from_bn(&BigNum::from_u32(42).unwrap()).unwrap();
-    builder.set_serial_number(&serial).unwrap();
-    builder.set_subject_name(&name).unwrap();
-    builder.set_issuer_name(&name).unwrap();
-    builder.set_pubkey(&key).unwrap();
-    builder
-        .set_not_before(&Asn1Time::days_from_now(0).unwrap())
-        .unwrap();
-    builder
-        .set_not_after(&Asn1Time::days_from_now(30).unwrap())
-        .unwrap();
-    builder.sign(&key, MessageDigest::sha256()).unwrap();
-    (key, builder.build())
-}
 
 #[test]
 fn verifies_signed_data() {

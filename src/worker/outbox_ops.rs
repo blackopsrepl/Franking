@@ -30,8 +30,10 @@ impl Worker {
                     .ok_or_else(|| MailError::other(format!("outbox item {id} is gone")))?;
 
                 let options = SendOptions {
-                    sign: item.sign,
-                    encrypt: item.encrypt,
+                    sign: item.protection.sign,
+                    encrypt: item.protection.encrypt,
+                    smime_sign: item.protection.smime_sign,
+                    smime_encrypt: item.protection.smime_encrypt,
                     passphrase,
                     keys_dir: Some(crate::mail::pgp::default_keys_dir()),
                 };
@@ -58,8 +60,10 @@ impl Worker {
                 let mut sent = 0;
                 for item in due {
                     let options = SendOptions {
-                        sign: item.sign,
-                        encrypt: item.encrypt,
+                        sign: item.protection.sign,
+                        encrypt: item.protection.encrypt,
+                        smime_sign: item.protection.smime_sign,
+                        smime_encrypt: item.protection.smime_encrypt,
                         passphrase: passphrase.clone(),
                         keys_dir: Some(crate::mail::pgp::default_keys_dir()),
                     };

@@ -27,6 +27,24 @@ pub fn render_schedule_prompt(app: &App, frame: &mut Frame, area: Rect) {
     );
 }
 
+/// How a queued message will be protected when it is sent.
+fn describe(protection: crate::mail::outbox::Protection) -> &'static str {
+    match (
+        protection.sign,
+        protection.encrypt,
+        protection.smime_sign,
+        protection.smime_encrypt,
+    ) {
+        (true, true, _, _) => " · PGP sign + encrypt",
+        (true, false, _, _) => " · PGP signed",
+        (false, true, _, _) => " · PGP encrypted",
+        (false, false, true, true) => " · S/MIME sign + encrypt",
+        (false, false, true, false) => " · S/MIME signed",
+        (false, false, false, true) => " · S/MIME encrypted",
+        (false, false, false, false) => "",
+    }
+}
+
 /// Render the outbox overlay.
 pub fn render(app: &App, frame: &mut Frame) {
     let t = theme();
@@ -39,12 +57,7 @@ pub fn render(app: &App, frame: &mut Frame) {
         .iter()
         .enumerate()
         .map(|(index, item)| {
-            let protection = match (item.sign, item.encrypt) {
-                (true, true) => " · sign + encrypt",
-                (true, false) => " · signed",
-                (false, true) => " · encrypted",
-                (false, false) => "",
-            };
+            let protection = describe(item.protection);
             let pending = app.outbox.pending_discard == Some(item.id);
             let suffix = if pending {
                 "  · press d to confirm"

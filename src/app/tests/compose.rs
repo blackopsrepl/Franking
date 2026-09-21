@@ -116,8 +116,10 @@ fn a_failed_send_is_queued_in_the_outbox() {
     app.db = Some(conn);
     app.remember_pending_send(
         "To: bob@example.com\nSubject: Offline\n\nbody".to_string(),
-        true,
-        false,
+        outbox::Protection {
+            sign: true,
+            ..outbox::Protection::default()
+        },
     );
     app.queue_failed_send(Some("acct".to_string()));
 
@@ -126,14 +128,16 @@ fn a_failed_send_is_queued_in_the_outbox() {
     let items = outbox::list(conn).unwrap();
     assert_eq!(items.len(), 1);
     assert_eq!(items[0].subject, "Offline");
-    assert!(items[0].sign);
+    assert!(items[0].protection.sign);
     assert_eq!(items[0].account.as_deref(), Some("acct"));
 
     // A repeated failure of the same message must not queue a duplicate.
     app.remember_pending_send(
         "To: bob@example.com\nSubject: Offline\n\nbody".to_string(),
-        true,
-        false,
+        outbox::Protection {
+            sign: true,
+            ..outbox::Protection::default()
+        },
     );
     app.queue_failed_send(Some("acct".to_string()));
     assert_eq!(outbox::count(app.db.as_ref().unwrap()).unwrap(), 1);
@@ -150,8 +154,7 @@ fn outbox_discard_requires_two_presses() {
         id: 7,
         account: None,
         subject: "Queued".to_string(),
-        sign: false,
-        encrypt: false,
+        protection: crate::mail::outbox::Protection::default(),
         send_after: None,
         created_at: "2026-01-01 00:00:00".to_string(),
         template: "To: a@example.com\n\nbody".to_string(),

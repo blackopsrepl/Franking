@@ -17,7 +17,7 @@ pub struct OutboxState {
     /// Queued message awaiting a second discard press.
     pub pending_discard: Option<i64>,
     /// Template and protection of the message currently being sent.
-    pub pending_send: Option<(String, bool, bool)>,
+    pub pending_send: Option<(String, outbox::Protection)>,
     /// Ticks since the last due-message check.
     pub ticks_since_flush: u64,
 }
@@ -77,13 +77,17 @@ impl App {
 
     /// Queue the message in progress for a scheduled send.
     pub(crate) fn schedule_send(&mut self, send_after: String) {
-        let (template, sign, encrypt, account) = {
+        let (template, protection, account) = {
             let Some(cs) = self.compose_state.as_ref() else {
                 return;
             };
             let template = crate::compose::reassemble_template(cs);
             let options = self.send_options(cs);
-            (template, options.sign, options.encrypt, cs.account.clone())
+            (
+                template,
+                outbox::Protection::from(&options),
+                cs.account.clone(),
+            )
         };
         let Some(conn) = self.db.as_ref() else {
             self.set_error("Local database is unavailable.");
@@ -93,8 +97,7 @@ impl App {
             conn,
             account.as_deref(),
             &template,
-            sign,
-            encrypt,
+            protection,
             Some(&send_after),
         ) {
             Ok(Some(_)) => {
@@ -110,19 +113,23 @@ impl App {
     }
 
     /// Record the message being sent so a failure can queue it.
-    pub(crate) fn remember_pending_send(&mut self, template: String, sign: bool, encrypt: bool) {
-        self.outbox.pending_send = Some((template, sign, encrypt));
+    pub(crate) fn remember_pending_send(
+        &mut self,
+        template: String,
+        protection: outbox::Protection,
+    ) {
+        self.outbox.pending_send = Some((template, protection));
     }
 
     /// Queue the last send attempt when it failed.
     pub(crate) fn queue_failed_send(&mut self, account: Option<String>) {
-        let Some((template, sign, encrypt)) = self.outbox.pending_send.take() else {
+        let Some((template, protection)) = self.outbox.pending_send.take() else {
             return;
         };
         let Some(ref conn) = self.db else {
             return;
         };
-        let queued = outbox::enqueue(conn, account.as_deref(), &template, sign, encrypt, None)
+        let queued = outbox::enqueue(conn, account.as_deref(), &template, protection, None)
             .ok()
             .flatten()
             .is_some();

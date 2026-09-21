@@ -25,6 +25,8 @@ impl App {
                     | FocusedField::Files
                     | FocusedField::Sign
                     | FocusedField::Encrypt
+                    | FocusedField::SmimeSign
+                    | FocusedField::SmimeEncrypt
                     | FocusedField::Discard => ComposeFocus::ActionBar,
                 },
                 edit_mode: cs.edit_mode,

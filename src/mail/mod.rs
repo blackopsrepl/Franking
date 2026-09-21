@@ -7,6 +7,7 @@ pub mod draft;
 pub mod errors;
 pub mod maildir;
 pub mod mime;
+pub mod mime_wrap;
 pub mod model;
 pub mod oauth;
 pub mod outbox;
@@ -20,8 +21,12 @@ pub mod service;
 pub mod session;
 pub mod sieve;
 pub mod smime;
+pub mod smime_mime;
+pub mod smime_sign;
 pub mod sort;
 pub mod store;
+#[cfg(test)]
+mod test_certs;
 pub mod types;
 
 pub use errors::{MailError, MailErrorKind, MailResult};

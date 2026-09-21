@@ -78,6 +78,8 @@ pub(super) fn render_autocomplete(
         | FocusedField::Files
         | FocusedField::Sign
         | FocusedField::Encrypt
+        | FocusedField::SmimeSign
+        | FocusedField::SmimeEncrypt
         | FocusedField::Discard => return,
         FocusedField::To => 1u16,
         FocusedField::Cc => 2,

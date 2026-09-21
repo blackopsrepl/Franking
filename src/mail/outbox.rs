@@ -3,6 +3,37 @@
 use anyhow::{Context, Result};
 use rusqlite::Connection;
 
+/// Cryptographic protection requested for a queued message.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct Protection {
+    /// Sign as PGP/MIME.
+    pub sign: bool,
+    /// Encrypt as PGP/MIME.
+    pub encrypt: bool,
+    /// Sign with S/MIME.
+    pub smime_sign: bool,
+    /// Encrypt with S/MIME.
+    pub smime_encrypt: bool,
+}
+
+impl Protection {
+    /// True when nothing was requested.
+    pub fn is_none(&self) -> bool {
+        !self.sign && !self.encrypt && !self.smime_sign && !self.smime_encrypt
+    }
+}
+
+impl From<&crate::mail::service::SendOptions> for Protection {
+    fn from(options: &crate::mail::service::SendOptions) -> Self {
+        Self {
+            sign: options.sign,
+            encrypt: options.encrypt,
+            smime_sign: options.smime_sign,
+            smime_encrypt: options.smime_encrypt,
+        }
+    }
+}
+
 /// A queued outgoing message.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct OutboxItem {
@@ -10,9 +41,8 @@ pub struct OutboxItem {
     pub account: Option<String>,
     /// Subject line extracted for display, if any.
     pub subject: String,
-    /// Whether the message should be signed / encrypted when sent.
-    pub sign: bool,
-    pub encrypt: bool,
+    /// How the message should be protected when it is sent.
+    pub protection: Protection,
     /// RFC 3339 time before which the message should not be sent.
     pub send_after: Option<String>,
     pub created_at: String,
@@ -27,8 +57,7 @@ pub fn enqueue(
     conn: &Connection,
     account: Option<&str>,
     template: &str,
-    sign: bool,
-    encrypt: bool,
+    protection: Protection,
     send_after: Option<&str>,
 ) -> Result<Option<i64>> {
     let existing: Option<i64> = conn
@@ -43,9 +72,17 @@ pub fn enqueue(
         return Ok(existing);
     }
     conn.execute(
-        "INSERT INTO outbox (account, template, sign, encrypt, send_after)
-         VALUES (?1, ?2, ?3, ?4, ?5)",
-        rusqlite::params![account, template, sign as i32, encrypt as i32, send_after],
+        "INSERT INTO outbox (account, template, sign, encrypt, smime_sign, smime_encrypt, send_after)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+        rusqlite::params![
+            account,
+            template,
+            protection.sign as i32,
+            protection.encrypt as i32,
+            protection.smime_sign as i32,
+            protection.smime_encrypt as i32,
+            send_after
+        ],
     )
     .context("cannot queue the outgoing message")?;
     Ok(Some(conn.last_insert_rowid()))
@@ -54,7 +91,8 @@ pub fn enqueue(
 /// Queued messages, oldest first.
 pub fn list(conn: &Connection) -> Result<Vec<OutboxItem>> {
     let mut statement = conn.prepare(
-        "SELECT id, account, template, sign, encrypt, created_at, send_after
+        "SELECT id, account, template, sign, encrypt, created_at, send_after,
+                smime_sign, smime_encrypt
          FROM outbox ORDER BY id",
     )?;
     let rows = statement.query_map([], |row| {
@@ -63,8 +101,12 @@ pub fn list(conn: &Connection) -> Result<Vec<OutboxItem>> {
             id: row.get(0)?,
             account: row.get(1)?,
             subject: subject_of(&template),
-            sign: row.get::<_, i32>(3)? != 0,
-            encrypt: row.get::<_, i32>(4)? != 0,
+            protection: Protection {
+                sign: row.get::<_, i32>(3)? != 0,
+                encrypt: row.get::<_, i32>(4)? != 0,
+                smime_sign: row.get::<_, i32>(7)? != 0,
+                smime_encrypt: row.get::<_, i32>(8)? != 0,
+            },
             created_at: row.get(5)?,
             send_after: row.get(6)?,
             template,
@@ -111,7 +153,7 @@ fn subject_of(template: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{count, delete, enqueue, list};
+    use super::{count, delete, enqueue, list, Protection};
 
     #[test]
     fn queued_messages_round_trip_in_order() {
@@ -122,8 +164,10 @@ mod tests {
             &conn,
             Some("acct"),
             "To: a@example.com\nSubject: First\n\none",
-            true,
-            false,
+            Protection {
+                sign: true,
+                ..Protection::default()
+            },
             None,
         )
         .unwrap()
@@ -132,8 +176,10 @@ mod tests {
             &conn,
             None,
             "To: b@example.com\nSubject: Second\n\ntwo",
-            false,
-            true,
+            Protection {
+                encrypt: true,
+                ..Protection::default()
+            },
             None,
         )
         .unwrap()
@@ -144,8 +190,10 @@ mod tests {
             &conn,
             Some("acct"),
             "To: a@example.com\nSubject: First\n\none",
-            true,
-            false,
+            Protection {
+                sign: true,
+                ..Protection::default()
+            },
             None,
         )
         .unwrap();
@@ -154,9 +202,9 @@ mod tests {
         let items = list(&conn).unwrap();
         assert_eq!(items.len(), 2);
         assert_eq!(items[0].subject, "First");
-        assert!(items[0].sign);
+        assert!(items[0].protection.sign);
         assert_eq!(items[1].subject, "Second");
-        assert!(items[1].encrypt);
+        assert!(items[1].protection.encrypt);
         assert_eq!(count(&conn).unwrap(), 2);
 
         delete(&conn, second).unwrap();
@@ -173,8 +221,7 @@ mod tests {
             &conn,
             None,
             "To: a@example.com\nSubject: Now\n\nbody",
-            false,
-            false,
+            Protection::default(),
             None,
         )
         .unwrap();
@@ -182,8 +229,7 @@ mod tests {
             &conn,
             None,
             "To: b@example.com\nSubject: Past\n\nbody",
-            false,
-            false,
+            Protection::default(),
             Some("2026-01-01T00:00:00Z"),
         )
         .unwrap();
@@ -191,8 +237,7 @@ mod tests {
             &conn,
             None,
             "To: c@example.com\nSubject: Future\n\nbody",
-            false,
-            false,
+            Protection::default(),
             Some("2030-01-01T00:00:00Z"),
         )
         .unwrap();
@@ -206,7 +251,14 @@ mod tests {
     fn messages_without_a_subject_are_labelled() {
         let conn = rusqlite::Connection::open_in_memory().unwrap();
         crate::db::init_for_test(&conn).unwrap();
-        enqueue(&conn, None, "To: a@example.com\n\nbody", false, false, None).unwrap();
+        enqueue(
+            &conn,
+            None,
+            "To: a@example.com\n\nbody",
+            Protection::default(),
+            None,
+        )
+        .unwrap();
         assert_eq!(list(&conn).unwrap()[0].subject, "(no subject)");
     }
 }

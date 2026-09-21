@@ -111,6 +111,50 @@ impl SmimeKeyring {
     }
 }
 
+/// Certificates covering `emails`, matched on the certificate's email
+/// addresses. Recipients without a certificate are simply absent, so the
+/// caller can report exactly who cannot be encrypted to.
+pub fn recipient_certs(certs: &[X509], emails: &[String]) -> Vec<X509> {
+    let mut wanted = emails
+        .iter()
+        .map(|email| email.to_lowercase())
+        .collect::<Vec<_>>();
+    wanted.sort();
+    wanted.dedup();
+
+    let mut selected = Vec::new();
+    for cert in certs {
+        let addresses = cert_emails(cert);
+        if wanted
+            .iter()
+            .any(|wanted| addresses.iter().any(|address| address == wanted))
+        {
+            selected.push(cert.clone());
+        }
+    }
+    selected
+}
+
+/// Lowercased email addresses carried by a certificate.
+pub fn cert_emails(cert: &X509) -> Vec<String> {
+    let mut addresses = Vec::new();
+    for entry in cert.subject_name().entries() {
+        if entry.object().nid().short_name().ok() == Some("emailAddress") {
+            if let Ok(value) = entry.data().as_utf8() {
+                addresses.push(value.to_string().to_lowercase());
+            }
+        }
+    }
+    if let Some(names) = cert.subject_alt_names() {
+        for name in names {
+            if let Some(email) = name.email() {
+                addresses.push(email.to_lowercase());
+            }
+        }
+    }
+    addresses
+}
+
 fn parse_cert(bytes: &[u8]) -> Option<X509> {
     X509::from_pem(bytes)
         .ok()

@@ -112,6 +112,16 @@ impl App {
                     cs.encrypt = !cs.encrypt;
                 }
             }
+            FocusedField::SmimeSign => {
+                if let Some(ref mut cs) = self.compose_state {
+                    cs.smime_sign = !cs.smime_sign;
+                }
+            }
+            FocusedField::SmimeEncrypt => {
+                if let Some(ref mut cs) = self.compose_state {
+                    cs.smime_encrypt = !cs.smime_encrypt;
+                }
+            }
             FocusedField::Discard => {
                 self.compose_discard();
             }
@@ -175,7 +185,7 @@ impl App {
             let template = crate::compose::reassemble_template(cs);
             let options = self.send_options(cs);
             self.loading = true;
-            self.remember_pending_send(template.clone(), options.sign, options.encrypt);
+            self.remember_pending_send(template.clone(), (&options).into());
             self.worker
                 .send_template(self.acct_owned(), template, options);
         }
@@ -186,6 +196,8 @@ impl App {
         SendOptions {
             sign: cs.sign,
             encrypt: cs.encrypt,
+            smime_sign: cs.smime_sign,
+            smime_encrypt: cs.smime_encrypt,
             passphrase: self.crypto_passphrase.clone(),
             keys_dir: Some(super::pgp::keys_dir()),
         }
