@@ -7,6 +7,7 @@ pub mod mime;
 pub mod model;
 pub mod oauth;
 pub mod remote;
+pub mod security;
 pub mod service;
 pub mod session;
 pub mod store;

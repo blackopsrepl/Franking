@@ -90,3 +90,12 @@ impl MessageDocument {
         self.body.to_search_text()
     }
 }
+
+impl MessageDocument {
+    /// SPF/DKIM/DMARC verdicts reported by the receiving server, if present.
+    pub fn authentication(&self) -> crate::mail::security::AuthenticationVerdicts {
+        crate::mail::security::parse_authentication_results(
+            &self.headers.get_all("Authentication-Results"),
+        )
+    }
+}

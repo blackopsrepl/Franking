@@ -30,6 +30,10 @@ pub fn render(app: &App, frame: &mut Frame, area: Rect) {
         ]));
     }
 
+    if let Some(summary) = message.authentication().summary() {
+        lines.push(Line::from(Span::styled(summary, t.dimmed())));
+    }
+
     lines.push(Line::from(""));
     lines.push(Line::from(Span::styled(
         "\u{2500}".repeat(area.width.saturating_sub(4) as usize),
