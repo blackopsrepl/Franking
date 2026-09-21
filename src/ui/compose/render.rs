@@ -63,6 +63,9 @@ pub fn render(app: &App, frame: &mut Frame) {
     if let Some(input) = &state.attach_input {
         render_attach_prompt(input, frame, area);
     }
+    if state.attach_list_open {
+        crate::ui::compose::overlays::render_attach_list(state, frame, area);
+    }
 }
 
 // ── Header bar ───────────────────────────────────────────────────────────────

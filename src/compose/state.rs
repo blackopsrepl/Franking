@@ -35,6 +35,7 @@ pub enum FocusedField {
     Send,
     Draft,
     Attach,
+    Files,
     Sign,
     Encrypt,
     Discard,
@@ -51,7 +52,8 @@ impl FocusedField {
             FocusedField::Body => FocusedField::Send,
             FocusedField::Send => FocusedField::Draft,
             FocusedField::Draft => FocusedField::Attach,
-            FocusedField::Attach => FocusedField::Sign,
+            FocusedField::Attach => FocusedField::Files,
+            FocusedField::Files => FocusedField::Sign,
             FocusedField::Sign => FocusedField::Encrypt,
             FocusedField::Encrypt => FocusedField::Discard,
             FocusedField::Discard => FocusedField::From,
@@ -69,7 +71,8 @@ impl FocusedField {
             FocusedField::Send => FocusedField::Body,
             FocusedField::Draft => FocusedField::Send,
             FocusedField::Attach => FocusedField::Draft,
-            FocusedField::Sign => FocusedField::Attach,
+            FocusedField::Files => FocusedField::Attach,
+            FocusedField::Sign => FocusedField::Files,
             FocusedField::Encrypt => FocusedField::Sign,
             FocusedField::Discard => FocusedField::Encrypt,
         }
@@ -86,6 +89,7 @@ impl FocusedField {
             FocusedField::Send => "Send",
             FocusedField::Draft => "Draft",
             FocusedField::Attach => "Attach",
+            FocusedField::Files => "Files",
             FocusedField::Sign => "Sign",
             FocusedField::Encrypt => "Encrypt",
             FocusedField::Discard => "Discard",
@@ -99,6 +103,7 @@ impl FocusedField {
             FocusedField::Send
                 | FocusedField::Draft
                 | FocusedField::Attach
+                | FocusedField::Files
                 | FocusedField::Sign
                 | FocusedField::Encrypt
                 | FocusedField::Discard
@@ -173,6 +178,10 @@ pub struct ComposeState {
     pub attachments: Vec<String>,
     /// Active attach-path prompt, if the user is entering one.
     pub attach_input: Option<String>,
+    /// Whether the composed attachment list overlay is open.
+    pub attach_list_open: bool,
+    /// Selected row in the composed attachment list.
+    pub attach_index: usize,
     /// Compose editor state for the message body.
     pub body: ComposeEditor,
     /// Which field has keyboard focus
@@ -211,6 +220,8 @@ impl ComposeState {
             references: None,
             attachments: Vec::new(),
             attach_input: None,
+            attach_list_open: false,
+            attach_index: 0,
             body: ComposeEditor::default(),
             focused: FocusedField::From,
             autocomplete: None,
@@ -267,6 +278,7 @@ impl ComposeState {
             FocusedField::Send
             | FocusedField::Draft
             | FocusedField::Attach
+            | FocusedField::Files
             | FocusedField::Sign
             | FocusedField::Encrypt
             | FocusedField::Discard => None,

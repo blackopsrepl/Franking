@@ -3,7 +3,7 @@
 use ratatui::prelude::*;
 use ratatui::widgets::*;
 
-use crate::compose::FocusedField;
+use crate::compose::{ComposeState, FocusedField};
 use crate::theme::theme;
 
 pub(super) fn render_discard_confirm(frame: &mut Frame, area: Rect) {
@@ -75,6 +75,7 @@ pub(super) fn render_autocomplete(
         | FocusedField::Send
         | FocusedField::Draft
         | FocusedField::Attach
+        | FocusedField::Files
         | FocusedField::Sign
         | FocusedField::Encrypt
         | FocusedField::Discard => return,
@@ -139,4 +140,45 @@ pub(super) fn render_attach_prompt(input: &str, frame: &mut Frame, area: Rect) {
         Paragraph::new(format!(" {input}_")).style(t.normal()),
         inner,
     );
+}
+
+/// Overlay listing the attachments queued for this message.
+pub(super) fn render_attach_list(state: &ComposeState, frame: &mut Frame, area: Rect) {
+    let t = theme();
+    use crate::ui::util::centered_rect;
+
+    let popup = centered_rect(70, 40, area);
+    frame.render_widget(Clear, popup);
+    let block = Block::default()
+        .title(Span::styled(
+            " Attachments · Enter/d remove · Esc close ",
+            t.popup_title(),
+        ))
+        .borders(Borders::ALL)
+        .border_style(t.border_focused())
+        .style(t.popup());
+    let inner = block.inner(popup);
+    frame.render_widget(block, popup);
+
+    let mut lines = Vec::new();
+    for (index, path) in state.attachments.iter().enumerate() {
+        let marker = if index == state.attach_index {
+            "▸"
+        } else {
+            " "
+        };
+        let style = if index == state.attach_index {
+            t.selected()
+        } else {
+            t.normal()
+        };
+        lines.push(Line::from(Span::styled(
+            format!(" {marker} {path} "),
+            style,
+        )));
+    }
+    if lines.is_empty() {
+        lines.push(Line::from(Span::styled(" (no attachments)", t.dimmed())));
+    }
+    frame.render_widget(Paragraph::new(lines), inner);
 }

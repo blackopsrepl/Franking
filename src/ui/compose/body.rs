@@ -7,7 +7,7 @@ use crate::compose::{ComposeState, FocusedField};
 use crate::theme::theme;
 use crate::ui::action_bar::{
     render_action_bar_with_label, Button, ICON_ATTACH, ICON_CHECK_OFF, ICON_CHECK_ON, ICON_DISCARD,
-    ICON_DRAFT, ICON_SEND,
+    ICON_DRAFT, ICON_FILES, ICON_SEND,
 };
 
 pub(super) fn render_body(state: &ComposeState, frame: &mut Frame, area: Rect) {
@@ -54,14 +54,15 @@ pub(super) fn render_compose_action_bar(state: &ComposeState, frame: &mut Frame,
     };
 
     // Determine which button index is focused (None when a non-button field is focused).
-    // Buttons order: Send(0) Draft(1) Attach(2) Sign(3) Encrypt(4) Discard(5)
+    // Buttons order: Send(0) Draft(1) Attach(2) Files(3) Sign(4) Encrypt(5) Discard(6)
     let focused_btn_idx = match state.focused {
         FocusedField::Send => Some(0usize),
         FocusedField::Draft => Some(1),
         FocusedField::Attach => Some(2),
-        FocusedField::Sign => Some(3),
-        FocusedField::Encrypt => Some(4),
-        FocusedField::Discard => Some(5),
+        FocusedField::Files => Some(3),
+        FocusedField::Sign => Some(4),
+        FocusedField::Encrypt => Some(5),
+        FocusedField::Discard => Some(6),
         _ => None,
     };
 
@@ -79,6 +80,11 @@ pub(super) fn render_compose_action_bar(state: &ComposeState, frame: &mut Frame,
         Button {
             label: &format!("{} Attach", ICON_ATTACH),
             focused: state.focused == FocusedField::Attach,
+            disabled: false,
+        },
+        Button {
+            label: &format!("{} Files", ICON_FILES),
+            focused: state.focused == FocusedField::Files,
             disabled: false,
         },
         Button {

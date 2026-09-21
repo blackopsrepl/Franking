@@ -75,6 +75,11 @@ impl App {
             return;
         }
         match focused {
+            FocusedField::Files => {
+                if let Some(ref mut cs) = self.compose_state {
+                    cs.attach_list_open = !cs.attach_list_open;
+                }
+            }
             FocusedField::From => {
                 if let Some(ref mut cs) = self.compose_state {
                     cs.cycle_from_next();
@@ -178,6 +183,37 @@ impl App {
 
         if let Some(path) = added {
             self.set_status(&format!("Attached {path}."));
+        }
+        true
+    }
+
+    /// Handle keys while the composed attachment list overlay is open.
+    pub(crate) fn compose_handle_attach_list(&mut self, key: KeyEvent) -> bool {
+        let Some(ref mut cs) = self.compose_state else {
+            return false;
+        };
+        if !cs.attach_list_open {
+            return false;
+        }
+        let count = cs.attachments.len();
+        let index = cs.attach_index;
+        match key.code {
+            KeyCode::Esc | KeyCode::Char('q') => cs.attach_list_open = false,
+            KeyCode::Char('j') | KeyCode::Down if count > 0 => {
+                cs.attach_index = (index + 1).min(count - 1);
+            }
+            KeyCode::Char('k') | KeyCode::Up => {
+                cs.attach_index = index.saturating_sub(1);
+            }
+            KeyCode::Enter | KeyCode::Char('d') if count > 0 => {
+                cs.attachments.remove(index);
+                cs.dirty = true;
+                cs.attach_index = cs.attachments.len().saturating_sub(1);
+                if cs.attachments.is_empty() {
+                    cs.attach_list_open = false;
+                }
+            }
+            _ => {}
         }
         true
     }

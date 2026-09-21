@@ -19,6 +19,8 @@ pub const ICON_ATTACH: &str = "\u{f0c6}";
 pub const ICON_DISCARD: &str = "\u{f00d}";
 /// Floppy disk — Save
 pub const ICON_SAVE: &str = "\u{f0c7}";
+/// Folder — attachment list
+pub const ICON_FILES: &str = "\u{f07b}";
 /// Checked box — toggled on
 pub const ICON_CHECK_ON: &str = "\u{f046}";
 /// Empty box — toggled off

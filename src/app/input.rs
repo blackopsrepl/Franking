@@ -22,6 +22,7 @@ impl App {
                     FocusedField::Send
                     | FocusedField::Draft
                     | FocusedField::Attach
+                    | FocusedField::Files
                     | FocusedField::Sign
                     | FocusedField::Encrypt
                     | FocusedField::Discard => ComposeFocus::ActionBar,
@@ -41,6 +42,9 @@ impl App {
     }
 
     pub fn handle_key(&mut self, key: KeyEvent) {
+        if self.view == View::Compose && self.compose_handle_attach_list(key) {
+            return;
+        }
         if self.view == View::Compose && self.compose_handle_attach_input(key) {
             return;
         }

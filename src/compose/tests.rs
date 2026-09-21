@@ -42,10 +42,12 @@ fn template_round_trip_preserves_attachments() {
 fn action_bar_cycle_includes_the_crypto_toggles() {
     use super::state::FocusedField;
 
-    assert_eq!(FocusedField::Attach.next(), FocusedField::Sign);
+    assert_eq!(FocusedField::Attach.next(), FocusedField::Files);
+    assert_eq!(FocusedField::Files.next(), FocusedField::Sign);
     assert_eq!(FocusedField::Sign.next(), FocusedField::Encrypt);
     assert_eq!(FocusedField::Encrypt.next(), FocusedField::Discard);
     assert_eq!(FocusedField::Discard.next(), FocusedField::From);
-    assert_eq!(FocusedField::Sign.prev(), FocusedField::Attach);
+    assert_eq!(FocusedField::Sign.prev(), FocusedField::Files);
+    assert_eq!(FocusedField::Files.prev(), FocusedField::Attach);
     assert_eq!(FocusedField::Encrypt.prev(), FocusedField::Sign);
 }
