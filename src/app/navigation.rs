@@ -1,0 +1,259 @@
+/*! View navigation, search, and prompt handling. */
+
+use crate::keys::View;
+
+use super::model::{App, PAGE_SIZE};
+
+impl App {
+    pub(crate) fn go_back(&mut self) {
+        match self.view {
+            View::MessageView => {
+                self.view = View::EnvelopeList;
+                self.message_content = None;
+            }
+            View::AccountList => {
+                self.view = View::EnvelopeList;
+            }
+            View::Contacts | View::ContactSearch => {
+                self.contact_search.clear();
+                self.contact_search_active = false;
+                self.view = self.previous_view.unwrap_or(View::EnvelopeList);
+                self.previous_view = None;
+            }
+            View::Compose => {
+                // Use compose_discard logic
+                self.compose_discard();
+            }
+            View::ContactEdit => {
+                self.contact_edit_cancel();
+            }
+            View::IdentityList => {
+                self.identity_list_close();
+            }
+            View::IdentityEdit => {
+                self.identity_edit_cancel();
+            }
+            _ => {}
+        }
+    }
+
+    pub(crate) fn move_selection(&mut self, delta: i32) {
+        match self.view {
+            View::EnvelopeList => {
+                let len = self.envelopes.len();
+                if len == 0 {
+                    return;
+                }
+                let current = self.envelope_state.selected().unwrap_or(0);
+                let next = if delta > 0 {
+                    (current + 1).min(len - 1)
+                } else {
+                    current.saturating_sub(1)
+                };
+                self.envelope_state.select(Some(next));
+            }
+            View::FolderList => {
+                let len = self.folders.len();
+                if len == 0 {
+                    return;
+                }
+                if delta > 0 {
+                    self.folder_index = (self.folder_index + 1).min(len - 1);
+                } else {
+                    self.folder_index = self.folder_index.saturating_sub(1);
+                }
+            }
+            View::AccountList => {
+                let len = self.accounts.len();
+                if len == 0 {
+                    return;
+                }
+                if delta > 0 {
+                    self.account_index = (self.account_index + 1).min(len - 1);
+                } else {
+                    self.account_index = self.account_index.saturating_sub(1);
+                }
+            }
+            View::Contacts => {
+                let len = self.contacts.len();
+                if len == 0 {
+                    return;
+                }
+                let current = self.contact_index.unwrap_or(0);
+                let next = if delta > 0 {
+                    (current + 1).min(len - 1)
+                } else {
+                    current.saturating_sub(1)
+                };
+                self.contact_index = Some(next);
+            }
+            _ => {}
+        }
+    }
+
+    pub(crate) fn jump_top(&mut self) {
+        match self.view {
+            View::EnvelopeList => {
+                if !self.envelopes.is_empty() {
+                    self.envelope_state.select(Some(0));
+                }
+            }
+            View::MessageView | View::Help => {
+                if self.view == View::Help {
+                    self.help_scroll = 0;
+                } else {
+                    self.message_scroll = 0;
+                }
+            }
+            _ => {}
+        }
+    }
+
+    pub(crate) fn jump_bottom(&mut self) {
+        match self.view {
+            View::EnvelopeList => {
+                if !self.envelopes.is_empty() {
+                    self.envelope_state.select(Some(self.envelopes.len() - 1));
+                }
+            }
+            View::MessageView => {
+                let lines = self.rendered_message_line_count(78);
+                self.message_scroll = lines.saturating_sub(5);
+            }
+            View::Help => {
+                self.help_scroll = 100; // will be clamped in render
+            }
+            _ => {}
+        }
+    }
+
+    pub(crate) fn page_up(&mut self) {
+        if self.view == View::EnvelopeList && self.page > 1 {
+            self.page -= 1;
+            self.load_envelopes();
+        }
+    }
+
+    pub(crate) fn page_down(&mut self) {
+        if self.view == View::EnvelopeList && self.envelopes.len() >= PAGE_SIZE {
+            self.page += 1;
+            self.load_envelopes();
+        }
+    }
+
+    pub(crate) fn select_item(&mut self) {
+        match self.view {
+            View::FolderList => {
+                if let Some(folder) = self.folders.get(self.folder_index) {
+                    self.current_folder = folder.name.clone();
+                    self.page = 1;
+                    self.active_query = None;
+                    self.view = View::EnvelopeList;
+                    self.load_envelopes();
+                }
+            }
+            View::AccountList => {
+                if let Some(account) = self.accounts.get(self.account_index) {
+                    self.account_name = Some(account.name.clone());
+                    self.current_folder = "INBOX".to_string();
+                    self.page = 1;
+                    self.active_query = None;
+                    self.view = View::EnvelopeList;
+                    self.load_folders();
+                }
+            }
+            _ => {}
+        }
+    }
+
+    pub(crate) fn scroll(&mut self, delta: i32) {
+        match self.view {
+            View::MessageView => {
+                if delta > 0 {
+                    self.message_scroll = self.message_scroll.saturating_add(1);
+                } else {
+                    self.message_scroll = self.message_scroll.saturating_sub(1);
+                }
+            }
+            View::Help => {
+                if delta > 0 {
+                    self.help_scroll = self.help_scroll.saturating_add(1);
+                } else {
+                    self.help_scroll = self.help_scroll.saturating_sub(1);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    /// Load sender identities from the DB into a ComposeState.
+    /// Pre-selects the default identity if one exists.
+    pub(crate) fn enter_search(&mut self) {
+        self.search_query.clear();
+        self.view = View::Search;
+    }
+
+    pub(crate) fn submit_search(&mut self) {
+        let query = self.search_query.clone();
+        self.active_query = if query.is_empty() { None } else { Some(query) };
+        self.page = 1;
+        self.view = View::EnvelopeList;
+        self.load_envelopes();
+    }
+
+    pub(crate) fn cancel_search(&mut self) {
+        self.view = View::EnvelopeList;
+    }
+
+    pub(crate) fn refresh(&mut self) {
+        self.ticks_since_refresh = 0;
+        self.new_mail_count = 0;
+        self.load_folders();
+        // load_envelopes will be chained after folders complete
+    }
+
+    pub(crate) fn enter_account_picker(&mut self) {
+        self.load_accounts();
+        self.view = View::AccountList;
+    }
+
+    pub(crate) fn toggle_help(&mut self) {
+        if self.view == View::Help {
+            self.view = self.previous_view.unwrap_or(View::EnvelopeList);
+            self.previous_view = None;
+        } else {
+            self.previous_view = Some(self.view);
+            self.help_scroll = 0;
+            self.view = View::Help;
+        }
+    }
+
+    pub(crate) fn enter_move_prompt(&mut self) {
+        if self.selected_envelope_id().is_some() {
+            self.move_target.clear();
+            self.view = View::MovePrompt;
+        }
+    }
+
+    pub(crate) fn submit_move(&mut self) {
+        let target = self.move_target.clone();
+        if target.is_empty() {
+            self.set_status("No target folder specified.");
+            self.view = View::EnvelopeList;
+            return;
+        }
+        if let Some(id) = self.selected_envelope_id().map(|s| s.to_string()) {
+            self.loading = true;
+            self.pending_refresh_after_action = true;
+            self.view = View::EnvelopeList;
+            self.worker
+                .move_message(self.acct_owned(), self.current_folder.clone(), target, id);
+        }
+    }
+
+    pub(crate) fn cancel_move(&mut self) {
+        self.view = View::EnvelopeList;
+    }
+
+    // ── Editor key forwarding ────────────────────────────────────────
+}
