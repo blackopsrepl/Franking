@@ -31,7 +31,7 @@ cargo run -- --setup
 
 - **Non-blocking I/O** - Background workers for all mail operations
 - **Relative timestamps** - "2h ago", "Yesterday", "Mon"
-- **Threading support** - Press `t` to toggle threaded view
+- **Threading support** - Press `t` to toggle threaded view; replies nest under their parent and server-side `THREAD` is used when available
 - **Auto-refresh** - New mail check every 60 seconds
 - **Folder unread counts** - Shows (3) badge on folders
 - **Mouse support** - Click to select, scroll wheel works
@@ -46,6 +46,14 @@ cargo run -- --setup
 - **Local SQLite database** - Contacts and identities stored in `~/.local/share/solverforge/mail.db`
 - **App-owned account store** - Accounts, endpoints, auth bindings, and secret references live in SQLite
 - **Keyring-backed secrets** - Password and app-password flows store secret IDs in the app and raw secrets in the OS keyring
+- **Account discovery** - Add an account by email: Google/iCloud/Outlook presets, Mozilla autoconfig, Microsoft Autodiscover, then RFC 6186 SRV
+- **Attachments** - Attach files on send; download attachments from received mail
+- **Drafts** - Save a draft and resume it from the Drafts folder; the draft is removed after sending
+- **Security indicators** - SPF/DKIM/DMARC verdicts from `Authentication-Results`, plus PGP/MIME and S/MIME structure detection
+- **Calendar invitations** - `text/calendar` events show their summary and start time
+- **Desktop notifications** - `notify-send` on new mail when the IDLE watcher fires
+- **Offline cache** - Listings and search fall back to the local store when the server is unreachable
+- **Mark read/unread** - Press `N` to toggle the Seen flag
 
 ## Keybindings
 
@@ -62,6 +70,7 @@ cargo run -- --setup
 - `d` - Delete
 - `m` - Move to folder
 - `!` - Toggle flag
+- `N` - Toggle read/unread
 - `t` - Toggle threaded view
 - `/` - Search
 - `Tab` - Focus folders
@@ -76,6 +85,7 @@ cargo run -- --setup
 - `f` - Forward
 - `d` - Delete
 - `a` - Download attachments
+- `N` - Toggle read/unread
 
 ### Compose View
 - `Tab` / `Shift+Tab` - Next/previous compose field
