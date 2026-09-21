@@ -1,5 +1,6 @@
 /*! App unit test wiring. */
 
+mod archive;
 mod compose;
 mod core;
 mod crypto;

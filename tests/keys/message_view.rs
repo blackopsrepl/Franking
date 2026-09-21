@@ -23,6 +23,14 @@ fn message_view_toggles_all_headers() {
 }
 
 #[test]
+fn message_view_archives() {
+    assert_eq!(
+        resolve(View::MessageView, key(KeyCode::Char('e'))),
+        Action::Archive
+    );
+}
+
+#[test]
 fn message_view_searches_within_the_message() {
     assert_eq!(
         resolve(View::MessageView, key(KeyCode::Char('/'))),

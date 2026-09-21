@@ -66,6 +66,7 @@ pub fn render(app: &App, frame: &mut Frame) {
         binding("R", "Reply all"),
         binding("f", "Forward"),
         binding("d", "Delete"),
+        binding("e", "Archive"),
         binding("a", "Download attachments"),
         binding("P", "Unlock PGP with passphrase"),
         binding("T", "Trust the S/MIME signer certificate"),

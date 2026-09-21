@@ -90,6 +90,7 @@ impl App {
             Action::ToggleHeaders => self.toggle_headers(),
             Action::SaveMessage => self.save_message(),
             Action::Undo => self.undo(),
+            Action::Archive => self.archive(),
             Action::CollapseThread => self.collapse_thread(),
             Action::ExpandThread => self.expand_thread(),
             Action::EmptyFolder => self.empty_folder(),

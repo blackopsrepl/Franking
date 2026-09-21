@@ -135,6 +135,8 @@ pub enum Action {
     ToggleSelect,
     /// Reverse the last destructive action.
     Undo,
+    /// Move the selection to the archive folder.
+    Archive,
     /// Hide the replies of the cursor's thread.
     CollapseThread,
     /// Restore a collapsed thread.
