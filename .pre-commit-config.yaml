@@ -29,3 +29,12 @@ repos:
         args: ["--", "--check"]
     -   id: clippy
         args: ["--", "-D", "warnings"]
+
+-   repo: local
+    hooks:
+    -   id: check-file-size
+        name: check-file-size
+        description: Reject Rust source files that reach 300 lines.
+        entry: scripts/check-file-size.sh
+        language: script
+        pass_filenames: false
