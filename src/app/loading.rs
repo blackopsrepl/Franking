@@ -86,12 +86,20 @@ impl App {
     // ── Mouse handling ───────────────────────────────────────────────
 
     pub(crate) fn delete(&mut self) {
-        if let Some(id) = self.selected_envelope_id().map(|s| s.to_string()) {
-            self.loading = true;
-            self.pending_return_to_list = self.view == View::MessageView;
-            self.pending_refresh_after_action = true;
-            self.worker
-                .delete_message(self.acct_owned(), self.current_folder.clone(), id);
+        let ids = self.target_ids();
+        let Some(id) = ids.first().cloned() else {
+            return;
+        };
+        self.loading = true;
+        self.pending_return_to_list = self.view == View::MessageView;
+        self.pending_refresh_after_action = true;
+        let account = self.selected_account();
+        let folder = self.selected_folder();
+        if ids.len() == 1 {
+            self.worker.delete_message(account, folder, id);
+        } else {
+            self.selected.clear();
+            self.worker.delete_messages(account, folder, ids);
         }
     }
 
@@ -113,54 +121,58 @@ impl App {
     }
 
     pub(crate) fn toggle_read(&mut self) {
-        if let Some(id) = self.selected_envelope_id().map(|s| s.to_string()) {
-            let is_seen = self
-                .selected_envelope()
-                .map(|envelope| envelope.is_seen())
-                .unwrap_or(false);
-            self.loading = true;
-            self.pending_refresh_after_action = true;
+        let ids = self.target_ids();
+        let Some(id) = ids.first().cloned() else {
+            return;
+        };
+        let is_seen = self
+            .selected_envelope()
+            .map(|envelope| envelope.is_seen())
+            .unwrap_or(false);
+        self.loading = true;
+        self.pending_refresh_after_action = true;
+        let account = self.selected_account();
+        let folder = self.selected_folder();
+        if ids.len() == 1 {
             if is_seen {
-                self.worker.flag_remove(
-                    self.selected_account(),
-                    self.selected_folder(),
-                    id,
-                    "seen".to_string(),
-                );
+                self.worker
+                    .flag_remove(account, folder, id, "seen".to_string());
             } else {
-                self.worker.flag_add(
-                    self.selected_account(),
-                    self.selected_folder(),
-                    id,
-                    "seen".to_string(),
-                );
+                self.worker
+                    .flag_add(account, folder, id, "seen".to_string());
             }
+        } else {
+            self.selected.clear();
+            self.worker
+                .flag_messages(account, folder, ids, "seen".to_string(), !is_seen);
         }
     }
 
     pub(crate) fn toggle_flag(&mut self) {
-        if let Some(id) = self.selected_envelope_id().map(|s| s.to_string()) {
-            let is_flagged = self
-                .selected_envelope()
-                .map(|e| e.is_flagged())
-                .unwrap_or(false);
-            self.loading = true;
-            self.pending_refresh_after_action = true;
+        let ids = self.target_ids();
+        let Some(id) = ids.first().cloned() else {
+            return;
+        };
+        let is_flagged = self
+            .selected_envelope()
+            .map(|e| e.is_flagged())
+            .unwrap_or(false);
+        self.loading = true;
+        self.pending_refresh_after_action = true;
+        let account = self.selected_account();
+        let folder = self.selected_folder();
+        if ids.len() == 1 {
             if is_flagged {
-                self.worker.flag_remove(
-                    self.selected_account(),
-                    self.selected_folder(),
-                    id,
-                    "flagged".to_string(),
-                );
+                self.worker
+                    .flag_remove(account, folder, id, "flagged".to_string());
             } else {
-                self.worker.flag_add(
-                    self.selected_account(),
-                    self.selected_folder(),
-                    id,
-                    "flagged".to_string(),
-                );
+                self.worker
+                    .flag_add(account, folder, id, "flagged".to_string());
             }
+        } else {
+            self.selected.clear();
+            self.worker
+                .flag_messages(account, folder, ids, "flagged".to_string(), !is_flagged);
         }
     }
 

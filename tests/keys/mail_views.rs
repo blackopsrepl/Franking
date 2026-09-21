@@ -206,6 +206,20 @@ fn help_toggle() {
     assert_eq!(resolve(View::Help, key(KeyCode::Esc)), Action::ToggleHelp);
 }
 
+// ── Multi-select ────────────────────────────────────────────────────
+
+#[test]
+fn envelope_list_selects_for_batch_actions() {
+    assert_eq!(
+        resolve(View::EnvelopeList, key(KeyCode::Char(' '))),
+        Action::ToggleSelect
+    );
+    assert_eq!(
+        resolve(View::EnvelopeList, key(KeyCode::Char('u'))),
+        Action::ClearSelection
+    );
+}
+
 // ── Move prompt ─────────────────────────────────────────────────────
 
 #[test]

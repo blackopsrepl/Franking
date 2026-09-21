@@ -43,6 +43,8 @@ pub fn render(app: &App, frame: &mut Frame) {
         binding("m", "Move to folder"),
         binding("!", "Toggle flagged"),
         binding("/", "Search"),
+        binding("Space", "Select / deselect message"),
+        binding("u", "Clear selection"),
         binding("t", "Toggle threaded view"),
         binding("n / p", "Next / previous page"),
         binding("Tab", "Focus folder sidebar"),

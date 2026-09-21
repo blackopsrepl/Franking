@@ -121,3 +121,69 @@ fn deleting_a_folder_requires_confirmation() {
     assert!(app.status_message.contains("not deleted"));
     assert!(!app.pending_folder_refresh);
 }
+
+#[test]
+fn selection_toggles_and_targets_the_cursor_row() {
+    use crate::mail::types::{Envelope, Sender};
+
+    use super::super::App;
+
+    let mut app = App::new(None);
+    let envelope = |id: &str| Envelope {
+        id: id.to_string(),
+        flags: Vec::new(),
+        subject: "Subject".to_string(),
+        sender: Sender::Plain("alice@example.com".to_string()),
+        date: String::new(),
+        message_id: None,
+        in_reply_to: None,
+        account: None,
+        folder: Some("INBOX".to_string()),
+    };
+    app.envelopes = vec![envelope("1"), envelope("2")];
+    app.envelope_state.select(Some(0));
+
+    app.toggle_select();
+    assert_eq!(app.selected.len(), 1);
+    assert!(app.selected.contains("1"));
+    assert_eq!(app.target_ids(), vec!["1".to_string(), "2".to_string()]);
+
+    // Return to the first row and deselect it.
+    app.envelope_state.select(Some(0));
+    app.toggle_select();
+    assert_eq!(app.selected.len(), 0);
+    assert!(!app.selected.contains("1"));
+
+    app.selected.insert("2".to_string());
+    app.clear_selection();
+    assert_eq!(app.selected.len(), 0);
+}
+
+#[test]
+fn space_key_selects_the_cursor_row() {
+    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+
+    use crate::mail::types::{Envelope, Sender};
+
+    use super::super::App;
+
+    let mut app = App::new(None);
+    app.envelopes = vec![Envelope {
+        id: "1".to_string(),
+        flags: Vec::new(),
+        subject: "Subject".to_string(),
+        sender: Sender::Plain("alice@example.com".to_string()),
+        date: String::new(),
+        message_id: None,
+        in_reply_to: None,
+        account: None,
+        folder: Some("INBOX".to_string()),
+    }];
+    app.envelope_state.select(Some(0));
+
+    app.handle_key(KeyEvent::new(KeyCode::Char(' '), KeyModifiers::NONE));
+    assert!(app.selected.contains("1"));
+
+    app.handle_key(KeyEvent::new(KeyCode::Char('u'), KeyModifiers::NONE));
+    assert!(app.selected.is_empty());
+}

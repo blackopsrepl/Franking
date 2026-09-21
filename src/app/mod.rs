@@ -13,6 +13,7 @@ mod model;
 mod mouse;
 mod navigation;
 mod pgp;
+mod selection;
 mod sieve;
 mod smime;
 mod worker;

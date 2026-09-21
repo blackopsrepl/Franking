@@ -34,6 +34,11 @@ pub fn render(app: &mut App, frame: &mut Frame, area: Rect) {
     } else {
         format!(" {} \u{2014} p{} ", app.current_folder, app.page)
     };
+    let title = if app.selected.is_empty() {
+        title
+    } else {
+        format!("{}{} selected ", title.trim_end(), app.selected.len())
+    };
 
     let block = Block::default()
         .title(title)
@@ -77,7 +82,12 @@ pub fn render(app: &mut App, frame: &mut Frame, area: Rect) {
                 t.normal()
             };
 
-            let flag_cell = Cell::from(env.flag_icon()).style(base_style);
+            let marker = if app.selected.contains(&env.id) {
+                "\u{2713}"
+            } else {
+                " "
+            };
+            let flag_cell = Cell::from(format!("{marker} {}", env.flag_icon())).style(base_style);
             let from_cell = Cell::from(truncate(&env.sender_display(), 24)).style(base_style);
             let depth = depths.get(index).copied().unwrap_or(0);
             let subject = if depth > 0 {
@@ -92,9 +102,9 @@ pub fn render(app: &mut App, frame: &mut Frame, area: Rect) {
         })
         .collect();
 
-    // Column widths: flag(2), from(24), subject(fill), date(14)
+    // Column widths: select+flag(3), from(24), subject(fill), date(14)
     let widths = [
-        Constraint::Length(2),
+        Constraint::Length(3),
         Constraint::Length(24),
         Constraint::Fill(1),
         Constraint::Length(14),

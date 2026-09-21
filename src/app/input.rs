@@ -67,6 +67,8 @@ impl App {
             Action::ReplyAll => self.reply(true),
             Action::Forward => self.forward(),
             Action::Delete => self.delete(),
+            Action::ToggleSelect => self.toggle_select(),
+            Action::ClearSelection => self.clear_selection(),
             Action::ToggleFlag => self.toggle_flag(),
             Action::ToggleRead => self.toggle_read(),
             Action::SyncFolder => self.sync_folder(),

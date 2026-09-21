@@ -1,5 +1,6 @@
 /*! Worker module wiring. */
 
+mod batch_ops;
 mod dispatch;
 mod folder_ops;
 mod folders;

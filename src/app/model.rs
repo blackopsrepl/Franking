@@ -18,7 +18,6 @@ use crate::worker::Worker;
 
 pub(crate) const PAGE_SIZE: usize = 50;
 
-// Auto-refresh interval in ticks (250ms each). 240 ticks = 60 seconds.
 const AUTO_REFRESH_TICKS: u64 = 240;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -99,11 +98,9 @@ pub struct App {
     // ── Threading mode ───────────────────────────────────────────────
     pub threaded: bool,
 
-    // ── Auto-refresh ────────────────────────────────────────────────
     pub(crate) ticks_since_refresh: u64,
     pub new_mail_count: usize,
 
-    // ── Folder unread counts ────────────────────────────────────────
     pub folder_unread: HashMap<String, usize>,
 
     // ── Layout areas for mouse hit-testing ──────────────────────────
@@ -121,9 +118,10 @@ pub struct App {
     // ── Draft being resumed (folder, id), deleted after a successful send ──
     pub(crate) pending_draft: Option<(String, String)>,
 
-    // ── Track if delete/move was from message view ──────────────────
     pub(crate) pending_return_to_list: bool,
     pub(crate) pending_refresh_after_action: bool,
+    /// Envelope ids selected for a batch operation.
+    pub(crate) selected: std::collections::HashSet<String>,
 
     // ── Database ────────────────────────────────────────────────────
     pub db: Option<Connection>,
@@ -193,6 +191,7 @@ impl App {
             pending_draft: None,
             pending_return_to_list: false,
             pending_refresh_after_action: false,
+            selected: Default::default(),
             db: None,
             compose_state: None,
             contacts: Vec::new(),

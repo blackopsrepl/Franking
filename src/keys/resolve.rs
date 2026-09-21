@@ -133,6 +133,8 @@ fn resolve_envelope_list(key: KeyEvent) -> Action {
         KeyCode::Char('n') => Action::PageDown,
         KeyCode::Char('p') => Action::PageUp,
         KeyCode::Char('t') => Action::ToggleThread,
+        KeyCode::Char(' ') => Action::ToggleSelect,
+        KeyCode::Char('u') => Action::ClearSelection,
         KeyCode::Char('?') => Action::ToggleHelp,
         KeyCode::Char('I') => Action::OpenIdentities,
         KeyCode::Tab => Action::FocusFolders,

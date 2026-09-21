@@ -123,6 +123,9 @@ pub enum Action {
     FolderPromptBackspace,
     FolderPromptSubmit,
     FolderPromptCancel,
+    // ── Multi-select ──────────────────────────────────────────────────
+    ToggleSelect,
+    ClearSelection,
     // ── Sieve filters ─────────────────────────────────────────────────
     OpenSieve,
     SieveNext,

@@ -242,12 +242,19 @@ impl App {
             self.view = View::EnvelopeList;
             return;
         }
-        if let Some(id) = self.selected_envelope_id().map(|s| s.to_string()) {
+        let ids = self.target_ids();
+        if let Some(id) = ids.first().cloned() {
             self.loading = true;
             self.pending_refresh_after_action = true;
             self.view = View::EnvelopeList;
-            self.worker
-                .move_message(self.acct_owned(), self.current_folder.clone(), target, id);
+            let account = self.acct_owned();
+            let folder = self.current_folder.clone();
+            if ids.len() == 1 {
+                self.worker.move_message(account, folder, target, id);
+            } else {
+                self.selected.clear();
+                self.worker.move_messages(account, folder, target, ids);
+            }
         }
     }
 
