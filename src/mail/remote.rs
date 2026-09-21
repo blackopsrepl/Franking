@@ -1,6 +1,4 @@
-use std::fs;
 use std::io::{Read, Write};
-use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -308,27 +306,7 @@ impl ImapSmtpService {
                     ConnectedImapSession::Tls(session) => exec(session, folder, id),
                 })?;
 
-        if attachments.is_empty() {
-            return Err(MailError::unsupported_feature(
-                "this message does not include any downloadable attachments",
-            ));
-        }
-
-        let base = dirs::download_dir()
-            .or_else(dirs::data_dir)
-            .unwrap_or_else(|| PathBuf::from("."))
-            .join("solverforge-mail");
-        fs::create_dir_all(&base).map_err(|err| MailError::io(err.to_string()))?;
-
-        let mut saved = Vec::new();
-        for (index, (name, bytes)) in attachments.into_iter().enumerate() {
-            let file_name = ensure_unique_attachment_name(&base, index, &name);
-            let path = base.join(&file_name);
-            fs::write(&path, bytes).map_err(|err| MailError::io(err.to_string()))?;
-            saved.push(path.display().to_string());
-        }
-
-        Ok(saved.join(", "))
+        super::attachments::save_to_downloads(attachments)
     }
 
     pub fn template_write(&self, account: Option<&str>) -> MailResult<String> {
@@ -963,48 +941,6 @@ fn extract_attachments(raw: &[u8]) -> MailResult<Vec<(String, Vec<u8>)>> {
         .collect())
 }
 
-fn ensure_unique_attachment_name(base: &std::path::Path, index: usize, requested: &str) -> String {
-    let sanitized = sanitize_file_name(requested);
-    let candidate = if sanitized.is_empty() {
-        format!("attachment-{}", index + 1)
-    } else {
-        sanitized
-    };
-
-    if !base.join(&candidate).exists() {
-        return candidate;
-    }
-
-    let (stem, ext) = candidate
-        .rsplit_once('.')
-        .map(|(stem, ext)| (stem.to_string(), Some(ext.to_string())))
-        .unwrap_or_else(|| (candidate.clone(), None));
-
-    for suffix in 2..1000 {
-        let attempt = match ext.as_deref() {
-            Some(ext) => format!("{stem}-{suffix}.{ext}"),
-            None => format!("{stem}-{suffix}"),
-        };
-        if !base.join(&attempt).exists() {
-            return attempt;
-        }
-    }
-
-    candidate
-}
-
-fn sanitize_file_name(value: &str) -> String {
-    value
-        .chars()
-        .map(|ch| match ch {
-            '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|' => '_',
-            _ => ch,
-        })
-        .collect::<String>()
-        .trim()
-        .to_string()
-}
-
 fn parse_template_message(raw: &str) -> TemplateMessage {
     let mut headers: Vec<(String, String)> = Vec::new();
     let mut current_key: Option<String> = None;
@@ -1167,16 +1103,8 @@ fn parse_mailbox(value: &str) -> MailResult<Mailbox> {
 mod tests {
     use super::{
         parse_template_message, pick_drafts_folder, pick_sent_folder, pick_trash_folder,
-        sanitize_file_name, search_criteria,
+        search_criteria,
     };
-
-    #[test]
-    fn sanitize_file_name_replaces_path_separators() {
-        assert_eq!(
-            sanitize_file_name("report:Q2/2026?.pdf"),
-            "report_Q2_2026_.pdf"
-        );
-    }
 
     #[test]
     fn template_parser_splits_headers_and_body() {

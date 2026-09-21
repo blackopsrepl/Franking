@@ -7,7 +7,7 @@ use chrono::Local;
 
 use super::errors::{MailError, MailResult};
 use super::mime;
-use super::model::MessageDocument;
+use super::model::{MessageDocument, PartBody};
 use super::service::MailService;
 use super::types::{Account, Envelope, Folder, Sender};
 
@@ -221,12 +221,13 @@ impl MailService for MaildirService {
     fn download_attachments(
         &self,
         _account: Option<&str>,
-        _folder: &str,
-        _id: &str,
+        folder: &str,
+        id: &str,
     ) -> MailResult<String> {
-        Err(MailError::unsupported_feature(
-            "attachment extraction is not implemented for the local test backend",
-        ))
+        self.ensure_ready()?;
+        let raw = self.read_message_raw(None, folder, id)?;
+        let document = mime::parse_message(&raw)?;
+        super::attachments::save_to_downloads(attachment_payloads(&document))
     }
 
     fn template_write(&self, _account: Option<&str>) -> MailResult<String> {
@@ -600,6 +601,26 @@ fn read_parsed_message(path: &Path) -> MailResult<MessageDocument> {
     mime::parse_message(&raw)
 }
 
+fn attachment_payloads(document: &MessageDocument) -> Vec<(String, Vec<u8>)> {
+    let mut payloads = Vec::new();
+    let mut index = 0;
+    for part in &document.parts {
+        part.walk(&mut |part| {
+            if let PartBody::Binary(bytes) = &part.body {
+                if part.is_attachment() {
+                    index += 1;
+                    let name = part
+                        .filename
+                        .clone()
+                        .unwrap_or_else(|| format!("attachment-{index}"));
+                    payloads.push((name, bytes.clone()));
+                }
+            }
+        });
+    }
+    payloads
+}
+
 fn parse_template_message(raw: &str) -> TemplateMessage {
     let mut headers: Vec<(String, String)> = Vec::new();
     let mut current_key: Option<String> = None;
@@ -950,5 +971,16 @@ mod tests {
         assert_eq!(service.folder_unread(Some("test"), "INBOX").unwrap(), 0);
 
         let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn extracts_attachment_payloads_from_a_message() {
+        let raw = b"MIME-Version: 1.0\r\nContent-Type: multipart/mixed; boundary=b\r\n\r\n--b\r\nContent-Type: text/plain\r\n\r\nbody\r\n--b\r\nContent-Type: application/pdf\r\nContent-Disposition: attachment; filename=\"report.pdf\"\r\n\r\nPDFDATA\r\n--b--";
+        let document = mime::parse_message(raw).unwrap();
+
+        let payloads = attachment_payloads(&document);
+        assert_eq!(payloads.len(), 1);
+        assert_eq!(payloads[0].0, "report.pdf");
+        assert_eq!(payloads[0].1, b"PDFDATA");
     }
 }
