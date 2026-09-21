@@ -7,7 +7,7 @@ use std::sync::OnceLock;
 
 use ratatui::style::Color;
 
-use super::Theme;
+use super::palette::Theme;
 
 static THEME: OnceLock<Theme> = OnceLock::new();
 
