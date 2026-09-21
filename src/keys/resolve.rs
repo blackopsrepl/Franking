@@ -11,6 +11,7 @@ use super::resolve_contacts::{
     resolve_compose, resolve_contact_edit, resolve_contact_search, resolve_contacts,
     resolve_identity_edit, resolve_identity_list,
 };
+use super::resolve_keys::{resolve_keys, resolve_keys_prompt};
 use super::resolve_message_view::resolve_message_view;
 use super::resolve_sieve::{resolve_sieve_edit, resolve_sieve_name, resolve_sieve_scripts};
 use super::view::View;
@@ -32,6 +33,8 @@ pub fn resolve(view: View, key: KeyEvent) -> Action {
         View::InviteReply => return resolve_invite(key),
         View::AttachmentView => return resolve_attachment_view(key),
         View::LinkList => return resolve_link_list(key),
+        View::Keys => return resolve_keys(key),
+        View::KeysPrompt => return resolve_keys_prompt(key),
         View::SieveScripts => return resolve_sieve_scripts(key),
         View::SieveName => return resolve_sieve_name(key),
         View::SieveEdit => return resolve_sieve_edit(key),
@@ -76,7 +79,9 @@ pub fn resolve(view: View, key: KeyEvent) -> Action {
         | View::Settings
         | View::SchedulePrompt
         | View::InviteReply
-        | View::AttachmentView => Action::None,
+        | View::AttachmentView
+        | View::Keys
+        | View::KeysPrompt => Action::None,
     }
 }
 /// Resolve compose keys with compose-state context.
@@ -163,6 +168,7 @@ fn resolve_envelope_list(key: KeyEvent) -> Action {
         KeyCode::Char('o') => Action::CycleSortOrder,
         KeyCode::Char('r') => Action::MarkThreadRead,
         KeyCode::Char('P') => Action::OpenSettings,
+        KeyCode::Char('K') => Action::OpenKeys,
         KeyCode::Char('[') | KeyCode::Left => Action::CollapseThread,
         KeyCode::Char(']') | KeyCode::Right => Action::ExpandThread,
         KeyCode::Char('?') => Action::ToggleHelp,

@@ -222,6 +222,18 @@ impl App {
             Action::EditorKey(key_event) => {
                 self.handle_editor_key(key_event);
             }
+            // ── Key material ─────────────────────────────────────────
+            Action::OpenKeys
+            | Action::KeysNext
+            | Action::KeysPrev
+            | Action::KeysImport
+            | Action::KeysGenerate
+            | Action::KeysExport
+            | Action::KeysDelete
+            | Action::KeysInput(_)
+            | Action::KeysBackspace
+            | Action::KeysSubmit
+            | Action::KeysCancel => self.handle_keys_action(action),
             // ── Contacts ─────────────────────────────────────────────
             Action::OpenContacts => self.open_contacts(),
             Action::ContactNew => self.contact_new(),

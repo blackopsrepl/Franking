@@ -53,4 +53,8 @@ pub enum View {
     IdentityList,
     /// Identity add/edit form.
     IdentityEdit,
+    /// PGP and S/MIME key material on disk.
+    Keys,
+    /// Key import path or key-generation identity prompt.
+    KeysPrompt,
 }

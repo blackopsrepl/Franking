@@ -8,6 +8,7 @@ mod copy_move;
 mod crypto;
 mod folder_jump;
 mod invite;
+mod keys;
 mod mail_ui;
 mod message_search;
 mod move_prompt;

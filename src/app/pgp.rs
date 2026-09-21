@@ -57,10 +57,7 @@ pub(super) fn process_pgp(message: &mut MessageDocument, passphrase: &str) -> Op
     }
 }
 
-pub(super) fn keys_dir() -> std::path::PathBuf {
-    dirs::data_dir()
-        .unwrap_or_else(|| std::path::PathBuf::from("."))
-        .join("solverforge")
-        .join("mail")
-        .join("keys")
+pub(crate) fn keys_dir() -> std::path::PathBuf {
+    // One definition of where key material lives, shared with the send path.
+    pgp::default_keys_dir()
 }

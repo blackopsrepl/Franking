@@ -18,6 +18,7 @@ mod message_view;
 mod move_prompt;
 mod outbox;
 mod passphrase_prompt;
+mod pgp_keys;
 mod search;
 mod settings;
 mod sieve;
@@ -47,6 +48,10 @@ pub fn render(app: &mut App, frame: &mut Frame) {
         }
         View::FilePicker => {
             file_picker::render(app, frame);
+            return;
+        }
+        View::Keys | View::KeysPrompt => {
+            pgp_keys::render(app, frame);
             return;
         }
         View::Contacts | View::ContactSearch => {

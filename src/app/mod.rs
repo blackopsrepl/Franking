@@ -29,6 +29,7 @@ mod move_prompt;
 mod navigation;
 mod outbox;
 mod pgp;
+pub(crate) mod pgp_keys;
 mod selection;
 mod settings;
 mod sieve;

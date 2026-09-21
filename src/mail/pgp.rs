@@ -12,7 +12,9 @@ use pgp::crypto::ecc_curve::ECCCurve;
 use pgp::types::Password;
 use rand::thread_rng;
 
+pub mod keys;
 pub mod verify;
+pub use keys::{delete_key, export_public_key, import_public_key, list_keys, KeyInfo};
 pub use verify::{verify_cleartext, verify_detached, verify_mime};
 
 /// Inline OpenPGP found in a message body.
@@ -154,6 +156,11 @@ impl Keyring {
 
 /// Default directory for PGP/S/MIME key material.
 pub fn default_keys_dir() -> PathBuf {
+    // An explicit directory wins, so an operator (or a test) can point the
+    // keyring somewhere other than the user's data directory.
+    if let Some(dir) = std::env::var_os("SOLVERFORGE_MAIL_KEYS_DIR") {
+        return PathBuf::from(dir);
+    }
     dirs::data_dir()
         .unwrap_or_else(|| PathBuf::from("."))
         .join("solverforge")

@@ -70,6 +70,8 @@ pub struct App {
     pub(crate) pending_folder_refresh: bool,
     /// Server-side Sieve script browser and editor state.
     pub(crate) sieve: super::sieve::SieveState,
+    /// PGP and S/MIME key material overlay.
+    pub(crate) keys: super::pgp_keys::KeysState,
 
     pub(crate) show_all_headers: bool,
     pub(crate) collapse_quotes: bool,
