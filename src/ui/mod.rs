@@ -14,6 +14,7 @@ mod message_view;
 mod move_prompt;
 mod passphrase_prompt;
 mod search;
+mod sieve;
 mod status_bar;
 pub mod util;
 
@@ -31,6 +32,10 @@ pub fn render(app: &mut App, frame: &mut Frame) {
     match app.view {
         View::Compose => {
             compose::render(app, frame);
+            return;
+        }
+        View::SieveScripts | View::SieveName | View::SieveEdit => {
+            sieve::render(app, frame);
             return;
         }
         View::Contacts | View::ContactSearch => {

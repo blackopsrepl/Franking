@@ -228,6 +228,29 @@ impl MailService for RouterMailService {
         route!(self, account, service => service.delete_folder(account, name))
     }
 
+    fn sieve_scripts(
+        &self,
+        account: Option<&str>,
+    ) -> MailResult<Vec<crate::mail::sieve::SieveScript>> {
+        super::router_sieve::scripts(self, account)
+    }
+
+    fn sieve_script(&self, account: Option<&str>, name: &str) -> MailResult<String> {
+        super::router_sieve::script(self, account, name)
+    }
+
+    fn sieve_save_script(&self, account: Option<&str>, name: &str, body: &str) -> MailResult<()> {
+        super::router_sieve::save_script(self, account, name, body)
+    }
+
+    fn sieve_set_active(&self, account: Option<&str>, name: Option<&str>) -> MailResult<()> {
+        super::router_sieve::set_active(self, account, name)
+    }
+
+    fn sieve_delete_script(&self, account: Option<&str>, name: &str) -> MailResult<()> {
+        super::router_sieve::delete_script(self, account, name)
+    }
+
     fn folder_unread(&self, account: Option<&str>, folder: &str) -> MailResult<usize> {
         route!(self, account, service => service.folder_unread(account, folder))
     }

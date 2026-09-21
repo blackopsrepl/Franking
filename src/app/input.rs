@@ -113,6 +113,22 @@ impl App {
             Action::FolderPromptBackspace => self.folder_prompt_backspace(),
             Action::FolderPromptSubmit => self.submit_folder_prompt(),
             Action::FolderPromptCancel => self.cancel_folder_prompt(),
+            Action::OpenSieve => self.open_sieve(),
+            Action::SieveNext => self.sieve_next(),
+            Action::SievePrev => self.sieve_prev(),
+            Action::SieveActivate => self.sieve_activate(),
+            Action::SieveDeactivate => self.sieve_deactivate(),
+            Action::SieveEdit => self.sieve_edit(),
+            Action::SieveNew => self.sieve_new(),
+            Action::SieveDelete => self.sieve_delete(),
+            Action::SieveSave => self.sieve_save(),
+            Action::SieveClose => self.close_sieve(),
+            Action::SieveEscape => self.sieve_escape(),
+            Action::SieveNameInput(c) => self.sieve_name_input(c),
+            Action::SieveNameBackspace => self.sieve_name_backspace(),
+            Action::SieveNameSubmit => self.sieve_name_submit(),
+            Action::SieveNameCancel => self.sieve_name_cancel(),
+            Action::SieveEditorKey(key) => self.sieve_editor_key(key),
 
             // ── Compose editor ───────────────────────────────────────
             Action::ComposeFieldNext => {

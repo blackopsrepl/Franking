@@ -77,6 +77,7 @@ pub fn render(app: &App, frame: &mut Frame) {
         binding("n", "Create folder"),
         binding("r", "Rename folder"),
         binding("d", "Delete folder"),
+        binding("F", "Manage Sieve filters"),
         binding("Tab", "Focus envelope list"),
         Line::from(""),
         Line::from(Span::styled(

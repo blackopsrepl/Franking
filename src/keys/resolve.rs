@@ -16,6 +16,9 @@ pub fn resolve(view: View, key: KeyEvent) -> Action {
         View::ContactEdit => return resolve_contact_edit(key),
         View::IdentityList => return resolve_identity_list(key),
         View::IdentityEdit => return resolve_identity_edit(key),
+        View::SieveScripts => return resolve_sieve_scripts(key),
+        View::SieveName => return resolve_sieve_name(key),
+        View::SieveEdit => return resolve_sieve_edit(key),
         _ => {}
     }
 
@@ -44,7 +47,13 @@ pub fn resolve(view: View, key: KeyEvent) -> Action {
         View::ContactSearch => resolve_contact_search(key),
         View::ContactEdit => resolve_contact_edit(key),
         // Already handled above
-        View::Compose | View::Contacts | View::IdentityList | View::IdentityEdit => Action::None,
+        View::Compose
+        | View::Contacts
+        | View::IdentityList
+        | View::IdentityEdit
+        | View::SieveScripts
+        | View::SieveName
+        | View::SieveEdit => Action::None,
     }
 }
 
@@ -166,6 +175,7 @@ fn resolve_folder_list(key: KeyEvent) -> Action {
         KeyCode::Char('n') => Action::FolderNew,
         KeyCode::Char('r') => Action::FolderRename,
         KeyCode::Char('d') => Action::FolderDelete,
+        KeyCode::Char('F') => Action::OpenSieve,
         _ => Action::None,
     }
 }
@@ -198,6 +208,41 @@ fn resolve_help(key: KeyEvent) -> Action {
         KeyCode::Char('k') | KeyCode::Up => Action::ScrollUp,
         _ => Action::None,
     }
+}
+
+fn resolve_sieve_scripts(key: KeyEvent) -> Action {
+    match key.code {
+        KeyCode::Char('j') | KeyCode::Down => Action::SieveNext,
+        KeyCode::Char('k') | KeyCode::Up => Action::SievePrev,
+        KeyCode::Enter => Action::SieveActivate,
+        KeyCode::Char('e') => Action::SieveEdit,
+        KeyCode::Char('n') => Action::SieveNew,
+        KeyCode::Char('d') => Action::SieveDelete,
+        KeyCode::Char('x') => Action::SieveDeactivate,
+        KeyCode::Char('r') => Action::OpenSieve,
+        KeyCode::Esc | KeyCode::Char('q') => Action::SieveClose,
+        _ => Action::None,
+    }
+}
+
+fn resolve_sieve_name(key: KeyEvent) -> Action {
+    match key.code {
+        KeyCode::Enter => Action::SieveNameSubmit,
+        KeyCode::Esc => Action::SieveNameCancel,
+        KeyCode::Backspace => Action::SieveNameBackspace,
+        KeyCode::Char(c) => Action::SieveNameInput(c),
+        _ => Action::None,
+    }
+}
+
+fn resolve_sieve_edit(key: KeyEvent) -> Action {
+    if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('s') {
+        return Action::SieveSave;
+    }
+    if key.code == KeyCode::Esc {
+        return Action::SieveEscape;
+    }
+    Action::SieveEditorKey(key)
 }
 
 fn resolve_folder_prompt(key: KeyEvent) -> Action {

@@ -3,6 +3,7 @@
 use crate::mail::errors::{MailError, MailResult};
 use crate::mail::model::MessageDocument;
 use crate::mail::session::IdleOutcome;
+use crate::mail::sieve::SieveScript;
 use crate::mail::types::{Account, Envelope, Folder};
 
 /// How an outgoing message should be protected.
@@ -153,6 +154,46 @@ pub trait MailService: Send + Sync {
         let _ = (account, name);
         Err(MailError::unsupported_feature(
             "deleting folders is not supported by this backend",
+        ))
+    }
+
+    /// List server-side Sieve filter scripts.
+    fn sieve_scripts(&self, account: Option<&str>) -> MailResult<Vec<SieveScript>> {
+        let _ = account;
+        Err(MailError::unsupported_feature(
+            "Sieve scripts are not supported by this backend",
+        ))
+    }
+
+    /// Fetch one Sieve script's source.
+    fn sieve_script(&self, account: Option<&str>, name: &str) -> MailResult<String> {
+        let _ = (account, name);
+        Err(MailError::unsupported_feature(
+            "Sieve scripts are not supported by this backend",
+        ))
+    }
+
+    /// Create or replace a Sieve script.
+    fn sieve_save_script(&self, account: Option<&str>, name: &str, body: &str) -> MailResult<()> {
+        let _ = (account, name, body);
+        Err(MailError::unsupported_feature(
+            "Sieve scripts are not supported by this backend",
+        ))
+    }
+
+    /// Activate a Sieve script, or deactivate all when `name` is `None`.
+    fn sieve_set_active(&self, account: Option<&str>, name: Option<&str>) -> MailResult<()> {
+        let _ = (account, name);
+        Err(MailError::unsupported_feature(
+            "Sieve scripts are not supported by this backend",
+        ))
+    }
+
+    /// Delete a Sieve script.
+    fn sieve_delete_script(&self, account: Option<&str>, name: &str) -> MailResult<()> {
+        let _ = (account, name);
+        Err(MailError::unsupported_feature(
+            "Sieve scripts are not supported by this backend",
         ))
     }
 

@@ -15,6 +15,7 @@ pub mod remote;
 pub mod security;
 pub mod service;
 pub mod session;
+pub mod sieve;
 pub mod smime;
 pub mod store;
 pub mod types;

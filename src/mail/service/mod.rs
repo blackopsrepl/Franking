@@ -4,6 +4,7 @@ mod cache;
 mod read;
 mod router;
 mod router_ops;
+mod router_sieve;
 mod service_trait;
 
 #[cfg(test)]

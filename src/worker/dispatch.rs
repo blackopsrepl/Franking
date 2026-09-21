@@ -25,6 +25,10 @@ pub enum WorkerResult {
     SendDone(Result<String, MailError>),
     /// The watched mailbox changed: (account, folder).
     MailboxChanged(Option<String>, String),
+    /// Server-side Sieve scripts for an account.
+    SieveScripts(Result<Vec<crate::mail::sieve::SieveScript>, MailError>),
+    /// A fetched Sieve script: (name, source).
+    SieveBody(String, Result<String, MailError>),
 }
 
 /// Lightweight handle for dispatching work to background threads.
@@ -143,16 +147,25 @@ impl Worker {
         });
     }
 
+    /// Run `work` on a background thread and report it via `build`.
+    pub(super) fn spawn<T: Send + 'static>(
+        &self,
+        work: impl FnOnce(&dyn MailService) -> T + Send + 'static,
+        build: impl FnOnce(T) -> WorkerResult + Send + 'static,
+    ) {
+        let tx = self.tx.clone();
+        let service = self.service.clone();
+        thread::spawn(move || {
+            let _ = tx.send(build(work(service.as_ref())));
+        });
+    }
+
     /// Run an action against the service on a background thread.
     pub(super) fn spawn_action<F>(&self, action: F)
     where
         F: FnOnce(&dyn MailService) -> MailResult<String> + Send + 'static,
     {
-        let tx = self.tx.clone();
-        let service = self.service.clone();
-        thread::spawn(move || {
-            let _ = tx.send(WorkerResult::ActionDone(action(service.as_ref())));
-        });
+        self.spawn(action, WorkerResult::ActionDone);
     }
 
     pub fn delete_message(&self, account: Option<String>, folder: String, id: String) {

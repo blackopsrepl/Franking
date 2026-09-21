@@ -57,6 +57,12 @@ impl App {
                         self.pending_folder_refresh = false;
                         self.load_folders();
                     }
+                    if self.sieve.pending_refresh {
+                        self.sieve.pending_refresh = false;
+                        let account = self.acct_owned();
+                        self.loading = true;
+                        self.worker.fetch_sieve_scripts(account);
+                    }
                 }
                 WorkerResult::ActionDone(Err(e)) => {
                     self.loading = false;
@@ -64,6 +70,8 @@ impl App {
                     self.pending_return_to_list = false;
                     self.pending_refresh_after_action = false;
                 }
+                WorkerResult::SieveScripts(result) => self.handle_sieve_scripts(result),
+                WorkerResult::SieveBody(name, result) => self.handle_sieve_body(name, result),
                 WorkerResult::FolderUnread(folder_name, Ok(count)) => {
                     self.folder_unread.insert(folder_name, count);
                 }

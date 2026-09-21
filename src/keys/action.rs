@@ -15,6 +15,12 @@ pub enum View {
     AttachmentList,
     /// Folder management prompt (create, rename, delete).
     FolderPrompt,
+    /// Server-side Sieve script browser.
+    SieveScripts,
+    /// New-script name prompt.
+    SieveName,
+    /// Sieve script editor.
+    SieveEdit,
     /// Native compose / reply / forward editor.
     Compose,
     /// Address book browser.
@@ -117,6 +123,23 @@ pub enum Action {
     FolderPromptBackspace,
     FolderPromptSubmit,
     FolderPromptCancel,
+    // ── Sieve filters ─────────────────────────────────────────────────
+    OpenSieve,
+    SieveNext,
+    SievePrev,
+    SieveActivate,
+    SieveDeactivate,
+    SieveEdit,
+    SieveNew,
+    SieveDelete,
+    SieveSave,
+    SieveClose,
+    SieveEscape,
+    SieveNameInput(char),
+    SieveNameBackspace,
+    SieveNameSubmit,
+    SieveNameCancel,
+    SieveEditorKey(crossterm::event::KeyEvent),
     // ── Attachment list ───────────────────────────────────────────────
     OpenAttachments,
     AttachmentNext,
