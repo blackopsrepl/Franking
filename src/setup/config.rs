@@ -36,16 +36,11 @@ pub(super) fn save_oauth_state(account_name: &str, config: &OauthStateConfig) ->
     account_store::upsert_oauth_state(&conn, account_name, config)
 }
 
-pub(super) fn secret_service_id(account_name: &str, protocol: &str) -> String {
+pub fn secret_service_id(account_name: &str, protocol: &str) -> String {
     format!("solverforge-mail/{account_name}/{protocol}")
 }
 
-pub(super) fn store_secret(
-    label: &str,
-    service: &str,
-    username: &str,
-    password: &str,
-) -> Result<()> {
+pub fn store_secret(label: &str, service: &str, username: &str, password: &str) -> Result<()> {
     let mut child = Command::new("secret-tool")
         .args([
             "store",

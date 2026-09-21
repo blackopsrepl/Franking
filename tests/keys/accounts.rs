@@ -19,3 +19,39 @@ fn account_list_manages_defaults_and_deletion() {
         Action::DeleteAccount
     );
 }
+
+#[test]
+fn account_list_opens_the_account_form() {
+    assert_eq!(
+        resolve(View::AccountList, key(KeyCode::Char('a'))),
+        Action::AccountNew
+    );
+    assert_eq!(
+        resolve(View::AccountList, key(KeyCode::Char('e'))),
+        Action::AccountEdit
+    );
+}
+
+#[test]
+fn account_form_keys() {
+    assert_eq!(
+        resolve(View::AccountEdit, key(KeyCode::Tab)),
+        Action::AccountEditFieldNext
+    );
+    assert_eq!(
+        resolve(View::AccountEdit, key(KeyCode::BackTab)),
+        Action::AccountEditFieldPrev
+    );
+    assert_eq!(
+        resolve(View::AccountEdit, key(KeyCode::Enter)),
+        Action::AccountEditSave
+    );
+    assert_eq!(
+        resolve(View::AccountEdit, key(KeyCode::Esc)),
+        Action::AccountEditCancel
+    );
+    assert_eq!(
+        resolve(View::AccountEdit, key(KeyCode::Char('x'))),
+        Action::AccountEditInput('x')
+    );
+}

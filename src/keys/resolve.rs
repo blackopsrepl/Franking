@@ -3,6 +3,7 @@
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
 use super::action::{Action, ComposeFocus, ComposeKeyContext, View};
+use super::resolve_accounts::{resolve_account_edit, resolve_account_list};
 use super::resolve_contacts::{
     resolve_compose, resolve_contact_edit, resolve_contact_search, resolve_contacts,
     resolve_identity_edit, resolve_identity_list,
@@ -41,6 +42,7 @@ pub fn resolve(view: View, key: KeyEvent) -> Action {
         View::MessageView => resolve_message_view(key),
         View::FolderList => resolve_folder_list(key),
         View::AccountList => resolve_account_list(key),
+        View::AccountEdit => resolve_account_edit(key),
         View::Search => resolve_search(key),
         View::Help => resolve_help(key),
         View::MovePrompt => resolve_move_prompt(key),
@@ -198,19 +200,6 @@ fn resolve_folder_list(key: KeyEvent) -> Action {
         KeyCode::Char('r') => Action::FolderRename,
         KeyCode::Char('d') => Action::FolderDelete,
         KeyCode::Char('F') => Action::OpenSieve,
-        _ => Action::None,
-    }
-}
-
-fn resolve_account_list(key: KeyEvent) -> Action {
-    match key.code {
-        KeyCode::Esc => Action::Back,
-        KeyCode::Char('q') => Action::Back,
-        KeyCode::Char('j') | KeyCode::Down => Action::MoveDown,
-        KeyCode::Char('k') | KeyCode::Up => Action::MoveUp,
-        KeyCode::Enter => Action::Select,
-        KeyCode::Char('s') => Action::SetDefaultAccount,
-        KeyCode::Char('d') => Action::DeleteAccount,
         _ => Action::None,
     }
 }

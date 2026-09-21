@@ -1,3 +1,4 @@
+mod account_edit;
 mod account_list;
 pub mod action_bar;
 mod attachment_list;
@@ -87,6 +88,9 @@ pub fn render(app: &mut App, frame: &mut Frame) {
     // ── Overlays ────────────────────────────────────────────────
     if app.view == View::AccountList {
         account_list::render(app, frame);
+    }
+    if app.view == View::AccountEdit {
+        account_edit::render(app, frame);
     }
     if app.view == View::Help {
         help::render(app, frame);

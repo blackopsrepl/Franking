@@ -179,6 +179,9 @@ pub struct App {
 
     // ── Identity edit form state ─────────────────────────────────────
     pub identity_edit_state: Option<IdentityEditState>,
+
+    /// Account add/edit form state.
+    pub account_edit_state: Option<crate::account_edit::AccountEditState>,
 }
 
 impl App {
@@ -250,6 +253,7 @@ impl App {
             contact_edit_state: None,
             identities: Vec::new(),
             identity_index: None,
+            account_edit_state: None,
             identity_edit_state: None,
         }
     }

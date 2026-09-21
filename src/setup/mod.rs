@@ -9,4 +9,5 @@ mod wizard;
 #[cfg(test)]
 mod tests;
 
+pub use config::{secret_service_id, store_secret};
 pub use wizard::{print_account_status, run_wizard};

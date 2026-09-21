@@ -6,6 +6,8 @@ pub enum View {
     MessageView,
     FolderList,
     AccountList,
+    /// Account add/edit form.
+    AccountEdit,
     Search,
     Help,
     MovePrompt,
@@ -126,6 +128,16 @@ pub enum Action {
     UnlockCancel,
     /// Trust the S/MIME signer certificate of the current message.
     TrustSigner,
+    // ── Account management ────────────────────────────────────────────
+    AccountNew,
+    AccountEdit,
+    AccountEditFieldNext,
+    AccountEditFieldPrev,
+    AccountEditInput(char),
+    AccountEditBackspace,
+    AccountEditToggleDefault,
+    AccountEditSave,
+    AccountEditCancel,
     // ── Folder management ─────────────────────────────────────────────
     FolderNew,
     FolderRename,

@@ -26,6 +26,7 @@ pub fn render(app: &App, frame: &mut Frame) {
         binding("Ctrl+c / Ctrl+q", "Quit"),
         binding("Ctrl+a", "Switch account"),
         binding("s / d (accounts)", "Set default / delete account"),
+        binding("a / e (accounts)", "Add / edit an IMAP account"),
         binding("Ctrl+r", "Refresh"),
         binding("c", "Compose new message"),
         binding("?", "Toggle this help"),

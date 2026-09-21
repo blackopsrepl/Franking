@@ -3,6 +3,7 @@
 mod action;
 mod hints;
 mod resolve;
+mod resolve_accounts;
 mod resolve_contacts;
 mod resolve_sieve;
 
