@@ -247,6 +247,7 @@ fn resolve_attachment_list(key: KeyEvent) -> Action {
         KeyCode::Enter | KeyCode::Char('o') => Action::AttachmentOpen,
         KeyCode::Char('v') => Action::AttachmentView,
         KeyCode::Char('s') => Action::AttachmentSave,
+        KeyCode::Char('S') => Action::AttachmentSaveAs,
         KeyCode::Esc | KeyCode::Char('q') => Action::AttachmentClose,
         _ => Action::None,
     }

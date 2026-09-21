@@ -123,6 +123,7 @@ pub fn hints(view: View) -> Vec<(&'static str, &'static str)> {
             ("Enter", "open"),
             ("v", "view"),
             ("s", "save"),
+            ("S", "save to…"),
             ("Esc", "close"),
         ],
         View::Compose => vec![

@@ -2,6 +2,7 @@
 
 mod accounts;
 mod archive;
+mod attachment_save;
 mod compose;
 mod copy_move;
 mod core;

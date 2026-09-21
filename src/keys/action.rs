@@ -177,6 +177,8 @@ pub enum Action {
     LinkClose,
     /// Preview a text attachment in the attachment list.
     AttachmentView,
+    /// Save an attachment into a chosen directory.
+    AttachmentSaveAs,
     PreviewScrollDown,
     PreviewScrollUp,
     PreviewClose,

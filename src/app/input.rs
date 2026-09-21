@@ -100,6 +100,7 @@ impl App {
             Action::CycleSortOrder => self.cycle_sort_order(),
             Action::MarkThreadRead => self.mark_thread_read(),
             Action::AttachmentView => self.preview_attachment(),
+            Action::AttachmentSaveAs => self.open_save_attachment_picker(),
             Action::PreviewScrollDown => self.preview_scroll(1),
             Action::PreviewScrollUp => self.preview_scroll(-1),
             Action::PreviewClose => self.close_attachment_preview(),

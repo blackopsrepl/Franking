@@ -167,6 +167,14 @@ fn attachment_view_keys() {
 }
 
 #[test]
+fn attachment_save_as_key() {
+    assert_eq!(
+        resolve(View::AttachmentList, key(KeyCode::Char('S'))),
+        Action::AttachmentSaveAs
+    );
+}
+
+#[test]
 fn attachment_list_keys() {
     assert_eq!(
         resolve(View::AttachmentList, key(KeyCode::Char('j'))),

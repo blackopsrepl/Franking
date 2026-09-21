@@ -2,9 +2,20 @@
 
 use std::path::{Path, PathBuf};
 
+/// What the picker was opened for.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PickerPurpose {
+    /// Choose a file to attach.
+    Attach,
+    /// Choose a directory to save an attachment into.
+    SaveAttachment,
+}
+
 /// Browsable directory state.
 #[derive(Debug, Clone)]
 pub struct FilePickerState {
+    /// Why the picker is open.
+    pub purpose: PickerPurpose,
     pub dir: PathBuf,
     /// Directories first, then files, each sorted by name.
     pub entries: Vec<PathBuf>,
@@ -13,13 +24,19 @@ pub struct FilePickerState {
 }
 
 impl FilePickerState {
-    /// Open the picker at `dir` (falling back to the home directory).
+    /// Open the picker for attaching a file.
     pub fn open(dir: Option<PathBuf>) -> Self {
+        Self::open_with(PickerPurpose::Attach, dir)
+    }
+
+    /// Open the picker at `dir` (falling back to the home directory).
+    pub fn open_with(purpose: PickerPurpose, dir: Option<PathBuf>) -> Self {
         let dir = dir
             .filter(|path| path.is_dir())
             .or_else(dirs::home_dir)
             .unwrap_or_else(|| PathBuf::from("."));
         let mut state = Self {
+            purpose,
             dir,
             entries: Vec::new(),
             index: 0,
