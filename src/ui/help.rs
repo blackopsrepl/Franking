@@ -63,6 +63,7 @@ pub fn render(app: &App, frame: &mut Frame) {
         binding("d", "Delete"),
         binding("a", "Download attachments"),
         binding("P", "Unlock PGP with passphrase"),
+        binding("T", "Trust the S/MIME signer certificate"),
         binding("q / Esc", "Back to list"),
         Line::from(""),
         Line::from(Span::styled(

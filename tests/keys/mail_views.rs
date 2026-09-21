@@ -239,6 +239,14 @@ fn message_view_opens_unlock_prompt() {
 }
 
 #[test]
+fn message_view_trusts_the_smime_signer() {
+    assert_eq!(
+        resolve(View::MessageView, key(KeyCode::Char('T'))),
+        Action::TrustSigner
+    );
+}
+
+#[test]
 fn unlock_prompt_input() {
     assert_eq!(
         resolve(View::PassphrasePrompt, key(KeyCode::Char('s'))),

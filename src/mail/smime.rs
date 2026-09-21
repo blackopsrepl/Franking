@@ -4,12 +4,52 @@ keys are loaded from PEM/DER files. */
 
 use std::path::Path;
 
-use mail_parser::{MessageParser, MimeHeaders, PartType};
 use openssl::pkcs7::{Pkcs7, Pkcs7Flags};
 use openssl::pkey::PKey;
-use openssl::stack::Stack;
-use openssl::x509::store::X509StoreBuilder;
 use openssl::x509::X509;
+
+mod verify;
+
+pub use verify::{
+    name_to_string, trust_certificate, verify_detached, verify_detached_detailed, verify_detailed,
+    verify_mime, verify_mime_detailed, verify_signed_data,
+};
+
+/// Identity and trust state of one CMS signer certificate.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SmimeSigner {
+    /// Subject distinguished name, e.g. `CN=Alice, emailAddress=alice@example.com`.
+    pub subject: String,
+    pub issuer: String,
+    /// Lowercase SHA-256 fingerprint, no separators.
+    pub fingerprint: String,
+    /// Whether the certificate chains to the configured trust store.
+    pub trusted: bool,
+    pub not_before: String,
+    pub not_after: String,
+    /// DER bytes, so the signer can be added to the trust store.
+    pub der: Vec<u8>,
+}
+
+/// Outcome of verifying a CMS SignedData blob.
+#[derive(Debug, Clone)]
+pub struct SmimeVerification {
+    /// Signed content, present only when verification succeeded.
+    pub content: Option<Vec<u8>>,
+    pub signers: Vec<SmimeSigner>,
+}
+
+impl SmimeVerification {
+    /// True when verification succeeded and every signer is trusted.
+    pub fn is_trusted(&self) -> bool {
+        self.content.is_some() && !self.signers.is_empty() && self.signers.iter().all(|s| s.trusted)
+    }
+
+    /// The signer certificate to offer for trust, when it is not yet trusted.
+    pub fn untrusted_signer(&self) -> Option<&SmimeSigner> {
+        self.signers.iter().find(|signer| !signer.trusted)
+    }
+}
 
 /// Trusted certificates plus recipient key pairs for decryption.
 #[derive(Default)]
@@ -81,76 +121,6 @@ fn parse_pkcs7(bytes: &[u8]) -> Option<Pkcs7> {
     Pkcs7::from_der(bytes)
         .ok()
         .or_else(|| Pkcs7::from_pem(bytes).ok())
-}
-
-/// Verify a CMS SignedData blob and return its content on success.
-pub fn verify_signed_data(der: &[u8], trusted: &[X509]) -> Option<Vec<u8>> {
-    let pkcs7 = parse_pkcs7(der)?;
-    let mut builder = X509StoreBuilder::new().ok()?;
-    for cert in trusted {
-        let _ = builder.add_cert(cert.clone());
-    }
-    let store = builder.build();
-    let certs = Stack::new().ok()?;
-    let mut out = Vec::new();
-    pkcs7
-        .verify(&certs, &store, None, Some(&mut out), Pkcs7Flags::BINARY)
-        .ok()?;
-    Some(out)
-}
-
-/// Verify an S/MIME multipart/signed message, returning the signed content.
-pub fn verify_mime(raw: &[u8], trusted: &[X509]) -> Option<Vec<u8>> {
-    let parser = MessageParser::new()
-        .with_minimal_headers()
-        .default_header_text();
-    let message = parser.parse(raw)?;
-    let root = message.part(0)?;
-    let content_type = root.content_type()?;
-    if !content_type.c_type.eq_ignore_ascii_case("multipart")
-        || !content_type
-            .c_subtype
-            .as_deref()
-            .is_some_and(|subtype| subtype.eq_ignore_ascii_case("signed"))
-    {
-        return None;
-    }
-    let PartType::Multipart(ids) = &root.body else {
-        return None;
-    };
-    if ids.len() < 2 {
-        return None;
-    }
-    let signed = message.part(ids[0])?;
-    let signature = message.part(ids[1])?.contents();
-    let raw_message = message.raw_message.as_ref();
-    let signed_bytes =
-        raw_message.get(signed.offset_header as usize..signed.offset_end as usize)?;
-
-    verify_detached(signed_bytes, signature, trusted)
-        .or_else(|| verify_detached(&normalize_crlf(signed_bytes), signature, trusted))
-}
-
-fn normalize_crlf(bytes: &[u8]) -> Vec<u8> {
-    String::from_utf8_lossy(bytes)
-        .replace("\r\n", "\n")
-        .replace('\n', "\r\n")
-        .into_bytes()
-}
-
-/// Verify a detached CMS signature over `content`.
-pub fn verify_detached(content: &[u8], signature: &[u8], trusted: &[X509]) -> Option<Vec<u8>> {
-    let pkcs7 = parse_pkcs7(signature)?;
-    let mut builder = X509StoreBuilder::new().ok()?;
-    for cert in trusted {
-        let _ = builder.add_cert(cert.clone());
-    }
-    let store = builder.build();
-    let certs = Stack::new().ok()?;
-    pkcs7
-        .verify(&certs, &store, Some(content), None, Pkcs7Flags::BINARY)
-        .ok()
-        .map(|_| content.to_vec())
 }
 
 /// Decrypt a CMS EnvelopedData blob with the first matching key pair.

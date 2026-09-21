@@ -58,6 +58,8 @@ pub struct App {
     pub message_scroll: u16,
     /// PGP verification/decryption result for the current message.
     pub pgp_status: Option<String>,
+    /// S/MIME signer awaiting a trust decision for the current message.
+    pub(crate) smime_signer: Option<crate::mail::smime::SmimeSigner>,
 
     // ── Search state ────────────────────────────────────────────────
     pub search_query: String,
@@ -153,6 +155,7 @@ impl App {
             message_content: None,
             message_scroll: 0,
             pgp_status: None,
+            smime_signer: None,
             search_query: String::new(),
             active_query: None,
             move_target: String::new(),

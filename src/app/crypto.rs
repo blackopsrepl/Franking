@@ -25,6 +25,21 @@ impl App {
         self.view = View::MessageView;
     }
 
+    /// Trust the signer certificate offered by the current S/MIME message.
+    pub(crate) fn trust_signer(&mut self) {
+        let Some(signer) = self.smime_signer.take() else {
+            self.set_status("No untrusted S/MIME signer to trust.");
+            return;
+        };
+        match crate::mail::smime::trust_certificate(&super::pgp::keys_dir(), &signer.der) {
+            Ok(_) => {
+                self.set_status(&format!("Trusted certificate for {}.", signer.subject));
+                self.reprocess_crypto();
+            }
+            Err(error) => self.set_error(&format!("Could not store certificate: {error}")),
+        }
+    }
+
     /// Adopt the typed passphrase and retry crypto processing on the message.
     pub(crate) fn submit_unlock(&mut self) {
         self.crypto_passphrase = std::mem::take(&mut self.unlock_input);
@@ -38,8 +53,10 @@ impl App {
             return;
         };
         let passphrase = self.crypto_passphrase.clone();
+        let smime = super::smime::process_smime(&mut message);
+        self.smime_signer = smime.as_ref().and_then(|outcome| outcome.untrusted.clone());
         self.pgp_status = super::pgp::process_pgp(&mut message, &passphrase)
-            .or_else(|| super::smime::process_smime(&mut message));
+            .or_else(|| smime.map(|outcome| outcome.status));
         self.message_content = Some(message);
     }
 }

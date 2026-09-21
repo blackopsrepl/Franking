@@ -99,6 +99,7 @@ impl App {
             Action::UnlockBackspace => self.unlock_backspace(),
             Action::UnlockSubmit => self.submit_unlock(),
             Action::UnlockCancel => self.cancel_unlock(),
+            Action::TrustSigner => self.trust_signer(),
 
             // ── Compose editor ───────────────────────────────────────
             Action::ComposeFieldNext => {

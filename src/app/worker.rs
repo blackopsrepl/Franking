@@ -195,8 +195,10 @@ impl App {
     pub(crate) fn handle_message_loaded(&mut self, mut message: MessageDocument) {
         self.harvest_contacts_from_message(&message);
         let passphrase = self.crypto_passphrase.clone();
+        let smime = super::smime::process_smime(&mut message);
+        self.smime_signer = smime.as_ref().and_then(|outcome| outcome.untrusted.clone());
         self.pgp_status = super::pgp::process_pgp(&mut message, &passphrase)
-            .or_else(|| super::smime::process_smime(&mut message));
+            .or_else(|| smime.map(|outcome| outcome.status));
 
         self.message_content = Some(message);
         self.message_scroll = 0;

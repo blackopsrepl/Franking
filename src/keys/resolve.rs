@@ -143,6 +143,7 @@ fn resolve_message_view(key: KeyEvent) -> Action {
         KeyCode::Char('a') => Action::DownloadAttachments,
         KeyCode::Char('N') => Action::ToggleRead,
         KeyCode::Char('P') => Action::UnlockPrompt,
+        KeyCode::Char('T') => Action::TrustSigner,
         KeyCode::Char('?') => Action::ToggleHelp,
         KeyCode::Char('g') => Action::JumpTop,
         KeyCode::Char('G') => Action::JumpBottom,

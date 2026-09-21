@@ -103,6 +103,8 @@ pub enum Action {
     UnlockBackspace,
     UnlockSubmit,
     UnlockCancel,
+    /// Trust the S/MIME signer certificate of the current message.
+    TrustSigner,
     ScrollUp,
     ScrollDown,
     // ── Compose editor ────────────────────────────────────────────────

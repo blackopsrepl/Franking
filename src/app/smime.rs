@@ -2,12 +2,20 @@
 
 use crate::mail::model::{BodyDocument, MessageDocument, PartBody};
 use crate::mail::security::Protection;
-use crate::mail::smime::{self, SmimeKeyring};
+use crate::mail::smime::{self, SmimeKeyring, SmimeSigner, SmimeVerification};
 
 use super::pgp::keys_dir;
 
-/// Verify or decrypt S/MIME on a message, returning a status line.
-pub(super) fn process_smime(message: &mut MessageDocument) -> Option<String> {
+/// Result of S/MIME processing for the message view.
+pub(super) struct SmimeOutcome {
+    /// Status line shown under the message.
+    pub status: String,
+    /// Signer certificate that is not yet trusted, if any.
+    pub untrusted: Option<SmimeSigner>,
+}
+
+/// Verify or decrypt S/MIME on a message.
+pub(super) fn process_smime(message: &mut MessageDocument) -> Option<SmimeOutcome> {
     let protection = message.protection()?;
     if !matches!(
         protection,
@@ -20,19 +28,15 @@ pub(super) fn process_smime(message: &mut MessageDocument) -> Option<String> {
 
     match protection {
         Protection::SmimeSigned => {
-            let verified = message
+            let verification = message
                 .raw
                 .as_deref()
-                .and_then(|raw| smime::verify_mime(raw, &keyring.certs))
-                .is_some()
-                || find_pkcs7(message)
-                    .map(|der| smime::verify_signed_data(&der, &keyring.certs).is_some())
-                    .unwrap_or(false);
-            Some(if verified {
-                "S/MIME signature valid".to_string()
-            } else {
-                "S/MIME signature could not be verified".to_string()
-            })
+                .and_then(|raw| smime::verify_mime_detailed(raw, &keyring.certs))
+                .or_else(|| {
+                    let der = find_pkcs7(message)?;
+                    smime::verify_detailed(&der, None, &keyring.certs)
+                })?;
+            Some(signature_outcome(verification))
         }
         Protection::SmimeEncrypted => {
             let der = find_pkcs7(message)?;
@@ -41,12 +45,53 @@ pub(super) fn process_smime(message: &mut MessageDocument) -> Option<String> {
                     let text = String::from_utf8_lossy(&data).to_string();
                     message.body = BodyDocument::from_plain(&text);
                     message.plain_body = Some(text);
-                    "S/MIME encrypted message decrypted".to_string()
+                    SmimeOutcome {
+                        status: "S/MIME encrypted message decrypted".to_string(),
+                        untrusted: None,
+                    }
                 }
-                None => "S/MIME encrypted (no usable key)".to_string(),
+                None => SmimeOutcome {
+                    status: "S/MIME encrypted (no usable key)".to_string(),
+                    untrusted: None,
+                },
             })
         }
         _ => None,
+    }
+}
+
+/// Turn a verification into a status line plus any signer to offer for trust.
+pub(super) fn signature_outcome(verification: SmimeVerification) -> SmimeOutcome {
+    let Some(signer) = verification.signers.first() else {
+        return SmimeOutcome {
+            status: "S/MIME signature could not be verified".to_string(),
+            untrusted: None,
+        };
+    };
+
+    if verification.is_trusted() {
+        return SmimeOutcome {
+            status: format!("S/MIME signature valid — {} (trusted)", signer.subject),
+            untrusted: None,
+        };
+    }
+
+    if verification.content.is_none() {
+        return SmimeOutcome {
+            status: format!(
+                "S/MIME signature could not be verified — {} (press T to trust)",
+                signer.subject
+            ),
+            untrusted: verification.untrusted_signer().cloned(),
+        };
+    }
+
+    SmimeOutcome {
+        status: format!(
+            "S/MIME signature from an untrusted certificate — {} (press T to trust)",
+            signer.subject
+        ),
+        untrusted: verification.untrusted_signer().cloned(),
     }
 }
 

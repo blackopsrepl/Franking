@@ -11,7 +11,10 @@ use openssl::x509::{X509NameBuilder, X509};
 
 use base64::Engine;
 
-use super::{decrypt_enveloped, verify_mime, verify_signed_data, SmimeKeyring};
+use super::{
+    decrypt_enveloped, trust_certificate, verify_detailed, verify_mime, verify_signed_data,
+    SmimeKeyring,
+};
 
 fn certificate() -> (PKey<openssl::pkey::Private>, X509) {
     let rsa = Rsa::generate(2048).unwrap();
@@ -97,4 +100,74 @@ fn verifies_a_detached_mime_signature() {
 
     let content = verify_mime(message.as_bytes(), std::slice::from_ref(&cert)).expect("verified");
     assert_eq!(content, signed_part.as_bytes());
+}
+
+fn sign(key: &PKey<openssl::pkey::Private>, cert: &X509, content: &[u8]) -> Vec<u8> {
+    let certs = Stack::new().unwrap();
+    Pkcs7::sign(cert, key, &certs, content, Pkcs7Flags::BINARY)
+        .unwrap()
+        .to_der()
+        .unwrap()
+}
+
+#[test]
+fn reports_an_untrusted_signer_with_identity() {
+    let (key, cert) = certificate();
+    let der = sign(&key, &cert, b"body");
+
+    let verification = verify_detailed(&der, Some(b"body"), &[]).expect("verification");
+    assert!(verification.content.is_none());
+    assert_eq!(verification.signers.len(), 1);
+
+    let signer = &verification.signers[0];
+    assert!(signer.subject.contains("CN=Alice"));
+    assert!(signer.subject.contains("alice@example.com"));
+    assert!(!signer.trusted);
+    assert_eq!(signer.fingerprint.len(), 64);
+    assert!(!signer.der.is_empty());
+    assert_eq!(
+        verification.untrusted_signer().map(|s| s.subject.clone()),
+        Some(signer.subject.clone())
+    );
+}
+
+#[test]
+fn reports_a_trusted_signer_when_the_certificate_is_known() {
+    let (key, cert) = certificate();
+    let der = sign(&key, &cert, b"body");
+
+    let verification =
+        verify_detailed(&der, Some(b"body"), std::slice::from_ref(&cert)).expect("verification");
+    assert_eq!(verification.content.as_deref(), Some(&b"body"[..]));
+    assert!(verification.is_trusted());
+    assert!(verification.untrusted_signer().is_none());
+}
+
+#[test]
+fn trusting_a_certificate_round_trips_through_the_keyring() {
+    let root = std::env::temp_dir().join(format!(
+        "sfmail-smime-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_nanos())
+            .unwrap_or_default()
+    ));
+    std::fs::create_dir_all(&root).unwrap();
+
+    let (key, cert) = certificate();
+    let der = sign(&key, &cert, b"body");
+    let signer_der = verify_detailed(&der, Some(b"body"), &[]).unwrap().signers[0]
+        .der
+        .clone();
+
+    let path = trust_certificate(&root, &signer_der).expect("store certificate");
+    assert!(path.exists());
+
+    let keyring = SmimeKeyring::load(&root);
+    assert_eq!(keyring.certs.len(), 1);
+    let verification = verify_detailed(&der, Some(b"body"), &keyring.certs).unwrap();
+    assert!(verification.is_trusted());
+
+    let _ = std::fs::remove_dir_all(&root);
 }
