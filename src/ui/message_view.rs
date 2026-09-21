@@ -52,6 +52,17 @@ pub fn render(app: &App, frame: &mut Frame, area: Rect) {
         lines.push(Line::from(Span::styled(raw_line.to_string(), style)));
     }
 
+    if !message.body.links.is_empty() {
+        lines.push(Line::from(""));
+        lines.push(Line::from(Span::styled("Links", t.header_label())));
+        for link in &message.body.links {
+            lines.push(Line::from(Span::styled(
+                format!("  {} \u{2014} {}", link.text, link.href),
+                t.normal(),
+            )));
+        }
+    }
+
     if !message.attachments.is_empty() {
         lines.push(Line::from(""));
         lines.push(Line::from(Span::styled("Attachments", t.header_label())));
