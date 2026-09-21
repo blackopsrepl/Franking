@@ -106,3 +106,23 @@ impl MessageDocument {
         crate::mail::security::detect_protection(self)
     }
 }
+
+impl MessageDocument {
+    /// First calendar invitation in the message, if any.
+    pub fn invitation(&self) -> Option<crate::mail::calendar::Event> {
+        for part in &self.parts {
+            let mut event = None;
+            part.walk(&mut |part| {
+                if event.is_none() && part.content_type.eq_ignore_ascii_case("text/calendar") {
+                    if let Some(text) = part.text() {
+                        event = crate::mail::calendar::parse_invitation(text);
+                    }
+                }
+            });
+            if event.is_some() {
+                return event;
+            }
+        }
+        None
+    }
+}
