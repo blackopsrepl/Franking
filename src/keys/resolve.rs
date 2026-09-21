@@ -1,0 +1,198 @@
+/*! View dispatch for key events. */
+
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+
+use super::action::{Action, ComposeFocus, ComposeKeyContext, View};
+use super::resolve_contacts::{
+    resolve_compose, resolve_contact_edit, resolve_contact_search, resolve_contacts,
+    resolve_identity_edit, resolve_identity_list,
+};
+
+pub fn resolve(view: View, key: KeyEvent) -> Action {
+    match view {
+        View::Compose => return resolve_compose(key),
+        View::Contacts => return resolve_contacts(key),
+        View::ContactSearch => return resolve_contact_search(key),
+        View::ContactEdit => return resolve_contact_edit(key),
+        View::IdentityList => return resolve_identity_list(key),
+        View::IdentityEdit => return resolve_identity_edit(key),
+        _ => {}
+    }
+
+    // Global keybindings (handled first)
+    if key.modifiers.contains(KeyModifiers::CONTROL) {
+        return match key.code {
+            KeyCode::Char('c') | KeyCode::Char('q') => Action::Quit,
+            KeyCode::Char('a') => Action::SwitchAccount,
+            KeyCode::Char('r') => Action::Refresh,
+            KeyCode::Char('b') => Action::OpenContacts,
+            _ => Action::None,
+        };
+    }
+
+    match view {
+        View::EnvelopeList => resolve_envelope_list(key),
+        View::MessageView => resolve_message_view(key),
+        View::FolderList => resolve_folder_list(key),
+        View::AccountList => resolve_account_list(key),
+        View::Search => resolve_search(key),
+        View::Help => resolve_help(key),
+        View::MovePrompt => resolve_move_prompt(key),
+        View::ContactSearch => resolve_contact_search(key),
+        View::ContactEdit => resolve_contact_edit(key),
+        // Already handled above
+        View::Compose | View::Contacts | View::IdentityList | View::IdentityEdit => Action::None,
+    }
+}
+
+/// Resolve compose keys with compose-state context.
+///
+/// Compose is focus-driven: the shell owns modal overlays, field cycling, and
+/// action-bar activation, while the focused field handles its own editing.
+///
+/// Priority order (highest first):
+/// 1) discard-confirm modal interception
+/// 2) global compose shortcuts (`Ctrl+C` / `Ctrl+Q`)
+/// 3) autocomplete popup navigation/accept keys
+/// 4) compose shell controls (`Tab`, `Shift+Tab`, action-bar `Enter` / `Esc`)
+/// 5) passthrough to the focused compose field
+pub fn resolve_compose_with_context(key: KeyEvent, ctx: ComposeKeyContext) -> Action {
+    // Discard confirmation modal owns key handling while visible.
+    if ctx.confirm_discard_visible {
+        return match key.code {
+            KeyCode::Char('y') | KeyCode::Char('Y') => Action::ComposeConfirmDiscard,
+            KeyCode::Char('n') | KeyCode::Char('N') | KeyCode::Esc => Action::ComposeCancelDiscard,
+            _ => Action::None,
+        };
+    }
+
+    // Allow Ctrl+C / Ctrl+Q globally in compose as quit-discard
+    if key.modifiers.contains(KeyModifiers::CONTROL) {
+        return match key.code {
+            KeyCode::Char('c') | KeyCode::Char('q') => Action::ComposeDiscard,
+            _ => Action::EditorKey(key),
+        };
+    }
+
+    // If autocomplete popup is open, let app-level popup handler own navigation
+    // and acceptance keys.
+    if ctx.autocomplete_visible {
+        match key.code {
+            KeyCode::Down | KeyCode::Up | KeyCode::Enter | KeyCode::Tab | KeyCode::Esc => {
+                return Action::EditorKey(key);
+            }
+            _ => {}
+        }
+    }
+
+    match key.code {
+        KeyCode::Tab if ctx.focus == ComposeFocus::Body && ctx.body_search_active => {
+            Action::ComposeLeaveBodyNext
+        }
+        KeyCode::BackTab if ctx.focus == ComposeFocus::Body && ctx.body_search_active => {
+            Action::ComposeLeaveBodyPrev
+        }
+        KeyCode::Tab => Action::ComposeFieldNext,
+        KeyCode::BackTab => Action::ComposeFieldPrev,
+        KeyCode::Down if ctx.focus != ComposeFocus::Body => Action::ComposeFieldNext,
+        KeyCode::Up if ctx.focus != ComposeFocus::Body => Action::ComposeFieldPrev,
+        KeyCode::Enter if ctx.focus == ComposeFocus::ActionBar => Action::ComposeEnterInsert,
+        KeyCode::Esc if ctx.focus == ComposeFocus::ActionBar => Action::ComposeExitToNav,
+        _ => Action::EditorKey(key),
+    }
+}
+
+fn resolve_envelope_list(key: KeyEvent) -> Action {
+    match key.code {
+        KeyCode::Char('q') => Action::Quit,
+        KeyCode::Char('j') | KeyCode::Down => Action::MoveDown,
+        KeyCode::Char('k') | KeyCode::Up => Action::MoveUp,
+        KeyCode::Char('g') => Action::JumpTop,
+        KeyCode::Char('G') => Action::JumpBottom,
+        KeyCode::Enter => Action::OpenMessage,
+        KeyCode::Char('c') => Action::Compose,
+        KeyCode::Char('d') => Action::Delete,
+        KeyCode::Char('m') => Action::MoveMessage,
+        KeyCode::Char('!') => Action::ToggleFlag,
+        KeyCode::Char('/') => Action::Search,
+        KeyCode::Char('n') => Action::PageDown,
+        KeyCode::Char('p') => Action::PageUp,
+        KeyCode::Char('t') => Action::ToggleThread,
+        KeyCode::Char('?') => Action::ToggleHelp,
+        KeyCode::Char('I') => Action::OpenIdentities,
+        KeyCode::Tab => Action::FocusFolders,
+        KeyCode::Esc => Action::Quit,
+        _ => Action::None,
+    }
+}
+
+fn resolve_message_view(key: KeyEvent) -> Action {
+    match key.code {
+        KeyCode::Char('q') | KeyCode::Esc => Action::Back,
+        KeyCode::Char('j') | KeyCode::Down => Action::ScrollDown,
+        KeyCode::Char('k') | KeyCode::Up => Action::ScrollUp,
+        KeyCode::Char(' ') => Action::PageDown,
+        KeyCode::Char('r') => Action::Reply,
+        KeyCode::Char('R') => Action::ReplyAll,
+        KeyCode::Char('f') => Action::Forward,
+        KeyCode::Char('d') => Action::Delete,
+        KeyCode::Char('a') => Action::DownloadAttachments,
+        KeyCode::Char('?') => Action::ToggleHelp,
+        KeyCode::Char('g') => Action::JumpTop,
+        KeyCode::Char('G') => Action::JumpBottom,
+        _ => Action::None,
+    }
+}
+
+fn resolve_folder_list(key: KeyEvent) -> Action {
+    match key.code {
+        KeyCode::Char('q') | KeyCode::Esc => Action::FocusEnvelopes,
+        KeyCode::Char('j') | KeyCode::Down => Action::MoveDown,
+        KeyCode::Char('k') | KeyCode::Up => Action::MoveUp,
+        KeyCode::Enter => Action::Select,
+        KeyCode::Tab => Action::FocusEnvelopes,
+        KeyCode::Char('?') => Action::ToggleHelp,
+        KeyCode::Char('I') => Action::OpenIdentities,
+        _ => Action::None,
+    }
+}
+
+fn resolve_account_list(key: KeyEvent) -> Action {
+    match key.code {
+        KeyCode::Esc => Action::Back,
+        KeyCode::Char('q') => Action::Back,
+        KeyCode::Char('j') | KeyCode::Down => Action::MoveDown,
+        KeyCode::Char('k') | KeyCode::Up => Action::MoveUp,
+        KeyCode::Enter => Action::Select,
+        _ => Action::None,
+    }
+}
+
+fn resolve_search(key: KeyEvent) -> Action {
+    match key.code {
+        KeyCode::Enter => Action::SearchSubmit,
+        KeyCode::Esc => Action::SearchCancel,
+        KeyCode::Backspace => Action::SearchBackspace,
+        KeyCode::Char(c) => Action::SearchInput(c),
+        _ => Action::None,
+    }
+}
+
+fn resolve_help(key: KeyEvent) -> Action {
+    match key.code {
+        KeyCode::Esc | KeyCode::Char('q') | KeyCode::Char('?') => Action::ToggleHelp,
+        KeyCode::Char('j') | KeyCode::Down => Action::ScrollDown,
+        KeyCode::Char('k') | KeyCode::Up => Action::ScrollUp,
+        _ => Action::None,
+    }
+}
+
+fn resolve_move_prompt(key: KeyEvent) -> Action {
+    match key.code {
+        KeyCode::Enter => Action::MoveSubmit,
+        KeyCode::Esc => Action::MoveCancel,
+        KeyCode::Backspace => Action::MoveBackspace,
+        KeyCode::Char(c) => Action::MoveInput(c),
+        _ => Action::None,
+    }
+}
