@@ -45,6 +45,7 @@ pub fn render(app: &App, frame: &mut Frame) {
         binding("/", "Search"),
         binding("Space", "Select / deselect message"),
         binding("u", "Clear selection"),
+        binding("z", "Undo the last delete, move, or flag"),
         binding("t", "Toggle threaded view"),
         binding("n / p", "Next / previous page"),
         binding("Tab", "Focus folder sidebar"),

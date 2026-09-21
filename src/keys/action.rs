@@ -129,6 +129,8 @@ pub enum Action {
     FolderPromptCancel,
     // ── Multi-select ──────────────────────────────────────────────────
     ToggleSelect,
+    /// Reverse the last destructive action.
+    Undo,
     ClearSelection,
     // ── Sieve filters ─────────────────────────────────────────────────
     OpenSieve,

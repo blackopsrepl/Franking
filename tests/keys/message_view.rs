@@ -23,6 +23,14 @@ fn message_view_toggles_all_headers() {
 }
 
 #[test]
+fn message_view_undoes_the_last_action() {
+    assert_eq!(
+        resolve(View::MessageView, key(KeyCode::Char('z'))),
+        Action::Undo
+    );
+}
+
+#[test]
 fn message_view_saves_the_source() {
     assert_eq!(
         resolve(View::MessageView, key(KeyCode::Char('s'))),

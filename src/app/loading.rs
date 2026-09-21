@@ -4,6 +4,7 @@ use crate::keys::View;
 use crate::mail::types::FolderRole;
 
 use super::model::{App, PAGE_SIZE};
+use super::undo::UndoOp;
 
 impl App {
     pub(crate) fn load_accounts(&mut self) {
@@ -93,6 +94,7 @@ impl App {
         self.loading = true;
         self.pending_return_to_list = self.view == View::MessageView;
         self.pending_refresh_after_action = true;
+        self.record_delete_undo(&ids);
         let account = self.selected_account();
         let folder = self.selected_folder();
         if ids.len() == 1 {
@@ -101,6 +103,24 @@ impl App {
             self.selected.clear();
             self.worker.delete_messages(account, folder, ids);
         }
+    }
+
+    /// Deleting moves a message to Trash, so the reverse is a move back.
+    fn record_delete_undo(&mut self, ids: &[String]) {
+        let from = self.selected_folder();
+        let Some(trash) = self.trash_folder() else {
+            self.pending_undo = None;
+            return;
+        };
+        if from.eq_ignore_ascii_case(&trash) {
+            self.pending_undo = None;
+            return;
+        }
+        self.pending_undo = Some(UndoOp::Move {
+            from,
+            to: trash,
+            ids: ids.to_vec(),
+        });
     }
 
     pub(crate) fn mark_folder_read(&mut self) {
@@ -131,6 +151,12 @@ impl App {
             .unwrap_or(false);
         self.loading = true;
         self.pending_refresh_after_action = true;
+        self.pending_undo = Some(UndoOp::Flag {
+            folder: self.selected_folder(),
+            ids: ids.clone(),
+            flag: "seen".to_string(),
+            added: !is_seen,
+        });
         let account = self.selected_account();
         let folder = self.selected_folder();
         if ids.len() == 1 {
@@ -159,6 +185,12 @@ impl App {
             .unwrap_or(false);
         self.loading = true;
         self.pending_refresh_after_action = true;
+        self.pending_undo = Some(UndoOp::Flag {
+            folder: self.selected_folder(),
+            ids: ids.clone(),
+            flag: "flagged".to_string(),
+            added: !is_flagged,
+        });
         let account = self.selected_account();
         let folder = self.selected_folder();
         if ids.len() == 1 {

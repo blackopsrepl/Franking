@@ -125,6 +125,8 @@ pub struct App {
     pub(crate) pending_refresh_after_action: bool,
     /// Envelope ids selected for a batch operation.
     pub(crate) selected: std::collections::HashSet<String>,
+    /// Reversible operation performed by the last destructive action.
+    pub(crate) pending_undo: Option<super::undo::UndoOp>,
 
     // ── Database ────────────────────────────────────────────────────
     pub db: Option<Connection>,
@@ -196,6 +198,7 @@ impl App {
             pending_return_to_list: false,
             pending_refresh_after_action: false,
             selected: Default::default(),
+            pending_undo: None,
             db: None,
             compose_state: None,
             contacts: Vec::new(),

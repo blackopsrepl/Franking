@@ -254,6 +254,11 @@ impl App {
             self.view = View::EnvelopeList;
             let account = self.acct_owned();
             let folder = self.current_folder.clone();
+            self.pending_undo = Some(super::undo::UndoOp::Move {
+                from: folder.clone(),
+                to: target.clone(),
+                ids: ids.clone(),
+            });
             if ids.len() == 1 {
                 self.worker.move_message(account, folder, target, id);
             } else {

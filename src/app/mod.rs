@@ -17,6 +17,7 @@ mod pgp;
 mod selection;
 mod sieve;
 mod smime;
+mod undo;
 mod worker;
 
 #[cfg(test)]

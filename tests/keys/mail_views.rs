@@ -218,6 +218,10 @@ fn envelope_list_selects_for_batch_actions() {
         resolve(View::EnvelopeList, key(KeyCode::Char('u'))),
         Action::ClearSelection
     );
+    assert_eq!(
+        resolve(View::EnvelopeList, key(KeyCode::Char('z'))),
+        Action::Undo
+    );
 }
 
 // ── Move prompt ─────────────────────────────────────────────────────
