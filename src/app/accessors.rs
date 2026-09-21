@@ -148,7 +148,7 @@ impl App {
             show_html_source: false,
             search_query: String::new(),
             active_query: None,
-            search_all_folders: false,
+            search_scope: Default::default(),
             notifications_enabled: true,
             mark_read_on_open: true,
             settings_index: 0,

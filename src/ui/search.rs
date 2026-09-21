@@ -14,11 +14,7 @@ pub fn render(app: &App, frame: &mut Frame, area: Rect) {
         " "
     }; // blinking block
 
-    let scope = if app.search_all_folders {
-        "  [all folders — Tab switches]"
-    } else {
-        "  [this folder — Tab switches]"
-    };
+    let scope = format!("  [{} — Tab switches]", app.search_scope.label());
 
     let spans = vec![
         Span::styled(" / ", t.status_key()),

@@ -204,10 +204,10 @@ pub(super) fn create_schema(conn: &Connection) -> Result<()> {
          );
 
          CREATE TABLE saved_searches (
-             name        TEXT PRIMARY KEY,
-             query       TEXT    NOT NULL,
-             all_folders INTEGER NOT NULL DEFAULT 0,
-             created_at  TEXT    NOT NULL DEFAULT (datetime('now'))
+             name       TEXT PRIMARY KEY,
+             query      TEXT NOT NULL,
+             scope      TEXT NOT NULL DEFAULT 'folder',
+             created_at TEXT NOT NULL DEFAULT (datetime('now'))
          );
 
          CREATE TABLE sync_state (
@@ -266,10 +266,10 @@ pub(super) fn migrate_schema(conn: &Connection) -> Result<()> {
     }
     conn.execute_batch(
         "CREATE TABLE IF NOT EXISTS saved_searches (
-             name        TEXT PRIMARY KEY,
-             query       TEXT    NOT NULL,
-             all_folders INTEGER NOT NULL DEFAULT 0,
-             created_at  TEXT    NOT NULL DEFAULT (datetime('now'))
+             name       TEXT PRIMARY KEY,
+             query      TEXT NOT NULL,
+             scope      TEXT NOT NULL DEFAULT 'folder',
+             created_at TEXT NOT NULL DEFAULT (datetime('now'))
          );",
     )?;
     for column in [

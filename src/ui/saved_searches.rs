@@ -19,11 +19,7 @@ pub fn render(app: &App, frame: &mut Frame) {
         .iter()
         .enumerate()
         .map(|(index, search)| {
-            let scope = if search.all_folders {
-                "all folders"
-            } else {
-                "this folder"
-            };
+            let scope = search.scope.label();
             let pending =
                 app.saved_searches.pending_delete.as_deref() == Some(search.name.as_str());
             let suffix = if pending {

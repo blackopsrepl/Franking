@@ -82,7 +82,7 @@ pub struct App {
 
     pub search_query: String,
     pub active_query: Option<String>,
-    pub(crate) search_all_folders: bool,
+    pub(crate) search_scope: crate::mail::search_scope::SearchScope,
     /// Whether new-mail desktop notifications are sent.
     pub(crate) notifications_enabled: bool,
     /// Whether opening a message marks it read on the server.

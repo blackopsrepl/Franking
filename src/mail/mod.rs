@@ -16,6 +16,7 @@ pub mod pgp_mime;
 pub mod pgp_sign;
 pub mod remote;
 pub mod search_merge;
+pub mod search_scope;
 pub mod security;
 pub mod service;
 pub mod session;

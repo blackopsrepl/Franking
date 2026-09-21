@@ -198,20 +198,30 @@ impl App {
         self.search_query.pop();
     }
 
-    /// Toggle whether the next search covers every folder.
+    /// Widen the next search: this folder, all folders, all accounts.
     pub(crate) fn toggle_search_scope(&mut self) {
-        self.search_all_folders = !self.search_all_folders;
+        self.search_scope = self.search_scope.next();
+        self.set_status(&format!("Search scope: {}.", self.search_scope.label()));
     }
 
     pub(crate) fn submit_search(&mut self) {
         let query = self.search_query.clone();
         self.active_query = if query.is_empty() { None } else { Some(query) };
         self.page = 1;
-        let all_folders = self.search_all_folders;
+        let scope = self.search_scope;
         let query = self.active_query.clone();
         self.view = View::EnvelopeList;
 
-        if all_folders {
+        if scope == crate::mail::search_scope::SearchScope::Accounts {
+            if let Some(query) = query {
+                self.loading = true;
+                self.set_status("Searching every account...");
+                self.worker.search_all_accounts(query);
+                return;
+            }
+        }
+
+        if scope == crate::mail::search_scope::SearchScope::Folders {
             if let Some(query) = query {
                 let folders: Vec<String> = self
                     .folders

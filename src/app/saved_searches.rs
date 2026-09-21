@@ -90,7 +90,7 @@ impl App {
         let search = SavedSearch {
             name: name.clone(),
             query,
-            all_folders: self.search_all_folders,
+            scope: self.search_scope,
         };
         let Some(conn) = self.db.as_ref() else {
             self.set_error("Local database is unavailable.");
@@ -145,7 +145,7 @@ impl App {
             return;
         };
         self.search_query = search.query.clone();
-        self.search_all_folders = search.all_folders;
+        self.search_scope = search.scope;
         self.view = View::EnvelopeList;
         self.submit_search();
     }

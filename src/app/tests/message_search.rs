@@ -169,14 +169,22 @@ fn the_search_prompt_toggles_scope_between_folder_and_all() {
 
     use super::super::App;
 
+    use crate::mail::search_scope::SearchScope;
+
     let mut app = App::new(None);
     app.view = View::Search;
-    assert!(!app.search_all_folders);
+    assert_eq!(app.search_scope, SearchScope::Folder);
 
     app.handle_key(KeyEvent::new(KeyCode::Tab, KeyModifiers::NONE));
-    assert!(app.search_all_folders);
+    assert_eq!(app.search_scope, SearchScope::Folders);
     app.handle_key(KeyEvent::new(KeyCode::Tab, KeyModifiers::NONE));
-    assert!(!app.search_all_folders);
+    assert_eq!(app.search_scope, SearchScope::Accounts);
+    app.handle_key(KeyEvent::new(KeyCode::Tab, KeyModifiers::NONE));
+    assert_eq!(
+        app.search_scope,
+        SearchScope::Folder,
+        "the cycle returns to the narrowest scope"
+    );
 }
 
 #[test]

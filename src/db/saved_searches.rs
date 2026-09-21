@@ -3,24 +3,27 @@
 use anyhow::{Context, Result};
 use rusqlite::{params, Connection, OptionalExtension};
 
+use crate::mail::search_scope::SearchScope;
+
 /// A stored search.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SavedSearch {
     pub name: String,
     pub query: String,
-    /// Whether the search covered every folder when it was saved.
-    pub all_folders: bool,
+    /// How far the search reached when it was saved.
+    pub scope: SearchScope,
 }
 
 /// Every saved search, by name.
 pub fn list(conn: &Connection) -> Result<Vec<SavedSearch>> {
     let mut statement =
-        conn.prepare("SELECT name, query, all_folders FROM saved_searches ORDER BY name")?;
+        conn.prepare("SELECT name, query, scope FROM saved_searches ORDER BY name")?;
     let rows = statement.query_map([], |row| {
+        let scope: String = row.get(2)?;
         Ok(SavedSearch {
             name: row.get(0)?,
             query: row.get(1)?,
-            all_folders: row.get::<_, i32>(2)? != 0,
+            scope: SearchScope::parse(&scope),
         })
     })?;
     rows.collect::<rusqlite::Result<Vec<_>>>()
@@ -30,12 +33,12 @@ pub fn list(conn: &Connection) -> Result<Vec<SavedSearch>> {
 /// Store a search under `name`, replacing any search of that name.
 pub fn save(conn: &Connection, search: &SavedSearch) -> Result<()> {
     conn.execute(
-        "INSERT INTO saved_searches (name, query, all_folders)
+        "INSERT INTO saved_searches (name, query, scope)
          VALUES (?1, ?2, ?3)
          ON CONFLICT(name) DO UPDATE SET
              query = excluded.query,
-             all_folders = excluded.all_folders",
-        params![search.name, search.query, search.all_folders as i32],
+             scope = excluded.scope",
+        params![search.name, search.query, search.scope.as_str()],
     )
     .context("cannot save the search")?;
     Ok(())
@@ -52,13 +55,14 @@ pub fn delete(conn: &Connection, name: &str) -> Result<bool> {
 /// One saved search by name.
 pub fn get(conn: &Connection, name: &str) -> Result<Option<SavedSearch>> {
     conn.query_row(
-        "SELECT name, query, all_folders FROM saved_searches WHERE name = ?1",
+        "SELECT name, query, scope FROM saved_searches WHERE name = ?1",
         [name],
         |row| {
+            let scope: String = row.get(2)?;
             Ok(SavedSearch {
                 name: row.get(0)?,
                 query: row.get(1)?,
-                all_folders: row.get::<_, i32>(2)? != 0,
+                scope: SearchScope::parse(&scope),
             })
         },
     )
@@ -68,6 +72,8 @@ pub fn get(conn: &Connection, name: &str) -> Result<Option<SavedSearch>> {
 
 #[cfg(test)]
 mod tests {
+    use crate::mail::search_scope::SearchScope;
+
     use super::{delete, get, list, save, SavedSearch};
 
     fn conn() -> rusqlite::Connection {
@@ -86,7 +92,7 @@ mod tests {
             &SavedSearch {
                 name: "Quarterly".to_string(),
                 query: "subject quarterly and not flag seen".to_string(),
-                all_folders: true,
+                scope: SearchScope::Folders,
             },
         )
         .unwrap();
@@ -95,14 +101,17 @@ mod tests {
             &SavedSearch {
                 name: "From Alice".to_string(),
                 query: "from alice".to_string(),
-                all_folders: false,
+                scope: SearchScope::Folder,
             },
         )
         .unwrap();
 
         let names: Vec<String> = list(&conn).unwrap().into_iter().map(|s| s.name).collect();
         assert_eq!(names, vec!["From Alice", "Quarterly"], "sorted by name");
-        assert!(get(&conn, "Quarterly").unwrap().unwrap().all_folders);
+        assert_eq!(
+            get(&conn, "Quarterly").unwrap().unwrap().scope,
+            SearchScope::Folders
+        );
 
         // Saving the same name replaces the query.
         save(
@@ -110,13 +119,13 @@ mod tests {
             &SavedSearch {
                 name: "Quarterly".to_string(),
                 query: "subject revenue".to_string(),
-                all_folders: false,
+                scope: SearchScope::Accounts,
             },
         )
         .unwrap();
         let updated = get(&conn, "Quarterly").unwrap().unwrap();
         assert_eq!(updated.query, "subject revenue");
-        assert!(!updated.all_folders);
+        assert_eq!(updated.scope, SearchScope::Accounts);
         assert_eq!(list(&conn).unwrap().len(), 2);
 
         assert!(delete(&conn, "Quarterly").unwrap());

@@ -2,6 +2,7 @@
 
 use crate::db::saved_searches::{self as store, SavedSearch};
 use crate::keys::View;
+use crate::mail::search_scope::SearchScope;
 
 use super::super::App;
 
@@ -18,7 +19,7 @@ fn app() -> App {
 fn the_active_query_can_be_saved_under_a_name_and_re_run() {
     let mut app = app();
     app.active_query = Some("subject quarterly".to_string());
-    app.search_all_folders = true;
+    app.search_scope = SearchScope::Folders;
 
     app.begin_save_search();
     assert_eq!(app.view, View::SaveSearch);
@@ -38,20 +39,20 @@ fn the_active_query_can_be_saved_under_a_name_and_re_run() {
         vec![SavedSearch {
             name: "Quarterly".to_string(),
             query: "subject quarterly".to_string(),
-            all_folders: true,
+            scope: SearchScope::Folders,
         }]
     );
 
     // Running it restores the query and its scope.
     app.active_query = None;
-    app.search_all_folders = false;
+    app.search_scope = SearchScope::Folder;
     app.open_saved_searches();
     assert_eq!(app.view, View::SavedSearches);
     app.saved_searches.index = 0;
     app.run_saved_search();
     assert_eq!(app.view, View::EnvelopeList);
     assert_eq!(app.active_query.as_deref(), Some("subject quarterly"));
-    assert!(app.search_all_folders);
+    assert_eq!(app.search_scope, SearchScope::Folders);
 }
 
 #[test]
@@ -83,7 +84,7 @@ fn deleting_a_saved_search_requires_confirmation() {
         &SavedSearch {
             name: "Old".to_string(),
             query: "from bob".to_string(),
-            all_folders: false,
+            scope: SearchScope::Folder,
         },
     )
     .unwrap();
