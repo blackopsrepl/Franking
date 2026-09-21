@@ -4,6 +4,8 @@ use crossterm::event::KeyCode;
 use pretty_assertions::assert_eq;
 use solverforge_mail::keys::{resolve, Action, View};
 
+use super::support::key;
+
 use super::support::ctrl;
 
 #[test]
@@ -35,5 +37,13 @@ fn ctrl_r_refreshes() {
     assert_eq!(
         resolve(View::EnvelopeList, ctrl(KeyCode::Char('r'))),
         Action::Refresh
+    );
+}
+
+#[test]
+fn contacts_view_cycles_the_tag_filter() {
+    assert_eq!(
+        resolve(View::Contacts, key(KeyCode::Char('t'))),
+        Action::CycleContactTag
     );
 }

@@ -165,6 +165,8 @@ pub struct App {
     pub contact_search: String,
     /// Whether the contacts search bar is active (accepting typed characters).
     pub contact_search_active: bool,
+    /// Active contact tag filter.
+    pub(crate) contact_tag_filter: Option<String>,
 
     // ── Contact edit form state ──────────────────────────────────────
     pub contact_edit_state: Option<ContactEditState>,

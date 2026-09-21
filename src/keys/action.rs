@@ -150,6 +150,8 @@ pub enum Action {
     AccountEditCancel,
     /// Auto-detect provider settings for the typed login.
     AccountEditDiscover,
+    /// Cycle the contact tag filter.
+    CycleContactTag,
     // ── File picker ───────────────────────────────────────────────────
     OpenFilePicker,
     FilePickerNext,

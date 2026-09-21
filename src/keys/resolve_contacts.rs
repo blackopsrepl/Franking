@@ -90,6 +90,7 @@ pub(super) fn resolve_contacts(key: KeyEvent) -> Action {
         };
     }
     match key.code {
+        KeyCode::Char('t') => Action::CycleContactTag,
         KeyCode::Esc | KeyCode::Char('q') => Action::Back,
         KeyCode::Char('j') | KeyCode::Down => Action::MoveDown,
         KeyCode::Char('k') | KeyCode::Up => Action::MoveUp,

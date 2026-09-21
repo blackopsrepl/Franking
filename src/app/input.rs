@@ -118,6 +118,7 @@ impl App {
             Action::OpenSettings => self.open_settings(),
             Action::SettingsToggleNotifications => self.toggle_notifications(),
             Action::SettingsClose => self.close_settings(),
+            Action::CycleContactTag => self.cycle_contact_tag(),
             Action::OpenLinks => self.open_links(),
             Action::LinkNext => self.link_next(),
             Action::LinkPrev => self.link_prev(),

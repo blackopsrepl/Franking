@@ -116,6 +116,7 @@ pub fn hints(view: View) -> Vec<(&'static str, &'static str)> {
             ("Esc", "nav/discard"),
         ],
         View::Contacts => vec![
+            ("t", "tag filter"),
             ("j/k", "nav"),
             ("n", "new"),
             ("e", "edit"),

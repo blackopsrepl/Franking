@@ -194,6 +194,14 @@ pub fn list(conn: &Connection, tag_filter: Option<&str>) -> Result<Vec<Contact>>
     Ok(contacts)
 }
 
+/// Every distinct tag in use, sorted.
+pub fn all_tags(conn: &Connection) -> Result<Vec<String>> {
+    let mut statement = conn.prepare("SELECT DISTINCT tag FROM contact_tags ORDER BY tag")?;
+    let rows = statement.query_map([], |row| row.get::<_, String>(0))?;
+    rows.collect::<rusqlite::Result<Vec<_>>>()
+        .context("cannot list tags")
+}
+
 /// Tag a contact.
 pub fn add_tag(conn: &Connection, contact_id: i64, tag: &str) -> Result<()> {
     conn.execute(

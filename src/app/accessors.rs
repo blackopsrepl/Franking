@@ -187,6 +187,7 @@ impl App {
             contact_index: None,
             contact_search: String::new(),
             contact_search_active: false,
+            contact_tag_filter: None,
             contact_edit_state: None,
             identities: Vec::new(),
             identity_index: None,

@@ -9,7 +9,7 @@ impl App {
     pub(crate) fn open_contacts(&mut self) {
         // Load contacts from DB if available.
         if let Some(ref conn) = self.db {
-            match crate::contacts::list(conn, None) {
+            match crate::contacts::list(conn, self.contact_tag_filter.as_deref()) {
                 Ok(contacts) => {
                     self.contacts = contacts;
                     self.contact_index = if self.contacts.is_empty() {
@@ -50,7 +50,9 @@ impl App {
         // If search is cleared, reload full list; otherwise keep current results.
         if self.contact_search.is_empty() {
             if let Some(ref conn) = self.db {
-                if let Ok(contacts) = crate::contacts::list(conn, None) {
+                if let Ok(contacts) =
+                    crate::contacts::list(conn, self.contact_tag_filter.as_deref())
+                {
                     self.contacts = contacts;
                     self.contact_index = if self.contacts.is_empty() {
                         None
@@ -67,7 +69,9 @@ impl App {
         if self.contact_search.is_empty() {
             // Show all contacts when query is empty
             if let Some(ref conn) = self.db {
-                if let Ok(contacts) = crate::contacts::list(conn, None) {
+                if let Ok(contacts) =
+                    crate::contacts::list(conn, self.contact_tag_filter.as_deref())
+                {
                     self.contacts = contacts;
                     self.contact_index = if self.contacts.is_empty() {
                         None
@@ -181,7 +185,9 @@ impl App {
                             self.set_status("Contact saved.");
                             // Reload contact list
                             if let Some(ref conn) = self.db {
-                                if let Ok(contacts) = crate::contacts::list(conn, None) {
+                                if let Ok(contacts) =
+                                    crate::contacts::list(conn, self.contact_tag_filter.as_deref())
+                                {
                                     self.contacts = contacts;
                                     self.contact_index = if self.contacts.is_empty() {
                                         None
@@ -240,4 +246,42 @@ impl App {
     }
 
     // ── Identities ────────────────────────────────────────────────────
+}
+
+impl App {
+    /// Cycle the contact tag filter through "all" and every tag in use.
+    pub(crate) fn cycle_contact_tag(&mut self) {
+        let Some(ref conn) = self.db else {
+            return;
+        };
+        let Ok(tags) = crate::contacts::all_tags(conn) else {
+            return;
+        };
+        self.contact_tag_filter = match self.contact_tag_filter.as_deref() {
+            None => tags.first().cloned(),
+            Some(current) => {
+                let position = tags.iter().position(|tag| tag == current);
+                match position {
+                    Some(index) if index + 1 < tags.len() => Some(tags[index + 1].clone()),
+                    _ => None,
+                }
+            }
+        };
+        if let Some(ref conn) = self.db {
+            match crate::contacts::list(conn, self.contact_tag_filter.as_deref()) {
+                Ok(contacts) => {
+                    self.contact_index = if contacts.is_empty() { None } else { Some(0) };
+                    self.contacts = contacts;
+                }
+                Err(error) => {
+                    self.set_error(&format!("contacts: {error}"));
+                    return;
+                }
+            }
+        }
+        match self.contact_tag_filter.as_deref() {
+            Some(tag) => self.set_status(&format!("Contacts tagged {tag}.")),
+            None => self.set_status("All contacts."),
+        }
+    }
 }

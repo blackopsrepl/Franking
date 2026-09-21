@@ -137,3 +137,61 @@ fn notifications_preference_round_trips() {
     app.close_settings();
     assert_eq!(app.view, View::EnvelopeList);
 }
+
+#[test]
+fn contact_tag_filter_cycles_through_tags_and_back_to_all() {
+    use crate::contacts::{self, Contact};
+
+    use super::super::App;
+
+    let conn = rusqlite::Connection::open_in_memory().unwrap();
+    crate::db::init_for_test(&conn).unwrap();
+    let alice = contacts::add(
+        &conn,
+        &Contact {
+            id: 0,
+            name: Some("Alice".to_string()),
+            email: "alice@example.com".to_string(),
+            phone: None,
+            org: None,
+            notes: None,
+            harvested: false,
+            tags: Vec::new(),
+        },
+    )
+    .unwrap();
+    let bob = contacts::add(
+        &conn,
+        &Contact {
+            id: 0,
+            name: Some("Bob".to_string()),
+            email: "bob@example.com".to_string(),
+            phone: None,
+            org: None,
+            notes: None,
+            harvested: false,
+            tags: Vec::new(),
+        },
+    )
+    .unwrap();
+    contacts::add_tag(&conn, alice, "work").unwrap();
+    contacts::add_tag(&conn, bob, "family").unwrap();
+
+    let mut app = App::new(None);
+    app.db = Some(conn);
+    app.open_contacts();
+    assert_eq!(app.contacts.len(), 2);
+
+    app.cycle_contact_tag();
+    assert_eq!(app.contact_tag_filter.as_deref(), Some("family"));
+    assert_eq!(app.contacts.len(), 1);
+    assert_eq!(app.contacts[0].email, "bob@example.com");
+
+    app.cycle_contact_tag();
+    assert_eq!(app.contact_tag_filter.as_deref(), Some("work"));
+    assert_eq!(app.contacts[0].email, "alice@example.com");
+
+    app.cycle_contact_tag();
+    assert!(app.contact_tag_filter.is_none());
+    assert_eq!(app.contacts.len(), 2);
+}
