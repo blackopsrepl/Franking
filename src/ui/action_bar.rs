@@ -19,6 +19,10 @@ pub const ICON_ATTACH: &str = "\u{f0c6}";
 pub const ICON_DISCARD: &str = "\u{f00d}";
 /// Floppy disk — Save
 pub const ICON_SAVE: &str = "\u{f0c7}";
+/// Checked box — toggled on
+pub const ICON_CHECK_ON: &str = "\u{f046}";
+/// Empty box — toggled off
+pub const ICON_CHECK_OFF: &str = "\u{f096}";
 
 // ── Button descriptors ───────────────────────────────────────────────────────
 

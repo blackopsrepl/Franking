@@ -4,7 +4,7 @@ use std::fs;
 
 use crate::mail::errors::{MailError, MailResult};
 use crate::mail::mime;
-use crate::mail::service::MailService;
+use crate::mail::service::{MailService, SendOptions};
 use crate::mail::types::{Account, Envelope, Folder, FolderRole};
 
 use super::flags::*;
@@ -244,7 +244,13 @@ impl MailService for MaildirService {
         Ok(render_template(&[("Subject", subject)], &body))
     }
 
-    fn template_send(&self, _account: Option<&str>, template: &str) -> MailResult<String> {
+    fn template_send(
+        &self,
+        _account: Option<&str>,
+        template: &str,
+        options: &SendOptions,
+    ) -> MailResult<String> {
+        ensure_no_pgp(options)?;
         self.ensure_ready()?;
         let raw = render_outgoing(&parse_template_message(template))?;
         let sent_dir = self.folder_path("Sent")?;

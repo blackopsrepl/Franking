@@ -58,3 +58,26 @@ fn unlock_cancel_keeps_cached_passphrase() {
     assert!(app.unlock_input.is_empty());
     assert_eq!(app.crypto_passphrase, "cached");
 }
+
+#[test]
+fn compose_toggles_signing_and_encryption() {
+    use crate::compose::{ComposeMode, ComposeState, FocusedField};
+
+    use super::App;
+
+    let mut app = App::new(None);
+    app.compose_state = Some(ComposeState::new(ComposeMode::New, None));
+
+    let focused = |app: &mut App, field: FocusedField| {
+        app.compose_state.as_mut().expect("compose").focused = field;
+        app.compose_enter_insert();
+    };
+
+    focused(&mut app, FocusedField::Sign);
+    assert!(app.compose_state.as_ref().expect("compose").sign);
+
+    focused(&mut app, FocusedField::Encrypt);
+    assert!(app.compose_state.as_ref().expect("compose").encrypt);
+    focused(&mut app, FocusedField::Encrypt);
+    assert!(!app.compose_state.as_ref().expect("compose").encrypt);
+}

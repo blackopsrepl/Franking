@@ -10,4 +10,4 @@ mod service_trait;
 mod tests;
 
 pub use router::default_mail_service;
-pub use service_trait::MailService;
+pub use service_trait::{MailService, SendOptions};

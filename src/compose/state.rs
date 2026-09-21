@@ -35,6 +35,8 @@ pub enum FocusedField {
     Send,
     Draft,
     Attach,
+    Sign,
+    Encrypt,
     Discard,
 }
 
@@ -49,7 +51,9 @@ impl FocusedField {
             FocusedField::Body => FocusedField::Send,
             FocusedField::Send => FocusedField::Draft,
             FocusedField::Draft => FocusedField::Attach,
-            FocusedField::Attach => FocusedField::Discard,
+            FocusedField::Attach => FocusedField::Sign,
+            FocusedField::Sign => FocusedField::Encrypt,
+            FocusedField::Encrypt => FocusedField::Discard,
             FocusedField::Discard => FocusedField::From,
         }
     }
@@ -65,7 +69,9 @@ impl FocusedField {
             FocusedField::Send => FocusedField::Body,
             FocusedField::Draft => FocusedField::Send,
             FocusedField::Attach => FocusedField::Draft,
-            FocusedField::Discard => FocusedField::Attach,
+            FocusedField::Sign => FocusedField::Attach,
+            FocusedField::Encrypt => FocusedField::Sign,
+            FocusedField::Discard => FocusedField::Encrypt,
         }
     }
 
@@ -80,6 +86,8 @@ impl FocusedField {
             FocusedField::Send => "Send",
             FocusedField::Draft => "Draft",
             FocusedField::Attach => "Attach",
+            FocusedField::Sign => "Sign",
+            FocusedField::Encrypt => "Encrypt",
             FocusedField::Discard => "Discard",
         }
     }
@@ -88,7 +96,12 @@ impl FocusedField {
     pub fn is_action_button(self) -> bool {
         matches!(
             self,
-            FocusedField::Send | FocusedField::Draft | FocusedField::Attach | FocusedField::Discard
+            FocusedField::Send
+                | FocusedField::Draft
+                | FocusedField::Attach
+                | FocusedField::Sign
+                | FocusedField::Encrypt
+                | FocusedField::Discard
         )
     }
 }
@@ -173,6 +186,10 @@ pub struct ComposeState {
     pub confirm_discard: bool,
     /// Whether the body has been modified
     pub dirty: bool,
+    /// Sign the outgoing message as PGP/MIME.
+    pub sign: bool,
+    /// Encrypt the outgoing message to its recipients as PGP/MIME.
+    pub encrypt: bool,
     /// Send error message to display
     pub send_error: Option<String>,
     /// Nav/Insert modal editing mode (for header fields and action-bar nav)
@@ -201,6 +218,8 @@ impl ComposeState {
             reply_to_folder: None,
             confirm_discard: false,
             dirty: false,
+            sign: false,
+            encrypt: false,
             send_error: None,
             edit_mode: EditMode::Nav,
         }
@@ -248,6 +267,8 @@ impl ComposeState {
             FocusedField::Send
             | FocusedField::Draft
             | FocusedField::Attach
+            | FocusedField::Sign
+            | FocusedField::Encrypt
             | FocusedField::Discard => None,
         }
     }

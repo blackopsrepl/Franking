@@ -2,6 +2,7 @@ use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
 use std::thread;
 
+use crate::mail::service::SendOptions;
 use crate::mail::types::*;
 use crate::mail::{default_mail_service, MailError, MailService, MessageDocument};
 
@@ -249,12 +250,12 @@ impl Worker {
     }
 
     /// Send a compiled template.
-    pub fn send_template(&self, account: Option<String>, template: String) {
+    pub fn send_template(&self, account: Option<String>, template: String, options: SendOptions) {
         let tx = self.tx.clone();
         let service = self.service.clone();
         thread::spawn(move || {
             let result = service
-                .template_send(account.as_deref(), &template)
+                .template_send(account.as_deref(), &template, &options)
                 .map(|s| {
                     let s = s.trim();
                     if s.is_empty() {

@@ -75,6 +75,8 @@ pub(super) fn render_autocomplete(
         | FocusedField::Send
         | FocusedField::Draft
         | FocusedField::Attach
+        | FocusedField::Sign
+        | FocusedField::Encrypt
         | FocusedField::Discard => return,
         FocusedField::To => 1u16,
         FocusedField::Cc => 2,

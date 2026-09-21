@@ -1,18 +1,14 @@
 /*! Compose templates, sending, drafts, and SMTP transport. */
 
-use std::time::Duration;
-
 use imap::types::Flag;
 
 use lettre::message::{header::ContentType, Attachment, MultiPart, SinglePart};
-use lettre::transport::smtp::authentication::{Credentials, Mechanism};
-use lettre::transport::smtp::client::{Tls, TlsParameters};
-use lettre::{Message, SmtpTransport, Transport};
+use lettre::{Message, Transport};
 
 use crate::mail::errors::{MailError, MailResult};
 use crate::mail::mime;
-use crate::mail::oauth;
-use crate::mail::session::{map_imap_error, ConnectedImapSession, Security};
+use crate::mail::service::SendOptions;
+use crate::mail::session::{map_imap_error, ConnectedImapSession};
 
 use super::errors::map_smtp_error;
 use super::model::ImapSmtpService;
@@ -23,8 +19,6 @@ use super::template::{
     forward_subject, forwarded_body, parse_mailbox, parse_mailboxes, parse_template_message,
     quoted_reply_body, render_template, reply_subject,
 };
-
-const NETWORK_TIMEOUT: Duration = Duration::from_secs(60);
 
 impl ImapSmtpService {
     pub fn template_write(&self, account: Option<&str>) -> MailResult<String> {
@@ -72,17 +66,42 @@ impl ImapSmtpService {
         Ok(render_template(&[("Subject", subject)], &body))
     }
 
-    pub fn template_send(&self, account: Option<&str>, template: &str) -> MailResult<String> {
+    pub fn template_send(
+        &self,
+        account: Option<&str>,
+        template: &str,
+        options: &SendOptions,
+    ) -> MailResult<String> {
         self.ensure_requested_account(account)?;
         let message = self.build_outgoing_message(template)?;
         let transport = self.smtp_transport()?;
-        transport.send(&message).map_err(map_smtp_error)?;
+
+        let raw = if options.is_pgp() {
+            self.wrap_pgp(&message.formatted(), options)?
+        } else {
+            message.formatted()
+        };
+
+        transport
+            .send_raw(message.envelope(), &raw)
+            .map_err(map_smtp_error)?;
 
         let mut status = "Message sent.".to_string();
-        if let Err(error) = self.save_message_to_sent(&message.formatted()) {
+        if let Err(error) = self.save_message_to_sent(&raw) {
             status = format!("Message sent, but saving to Sent failed: {error}");
         }
         Ok(status)
+    }
+
+    /// Wrap an outgoing message as PGP/MIME per `options`.
+    fn wrap_pgp(&self, raw: &[u8], options: &SendOptions) -> MailResult<Vec<u8>> {
+        let keys_dir = options
+            .keys_dir
+            .clone()
+            .unwrap_or_else(crate::mail::pgp::default_keys_dir);
+        let keyring = crate::mail::pgp::Keyring::load(&keys_dir);
+        crate::mail::pgp_mime::wrap(raw, options, &keyring)
+            .map_err(|err| MailError::invalid_input(err.to_string()))
     }
 
     /// Persist a compose template to the account's Drafts mailbox.
@@ -230,61 +249,5 @@ impl ImapSmtpService {
                 ConnectedImapSession::Tls(session) => list_folder_attributes(session),
             })?;
         Ok(pick_trash_folder(&folders))
-    }
-
-    pub(super) fn smtp_transport(&self) -> MailResult<SmtpTransport> {
-        let host = self
-            .account
-            .smtp_host
-            .as_deref()
-            .ok_or_else(|| MailError::config_invalid("SMTP host is missing"))?;
-        let port = self
-            .account
-            .smtp_port
-            .ok_or_else(|| MailError::config_invalid("SMTP port is missing"))?;
-        let security = Security::normalize(self.account.smtp_security.as_deref(), "tls");
-        let username = self.username()?.to_string();
-
-        let mut builder = SmtpTransport::builder_dangerous(host)
-            .port(port)
-            .timeout(Some(NETWORK_TIMEOUT));
-
-        let tls = match security {
-            Security::Tls => Tls::Wrapper(
-                TlsParameters::new(host.to_string())
-                    .map_err(|err| MailError::tls_failure(err.to_string()))?,
-            ),
-            Security::StartTls => Tls::Required(
-                TlsParameters::new(host.to_string())
-                    .map_err(|err| MailError::tls_failure(err.to_string()))?,
-            ),
-            Security::Plain => Tls::None,
-        };
-        builder = builder.tls(tls);
-
-        match self.account.auth_mode.as_deref().unwrap_or("password") {
-            "password" | "app_password" => {
-                let secret_id = self
-                    .account
-                    .keyring_smtp_secret_id
-                    .as_deref()
-                    .ok_or_else(|| MailError::config_invalid("SMTP secret reference is missing"))?;
-                let secret = self.pool.credentials().lookup(secret_id, &username)?;
-                builder = builder.credentials(Credentials::new(username, secret));
-            }
-            "oauth2" => {
-                let access_token = oauth::ensure_access_token(&self.account.name, &username)?;
-                builder = builder
-                    .credentials(Credentials::new(username, access_token))
-                    .authentication(vec![Mechanism::Xoauth2]);
-            }
-            other => {
-                return Err(MailError::unsupported_feature(format!(
-                    "unsupported auth mode: {other}"
-                )));
-            }
-        }
-
-        Ok(builder.build())
     }
 }

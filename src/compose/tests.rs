@@ -37,3 +37,15 @@ fn template_round_trip_preserves_attachments() {
     assert!(rebuilt.contains("Attachment: /tmp/a.txt"));
     assert!(rebuilt.contains("Attachment: /tmp/b.pdf"));
 }
+
+#[test]
+fn action_bar_cycle_includes_the_crypto_toggles() {
+    use super::state::FocusedField;
+
+    assert_eq!(FocusedField::Attach.next(), FocusedField::Sign);
+    assert_eq!(FocusedField::Sign.next(), FocusedField::Encrypt);
+    assert_eq!(FocusedField::Encrypt.next(), FocusedField::Discard);
+    assert_eq!(FocusedField::Discard.next(), FocusedField::From);
+    assert_eq!(FocusedField::Sign.prev(), FocusedField::Attach);
+    assert_eq!(FocusedField::Encrypt.prev(), FocusedField::Sign);
+}

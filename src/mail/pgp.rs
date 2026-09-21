@@ -60,9 +60,7 @@ pub fn decrypt_mime(raw: &[u8], keys: &[SignedSecretKey], passphrase: &str) -> O
     let password: Password = passphrase.into();
 
     for key in keys {
-        let Ok(message) = Message::from_bytes(std::io::Cursor::new(ciphertext)) else {
-            return None;
-        };
+        let message = parse_pgp_message(ciphertext)?;
         let Ok(mut decrypted) = message.decrypt(&password, key) else {
             continue;
         };
@@ -77,6 +75,14 @@ pub fn decrypt_mime(raw: &[u8], keys: &[SignedSecretKey], passphrase: &str) -> O
         }
     }
     None
+}
+
+/// Parse an OpenPGP message that may be armored or binary.
+fn parse_pgp_message(bytes: &[u8]) -> Option<Message<'_>> {
+    if let Ok((message, _)) = Message::from_armor(bytes) {
+        return Some(message);
+    }
+    Message::from_bytes(std::io::Cursor::new(bytes)).ok()
 }
 
 /// Decrypt an inline armored OpenPGP message with the first usable secret key.

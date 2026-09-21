@@ -6,10 +6,21 @@ use std::path::Path;
 use chrono::Local;
 
 use crate::mail::errors::{MailError, MailResult};
+use crate::mail::service::SendOptions;
 
 use crate::mail::model::{MessageDocument, PartBody};
 
 use super::flags::local_message_id;
+
+/// PGP/MIME wrapping is not implemented for local maildir accounts.
+pub(super) fn ensure_no_pgp(options: &SendOptions) -> MailResult<()> {
+    if options.is_pgp() {
+        return Err(MailError::unsupported_feature(
+            "PGP/MIME signing and encryption require an IMAP account",
+        ));
+    }
+    Ok(())
+}
 
 pub(super) fn attachment_payloads(document: &MessageDocument) -> Vec<(String, Vec<u8>)> {
     let mut payloads = Vec::new();

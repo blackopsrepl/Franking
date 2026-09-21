@@ -22,6 +22,8 @@ impl App {
                     FocusedField::Send
                     | FocusedField::Draft
                     | FocusedField::Attach
+                    | FocusedField::Sign
+                    | FocusedField::Encrypt
                     | FocusedField::Discard => ComposeFocus::ActionBar,
                 },
                 edit_mode: cs.edit_mode,

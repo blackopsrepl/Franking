@@ -5,6 +5,26 @@ use crate::mail::model::MessageDocument;
 use crate::mail::session::IdleOutcome;
 use crate::mail::types::{Account, Envelope, Folder};
 
+/// How an outgoing message should be protected.
+#[derive(Debug, Clone, Default)]
+pub struct SendOptions {
+    /// Sign the message as PGP/MIME.
+    pub sign: bool,
+    /// Encrypt the message to its recipients as PGP/MIME.
+    pub encrypt: bool,
+    /// Passphrase for the signing secret key.
+    pub passphrase: String,
+    /// Directory holding key material; defaults to the app keyring.
+    pub keys_dir: Option<std::path::PathBuf>,
+}
+
+impl SendOptions {
+    /// True when PGP/MIME wrapping is requested.
+    pub fn is_pgp(&self) -> bool {
+        self.sign || self.encrypt
+    }
+}
+
 pub trait MailService: Send + Sync {
     fn list_accounts(&self) -> MailResult<Vec<Account>>;
     fn probe_account(&self, account: &str) -> MailResult<()>;
@@ -83,7 +103,12 @@ pub trait MailService: Send + Sync {
     ) -> MailResult<String>;
     fn template_forward(&self, account: Option<&str>, folder: &str, id: &str)
         -> MailResult<String>;
-    fn template_send(&self, account: Option<&str>, template: &str) -> MailResult<String>;
+    fn template_send(
+        &self,
+        account: Option<&str>,
+        template: &str,
+        options: &SendOptions,
+    ) -> MailResult<String>;
 
     /// Fetch every envelope in a folder so it can be cached for offline use.
     fn sync_folder(&self, account: Option<&str>, folder: &str) -> MailResult<Vec<Envelope>> {

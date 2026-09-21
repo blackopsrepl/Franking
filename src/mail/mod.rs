@@ -9,6 +9,7 @@ pub mod mime;
 pub mod model;
 pub mod oauth;
 pub mod pgp;
+pub mod pgp_mime;
 pub mod pgp_sign;
 pub mod remote;
 pub mod security;

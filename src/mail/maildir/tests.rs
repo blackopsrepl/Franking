@@ -64,6 +64,7 @@ fn maildir_round_trip_supports_read_flag_move_and_send() {
         .template_send(
             Some("test"),
             "To: bob@example.com\nSubject: Test send\n\nHello from SolverForge Mail",
+            &Default::default(),
         )
         .unwrap();
     let sent = service
@@ -116,7 +117,11 @@ fn sent_message_receives_a_message_id() {
     service.ensure_ready().unwrap();
 
     service
-        .template_send(Some("test"), "To: bob@example.com\nSubject: Hi\n\nhello")
+        .template_send(
+            Some("test"),
+            "To: bob@example.com\nSubject: Hi\n\nhello",
+            &Default::default(),
+        )
         .unwrap();
 
     let sent = service
@@ -197,7 +202,9 @@ fn sent_message_with_attachment_is_multipart() {
         "To: bob@example.com\nSubject: With file\nAttachment: {}\n\nsee attached",
         attachment.display()
     );
-    service.template_send(Some("test"), &template).unwrap();
+    service
+        .template_send(Some("test"), &template, &Default::default())
+        .unwrap();
 
     let sent = service
         .list_envelopes(Some("test"), "Sent", 1, 50, None)

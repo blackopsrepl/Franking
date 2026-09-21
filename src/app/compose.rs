@@ -2,6 +2,7 @@
 
 use crate::compose::{ComposeMode, ComposeState, FocusedField};
 use crate::keys::View;
+use crate::mail::service::SendOptions;
 
 use crossterm::event::{KeyCode, KeyEvent};
 
@@ -96,6 +97,16 @@ impl App {
                     cs.attach_input = Some(String::new());
                 }
             }
+            FocusedField::Sign => {
+                if let Some(ref mut cs) = self.compose_state {
+                    cs.sign = !cs.sign;
+                }
+            }
+            FocusedField::Encrypt => {
+                if let Some(ref mut cs) = self.compose_state {
+                    cs.encrypt = !cs.encrypt;
+                }
+            }
             FocusedField::Discard => {
                 self.compose_discard();
             }
@@ -174,8 +185,20 @@ impl App {
     pub(crate) fn compose_send(&mut self) {
         if let Some(ref cs) = self.compose_state {
             let template = crate::compose::reassemble_template(cs);
+            let options = self.send_options(cs);
             self.loading = true;
-            self.worker.send_template(self.acct_owned(), template);
+            self.worker
+                .send_template(self.acct_owned(), template, options);
+        }
+    }
+
+    /// Build the protection options for the message being composed.
+    fn send_options(&self, cs: &ComposeState) -> SendOptions {
+        SendOptions {
+            sign: cs.sign,
+            encrypt: cs.encrypt,
+            passphrase: self.crypto_passphrase.clone(),
+            keys_dir: Some(super::pgp::keys_dir()),
         }
     }
 
