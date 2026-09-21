@@ -134,3 +134,52 @@ fn contains(haystack: &[u8], needle: &[u8]) -> bool {
         .windows(needle.len())
         .any(|window| window == needle)
 }
+
+#[test]
+fn multipart_inner_message_survives_signing() {
+    let (keys, _) = keyring("Alice <alice@example.com>");
+    let inner = [
+        "From: Alice <alice@example.com>",
+        "To: Bob <bob@example.com>",
+        "Subject: With attachment",
+        "Content-Type: multipart/mixed; boundary=\"mix\"",
+        "",
+        "--mix",
+        "Content-Type: text/plain; charset=utf-8",
+        "",
+        "see attached",
+        "--mix",
+        "Content-Type: application/octet-stream",
+        "Content-Transfer-Encoding: base64",
+        "",
+        "AAECAwQ=",
+        "--mix--",
+    ]
+    .join("\r\n")
+    .into_bytes();
+
+    let wrapped = wrap(&inner, &options(true, false), &keys).expect("wrap");
+    let fingerprints = pgp::verify_mime(&wrapped, &keys.public).expect("mime");
+    assert_eq!(fingerprints.len(), 1);
+
+    let (part, _) = split_signed_for_test(&wrapped);
+    let text = String::from_utf8_lossy(&part);
+    assert!(text.contains("multipart/mixed"));
+    assert!(text.contains("AAECAwQ="));
+}
+
+fn split_signed_for_test(wrapped: &[u8]) -> (Vec<u8>, Vec<u8>) {
+    let text = String::from_utf8_lossy(wrapped);
+    let boundary = text
+        .split("boundary=\"")
+        .nth(1)
+        .and_then(|rest| rest.split('"').next())
+        .expect("boundary");
+    let marker = format!("--{boundary}\r\n");
+    let first = text.find(&marker).expect("first part") + marker.len();
+    let stop = text[first..]
+        .find(&format!("\r\n--{boundary}\r\n"))
+        .expect("part end")
+        + first;
+    (wrapped[first..stop].to_vec(), Vec::new())
+}
