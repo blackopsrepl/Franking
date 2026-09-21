@@ -117,3 +117,50 @@ impl App {
         self.view = View::EnvelopeList;
     }
 }
+
+impl App {
+    /// Mark every message in the cursor's thread read.
+    pub(crate) fn mark_thread_read(&mut self) {
+        if !self.threaded {
+            self.set_status("Threading is off (press t).");
+            return;
+        }
+        let Some(index) = self.envelope_state.selected() else {
+            return;
+        };
+        if index >= self.envelopes.len() {
+            return;
+        }
+
+        let keys = self.thread_root_keys();
+        let key = keys[index].clone();
+        let ids: Vec<String> = self
+            .envelopes
+            .iter()
+            .zip(keys.iter())
+            .filter(|(envelope, root)| **root == key && !envelope.is_seen())
+            .map(|(envelope, _)| envelope.id.clone())
+            .collect();
+        if ids.is_empty() {
+            self.set_status("That thread is already read.");
+            return;
+        }
+
+        for envelope in self.envelopes.iter_mut() {
+            if ids.contains(&envelope.id) && !envelope.is_seen() {
+                envelope.flags.push("Seen".to_string());
+            }
+        }
+        let count = ids.len();
+        self.loading = true;
+        self.pending_refresh_after_action = true;
+        self.worker.flag_messages(
+            self.acct_owned(),
+            self.current_folder.clone(),
+            ids,
+            "seen".to_string(),
+            true,
+        );
+        self.set_status(&format!("Marked {count} message(s) in the thread read."));
+    }
+}

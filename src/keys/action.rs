@@ -155,6 +155,8 @@ pub enum Action {
     FolderJumpClear,
     /// Cycle the message-list ordering.
     CycleSortOrder,
+    /// Mark every message in the cursor's thread read.
+    MarkThreadRead,
     /// Move the selection to the archive folder.
     Archive,
     /// Make the highlighted account the default.

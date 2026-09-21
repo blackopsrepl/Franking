@@ -98,6 +98,7 @@ impl App {
             Action::FolderJumpBackspace => self.folder_jump_backspace(),
             Action::FolderJumpClear => self.folder_jump_clear(),
             Action::CycleSortOrder => self.cycle_sort_order(),
+            Action::MarkThreadRead => self.mark_thread_read(),
             Action::AttachmentView => self.preview_attachment(),
             Action::PreviewScrollDown => self.preview_scroll(1),
             Action::PreviewScrollUp => self.preview_scroll(-1),

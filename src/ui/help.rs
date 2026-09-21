@@ -54,6 +54,7 @@ pub fn render(app: &App, frame: &mut Frame) {
         binding("z", "Undo the last delete, move, or flag"),
         binding("> / <", "Next / previous unread message"),
         binding("o", "Cycle the message-list ordering"),
+        binding("r", "Mark the whole thread read"),
         binding("[ / ]", "Collapse / expand a thread"),
         binding("E", "Empty the current folder (twice to confirm)"),
         binding("O", "Open the outbox"),

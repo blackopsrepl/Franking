@@ -124,3 +124,75 @@ fn cycles_the_message_list_ordering() {
     assert_eq!(before, after);
     assert!(app.status_message.contains("threaded view"));
 }
+
+#[test]
+fn marking_a_thread_read_updates_every_reply() {
+    use crate::mail::types::{Envelope, Sender};
+
+    use crate::app::App;
+
+    let envelope = |id: &str, message_id: &str, parent: Option<&str>, seen: bool| Envelope {
+        id: id.to_string(),
+        flags: if seen {
+            vec!["Seen".to_string()]
+        } else {
+            Vec::new()
+        },
+        subject: format!("Subject {id}"),
+        sender: Sender::Plain("alice@example.com".to_string()),
+        date: String::new(),
+        message_id: Some(message_id.to_string()),
+        in_reply_to: parent.map(str::to_string),
+        account: None,
+        folder: Some("INBOX".to_string()),
+    };
+
+    let mut app = App::new(None);
+    app.threaded = true;
+    app.envelopes = vec![
+        envelope("1", "root@example.com", None, false),
+        envelope("2", "child@example.com", Some("root@example.com"), false),
+        envelope("3", "other@example.com", None, false),
+    ];
+    app.envelope_state.select(Some(1));
+
+    app.mark_thread_read();
+    assert!(app.envelopes[0].is_seen());
+    assert!(app.envelopes[1].is_seen(), "the reply is read too");
+    assert!(!app.envelopes[2].is_seen(), "other threads are untouched");
+    assert!(app.status_message.contains("1 message") || app.status_message.contains("2 message"));
+}
+
+#[test]
+fn marking_a_thread_read_reports_when_nothing_changes() {
+    use crate::mail::types::{Envelope, Sender};
+
+    use crate::app::App;
+
+    let mut app = App::new(None);
+    app.threaded = true;
+    app.envelopes = vec![Envelope {
+        id: "1".to_string(),
+        flags: vec!["Seen".to_string()],
+        subject: "Read".to_string(),
+        sender: Sender::Plain("alice@example.com".to_string()),
+        date: String::new(),
+        message_id: Some("root@example.com".to_string()),
+        in_reply_to: None,
+        account: None,
+        folder: None,
+    }];
+    app.envelope_state.select(Some(0));
+    app.mark_thread_read();
+    assert!(app.status_message.contains("already read"));
+}
+
+#[test]
+fn marking_a_thread_read_needs_threading() {
+    use crate::app::App;
+
+    let mut app = App::new(None);
+    app.threaded = false;
+    app.mark_thread_read();
+    assert!(app.status_message.contains("Threading is off"));
+}

@@ -115,3 +115,11 @@ fn sort_order_key() {
         Action::CycleSortOrder
     );
 }
+
+#[test]
+fn mark_thread_read_key() {
+    assert_eq!(
+        resolve(View::EnvelopeList, key(KeyCode::Char('r'))),
+        Action::MarkThreadRead
+    );
+}
