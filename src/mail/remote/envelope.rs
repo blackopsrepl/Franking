@@ -72,6 +72,8 @@ fn fetch_to_envelope(fetch: &imap::types::Fetch) -> Envelope {
         date,
         message_id,
         in_reply_to,
+        account: None,
+        folder: None,
     }
 }
 

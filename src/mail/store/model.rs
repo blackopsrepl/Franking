@@ -135,6 +135,8 @@ impl StoredMessage {
             date: self.date_epoch.and_then(format_date).unwrap_or_default(),
             message_id: self.message_id.clone(),
             in_reply_to: self.in_reply_to.clone(),
+            account: Some(self.account.clone()),
+            folder: Some(self.folder.clone()),
         }
     }
 }

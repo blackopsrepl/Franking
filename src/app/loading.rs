@@ -18,6 +18,10 @@ impl App {
 
     pub(crate) fn load_envelopes(&mut self) {
         self.loading = true;
+        if self.current_folder == super::model::UNIFIED_INBOX {
+            self.worker.fetch_all_inboxes("INBOX".to_string());
+            return;
+        }
         self.worker
             .start_watching(self.acct_owned(), self.current_folder.clone());
         if self.threaded {
@@ -45,18 +49,32 @@ impl App {
         if let Some(id) = self.selected_envelope_id().map(|s| s.to_string()) {
             self.loading = true;
             if self.current_folder_is_drafts() {
-                self.pending_draft = Some((self.current_folder.clone(), id.clone()));
+                self.pending_draft = Some((self.selected_folder(), id.clone()));
                 self.worker.fetch_draft_template(
-                    self.acct_owned(),
-                    self.current_folder.clone(),
+                    self.selected_account(),
+                    self.selected_folder(),
                     id,
                 );
                 return;
             }
             self.pending_message_id = Some(id.clone());
             self.worker
-                .fetch_message(self.acct_owned(), self.current_folder.clone(), id);
+                .fetch_message(self.selected_account(), self.selected_folder(), id);
         }
+    }
+
+    /// Account for the selected envelope, falling back to the current account.
+    pub(crate) fn selected_account(&self) -> Option<String> {
+        self.selected_envelope()
+            .and_then(|envelope| envelope.account.clone())
+            .or_else(|| self.acct_owned())
+    }
+
+    /// Folder for the selected envelope, falling back to the current folder.
+    pub(crate) fn selected_folder(&self) -> String {
+        self.selected_envelope()
+            .and_then(|envelope| envelope.folder.clone())
+            .unwrap_or_else(|| self.current_folder.clone())
     }
 
     pub(crate) fn current_folder_is_drafts(&self) -> bool {
@@ -94,15 +112,15 @@ impl App {
             self.pending_refresh_after_action = true;
             if is_seen {
                 self.worker.flag_remove(
-                    self.acct_owned(),
-                    self.current_folder.clone(),
+                    self.selected_account(),
+                    self.selected_folder(),
                     id,
                     "seen".to_string(),
                 );
             } else {
                 self.worker.flag_add(
-                    self.acct_owned(),
-                    self.current_folder.clone(),
+                    self.selected_account(),
+                    self.selected_folder(),
                     id,
                     "seen".to_string(),
                 );
@@ -120,15 +138,15 @@ impl App {
             self.pending_refresh_after_action = true;
             if is_flagged {
                 self.worker.flag_remove(
-                    self.acct_owned(),
-                    self.current_folder.clone(),
+                    self.selected_account(),
+                    self.selected_folder(),
                     id,
                     "flagged".to_string(),
                 );
             } else {
                 self.worker.flag_add(
-                    self.acct_owned(),
-                    self.current_folder.clone(),
+                    self.selected_account(),
+                    self.selected_folder(),
                     id,
                     "flagged".to_string(),
                 );
@@ -140,7 +158,7 @@ impl App {
         if let Some(id) = self.selected_envelope_id().map(|s| s.to_string()) {
             self.loading = true;
             self.worker
-                .download_attachments(self.acct_owned(), self.current_folder.clone(), id);
+                .download_attachments(self.selected_account(), self.selected_folder(), id);
         }
     }
 

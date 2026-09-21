@@ -125,6 +125,16 @@ impl App {
 
     pub(crate) fn handle_folders_loaded(&mut self, folders: Vec<Folder>) {
         self.folders = folders;
+        if self.accounts.len() > 1 {
+            self.folders.insert(
+                0,
+                Folder {
+                    name: super::model::UNIFIED_INBOX.to_string(),
+                    desc: Some("All accounts".to_string()),
+                    role: crate::mail::types::FolderRole::Inbox,
+                },
+            );
+        }
         // Reset folder index to match current_folder
         self.folder_index = self
             .folders

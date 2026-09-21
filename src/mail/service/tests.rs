@@ -73,6 +73,8 @@ fn cached_envelopes_serve_listings_and_search_offline() {
             date: "2026-04-13 09:00:00+00:00".to_string(),
             message_id: None,
             in_reply_to: None,
+            account: None,
+            folder: None,
         };
         upsert_envelope(
             &conn,

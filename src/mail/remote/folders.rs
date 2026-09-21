@@ -84,13 +84,18 @@ impl ImapSmtpService {
             fetch_envelope_metadata(session, &page_uids)
         }
 
-        self.pool
-            .with_connection(&self.account, |connection| match connection {
-                ConnectedImapSession::Plain(session) => {
-                    exec(session, folder, page, page_size, query)
-                }
-                ConnectedImapSession::Tls(session) => exec(session, folder, page, page_size, query),
-            })
+        let mut envelopes =
+            self.pool
+                .with_connection(&self.account, |connection| match connection {
+                    ConnectedImapSession::Plain(session) => {
+                        exec(session, folder, page, page_size, query)
+                    }
+                    ConnectedImapSession::Tls(session) => {
+                        exec(session, folder, page, page_size, query)
+                    }
+                })?;
+        self.tag(&mut envelopes, folder);
+        Ok(envelopes)
     }
 
     pub fn list_envelopes_threaded(
@@ -149,6 +154,7 @@ impl ImapSmtpService {
                 .copied()
                 .unwrap_or(usize::MAX)
         });
+        self.tag(&mut envelopes, folder);
         Ok(envelopes)
     }
 
@@ -179,6 +185,14 @@ impl ImapSmtpService {
                 ConnectedImapSession::Plain(session) => exec(session, folder, id),
                 ConnectedImapSession::Tls(session) => exec(session, folder, id),
             })
+    }
+
+    /// Tag envelopes with their source account and folder.
+    fn tag(&self, envelopes: &mut [Envelope], folder: &str) {
+        for envelope in envelopes {
+            envelope.account = Some(self.account.name.clone());
+            envelope.folder = Some(folder.to_string());
+        }
     }
 
     pub fn folder_unread(&self, account: Option<&str>, folder: &str) -> MailResult<usize> {
@@ -214,11 +228,14 @@ impl ImapSmtpService {
             fetch_envelope_metadata(session, &uids)
         }
 
-        self.pool
-            .with_connection(&self.account, |connection| match connection {
-                ConnectedImapSession::Plain(session) => exec(session, folder),
-                ConnectedImapSession::Tls(session) => exec(session, folder),
-            })
+        let mut envelopes =
+            self.pool
+                .with_connection(&self.account, |connection| match connection {
+                    ConnectedImapSession::Plain(session) => exec(session, folder),
+                    ConnectedImapSession::Tls(session) => exec(session, folder),
+                })?;
+        self.tag(&mut envelopes, folder);
+        Ok(envelopes)
     }
 
     /// Build a resume template from a stored draft message.

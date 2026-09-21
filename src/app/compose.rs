@@ -37,7 +37,7 @@ impl App {
             };
             let mut cs = ComposeState::new(mode, self.acct_owned());
             cs.reply_to_id = Some(id.clone());
-            cs.reply_to_folder = Some(self.current_folder.clone());
+            cs.reply_to_folder = Some(self.selected_folder());
             self.load_identities_into(&mut cs);
             self.compose_state = Some(cs);
             self.loading = true;
@@ -54,12 +54,12 @@ impl App {
         if let Some(id) = self.selected_envelope_id().map(|s| s.to_string()) {
             let mut cs = ComposeState::new(ComposeMode::Forward, self.acct_owned());
             cs.reply_to_id = Some(id.clone());
-            cs.reply_to_folder = Some(self.current_folder.clone());
+            cs.reply_to_folder = Some(self.selected_folder());
             self.load_identities_into(&mut cs);
             self.compose_state = Some(cs);
             self.loading = true;
             self.worker
-                .fetch_template_forward(self.acct_owned(), self.current_folder.clone(), id);
+                .fetch_template_forward(self.selected_account(), self.selected_folder(), id);
         }
     }
 

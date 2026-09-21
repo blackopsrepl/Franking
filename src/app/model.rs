@@ -27,6 +27,9 @@ pub struct PendingOpenCommand {
     pub args: Vec<String>,
 }
 
+/// Synthetic folder aggregating every account's inbox.
+pub(crate) const UNIFIED_INBOX: &str = "All Inboxes";
+
 /// Top-level application state (TEA model).
 pub struct App {
     pub running: bool,

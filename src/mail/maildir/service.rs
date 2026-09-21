@@ -79,6 +79,11 @@ impl MailService for MaildirService {
             .into_iter()
             .skip(start)
             .take(page_size)
+            .map(|mut envelope| {
+                envelope.account = Some(self.account_name.clone());
+                envelope.folder = Some(folder.to_string());
+                envelope
+            })
             .collect::<Vec<_>>())
     }
 

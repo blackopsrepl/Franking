@@ -98,6 +98,10 @@ pub struct Envelope {
     pub message_id: Option<String>,
     /// Parent Message-ID from In-Reply-To, bracket-stripped.
     pub in_reply_to: Option<String>,
+    /// Source account, set when listed (used by the unified inbox).
+    pub account: Option<String>,
+    /// Source folder, set when listed.
+    pub folder: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -213,6 +217,8 @@ impl From<crate::himalaya::types::Envelope> for Envelope {
             date: value.date,
             message_id: None,
             in_reply_to: None,
+            account: None,
+            folder: None,
         }
     }
 }

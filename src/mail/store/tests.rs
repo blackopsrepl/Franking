@@ -134,6 +134,8 @@ fn envelope_metadata_update_keeps_cached_body_and_raw() {
         date: "2026-04-13 09:00:00+00:00".to_string(),
         message_id: None,
         in_reply_to: None,
+        account: None,
+        folder: None,
     };
     upsert_envelope(
         &conn,
@@ -159,6 +161,8 @@ fn envelope_round_trips_through_the_store_shape() {
         date: "2026-04-13 09:00:00+00:00".to_string(),
         message_id: None,
         in_reply_to: None,
+        account: Some("work".to_string()),
+        folder: Some("INBOX".to_string()),
     };
 
     let stored = StoredMessage::from_envelope("work", "INBOX", &envelope);

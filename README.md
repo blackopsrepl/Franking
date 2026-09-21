@@ -35,7 +35,7 @@ cargo run -- --setup
 - **Auto-refresh** - New mail check every 60 seconds
 - **Folder unread counts** - Shows (3) badge on folders
 - **Mouse support** - Click to select, scroll wheel works
-- **Multi-account** - Switch with Ctrl+a
+- **Multi-account** - Switch with Ctrl+a; an "All Inboxes" folder merges every account's inbox when more than one account is configured
 - **Fast keyboard navigation** - j/k and g/G in list/message views, plus direct multiline editing in compose
 - **Smart error handling** - Typed mail diagnostics and clean user-facing errors
 - **Structured message reader** - MIME-aware message content with one canonical HTML-first render path
