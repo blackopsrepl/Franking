@@ -415,7 +415,38 @@ impl ImapSmtpService {
         let transport = self.smtp_transport()?;
         transport.send(&message).map_err(map_smtp_error)?;
 
-        Ok("Message sent.".to_string())
+        let mut status = "Message sent.".to_string();
+        if let Err(error) = self.save_message_to_sent(&message.formatted()) {
+            status = format!("Message sent, but saving to Sent failed: {error}");
+        }
+        Ok(status)
+    }
+
+    /// Append a sent message to the account's Sent mailbox, discovered via the
+    /// RFC 6154 `\Sent` attribute with a name fallback.
+    pub fn save_message_to_sent(&self, raw: &[u8]) -> MailResult<()> {
+        let Some(folder) = self.sent_folder_name()? else {
+            return Ok(());
+        };
+        self.pool
+            .with_connection(&self.account, |connection| match connection {
+                ConnectedImapSession::Plain(session) => {
+                    session.append(&folder, raw).map_err(map_imap_error)
+                }
+                ConnectedImapSession::Tls(session) => {
+                    session.append(&folder, raw).map_err(map_imap_error)
+                }
+            })
+    }
+
+    fn sent_folder_name(&self) -> MailResult<Option<String>> {
+        let folders = self
+            .pool
+            .with_connection(&self.account, |connection| match connection {
+                ConnectedImapSession::Plain(session) => list_folder_attributes(session),
+                ConnectedImapSession::Tls(session) => list_folder_attributes(session),
+            })?;
+        Ok(pick_sent_folder(&folders))
     }
 
     fn ensure_requested_account(&self, account: Option<&str>) -> MailResult<()> {
@@ -567,6 +598,55 @@ impl TemplateMessage {
             .map(|(_, value)| value.as_str())
             .filter(|value| !value.trim().is_empty())
     }
+}
+
+fn list_folder_attributes<S: Read + Write>(
+    session: &mut imap::Session<S>,
+) -> MailResult<Vec<(String, Vec<String>)>> {
+    let names = session.list(None, Some("*")).map_err(map_imap_error)?;
+    Ok(names
+        .iter()
+        .map(|name| {
+            (
+                name.name().to_string(),
+                name.attributes()
+                    .iter()
+                    .map(attribute_name)
+                    .collect::<Vec<_>>(),
+            )
+        })
+        .collect())
+}
+
+fn attribute_name(attribute: &imap::types::NameAttribute<'_>) -> String {
+    match attribute {
+        imap::types::NameAttribute::NoInferiors => "\\NoInferiors".to_string(),
+        imap::types::NameAttribute::NoSelect => "\\Noselect".to_string(),
+        imap::types::NameAttribute::Marked => "\\Marked".to_string(),
+        imap::types::NameAttribute::Unmarked => "\\Unmarked".to_string(),
+        imap::types::NameAttribute::Custom(value) => value.to_string(),
+    }
+}
+
+/// Choose the Sent mailbox from LIST results, preferring the RFC 6154
+/// `\Sent` attribute over localized or historical names.
+fn pick_sent_folder(folders: &[(String, Vec<String>)]) -> Option<String> {
+    folders
+        .iter()
+        .find(|(_, attributes)| {
+            attributes
+                .iter()
+                .any(|attribute| attribute.eq_ignore_ascii_case("\\Sent"))
+        })
+        .or_else(|| {
+            folders.iter().find(|(name, _)| {
+                matches!(
+                    name.to_ascii_lowercase().as_str(),
+                    "sent" | "sent items" | "sent messages" | "inbox.sent"
+                )
+            })
+        })
+        .map(|(name, _)| name.clone())
 }
 
 fn fetch_envelope_metadata<S: Read + Write>(
@@ -976,7 +1056,7 @@ fn parse_mailbox(value: &str) -> MailResult<Mailbox> {
 
 #[cfg(test)]
 mod tests {
-    use super::{parse_template_message, sanitize_file_name, search_criteria};
+    use super::{parse_template_message, pick_sent_folder, sanitize_file_name, search_criteria};
 
     #[test]
     fn sanitize_file_name_replaces_path_separators() {
@@ -1014,5 +1094,22 @@ mod tests {
             search_criteria(Some("subject \"quoted\"")),
             "SUBJECT \"\\\"quoted\\\"\""
         );
+    }
+
+    #[test]
+    fn sent_folder_prefers_special_use_over_names() {
+        let folders = vec![
+            ("INBOX".to_string(), Vec::new()),
+            ("Gesendet".to_string(), vec!["\\Sent".to_string()]),
+            ("Sent".to_string(), Vec::new()),
+        ];
+        assert_eq!(pick_sent_folder(&folders).as_deref(), Some("Gesendet"));
+
+        let fallback = vec![
+            ("INBOX".to_string(), Vec::new()),
+            ("Sent Items".to_string(), Vec::new()),
+        ];
+        assert_eq!(pick_sent_folder(&fallback).as_deref(), Some("Sent Items"));
+        assert!(pick_sent_folder(&[("INBOX".to_string(), Vec::new())]).is_none());
     }
 }

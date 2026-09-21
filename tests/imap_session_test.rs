@@ -1,7 +1,7 @@
-use std::io::{BufRead, BufReader, Write};
+use std::io::{BufRead, BufReader, Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 
@@ -30,6 +30,7 @@ struct FakeImap {
     port: u16,
     connections: Arc<AtomicUsize>,
     logins: Arc<AtomicUsize>,
+    appended: Arc<Mutex<Vec<u8>>>,
     stop: Arc<AtomicBool>,
 }
 
@@ -41,11 +42,13 @@ impl FakeImap {
 
         let connections = Arc::new(AtomicUsize::new(0));
         let logins = Arc::new(AtomicUsize::new(0));
+        let appended = Arc::new(Mutex::new(Vec::new()));
         let stop = Arc::new(AtomicBool::new(false));
         let dropped = Arc::new(AtomicBool::new(false));
 
         let thread_connections = Arc::clone(&connections);
         let thread_logins = Arc::clone(&logins);
+        let thread_appended = Arc::clone(&appended);
         let thread_stop = Arc::clone(&stop);
         let thread_dropped = Arc::clone(&dropped);
 
@@ -56,7 +59,10 @@ impl FakeImap {
                         thread_connections.fetch_add(1, Ordering::SeqCst);
                         let logins = Arc::clone(&thread_logins);
                         let dropped = Arc::clone(&thread_dropped);
-                        thread::spawn(move || handle_connection(stream, behavior, logins, dropped));
+                        let appended = Arc::clone(&thread_appended);
+                        thread::spawn(move || {
+                            handle_connection(stream, behavior, logins, dropped, appended)
+                        });
                     }
                     Err(ref error) if error.kind() == std::io::ErrorKind::WouldBlock => {
                         thread::sleep(Duration::from_millis(5));
@@ -70,6 +76,7 @@ impl FakeImap {
             port,
             connections,
             logins,
+            appended,
             stop,
         }
     }
@@ -86,6 +93,7 @@ fn handle_connection(
     behavior: Behavior,
     logins: Arc<AtomicUsize>,
     dropped: Arc<AtomicBool>,
+    appended: Arc<Mutex<Vec<u8>>>,
 ) {
     let mut reader = BufReader::new(stream.try_clone().expect("clone stream"));
     let mut writer = stream;
@@ -97,8 +105,8 @@ fn handle_connection(
         if reader.read_line(&mut line).unwrap_or(0) == 0 {
             return;
         }
-        let line = line.trim_end_matches(['\r', '\n']);
-        let mut parts = line.splitn(2, ' ');
+        let raw_line = line.trim_end_matches(['\r', '\n']).to_string();
+        let mut parts = raw_line.splitn(2, ' ');
         let tag = parts.next().unwrap_or("x").to_string();
         let rest = parts.next().unwrap_or("").to_uppercase();
         let command = rest.split_whitespace().next().unwrap_or("");
@@ -122,7 +130,18 @@ fn handle_connection(
             }
             "LIST" => {
                 write_all(&mut writer, "* LIST () \"/\" \"INBOX\"\r\n");
+                write_all(&mut writer, "* LIST (\\Sent) \"/\" \"Sent\"\r\n");
                 reply(&mut writer, &tag, "OK LIST completed");
+            }
+            "APPEND" => {
+                let size = literal_size(&raw_line).unwrap_or(0);
+                write_all(&mut writer, "+ Ready for literal data\r\n");
+                let mut buffer = vec![0u8; size];
+                if reader.read_exact(&mut buffer).is_err() {
+                    return;
+                }
+                appended.lock().unwrap().extend_from_slice(&buffer);
+                reply(&mut writer, &tag, "OK [APPENDUID 1 42] APPEND completed");
             }
             "IDLE" => {
                 write_all(&mut writer, "+ idling\r\n");
@@ -141,6 +160,13 @@ fn handle_connection(
             _ => reply(&mut writer, &tag, "OK completed"),
         }
     }
+}
+
+/// Parse the synchronizing literal size from a command line like `APPEND "Sent" {42}`.
+fn literal_size(line: &str) -> Option<usize> {
+    let start = line.rfind('{')? + 1;
+    let end = line[start..].find('}')? + start;
+    line[start..end].trim_end_matches('+').trim().parse().ok()
 }
 
 fn write_all(writer: &mut TcpStream, data: &str) {
@@ -183,6 +209,27 @@ fn select_inbox(connection: &mut ConnectedImapSession) -> MailResult<()> {
         }
     }
     Ok(())
+}
+
+#[test]
+fn append_delivers_the_message_to_the_sent_mailbox() {
+    let server = FakeImap::start(Behavior::Normal);
+    let pool = SessionPool::with_credentials(Arc::new(FixedCredentials));
+    let account = account(server.port);
+
+    let payload: &[u8] = b"From: alice@example.com\r\nSubject: Hi\r\n\r\nhello";
+
+    pool.with_connection(&account, |connection| match connection {
+        ConnectedImapSession::Plain(session) => {
+            session.append("Sent", payload).map_err(map_imap_error)
+        }
+        ConnectedImapSession::Tls(session) => {
+            session.append("Sent", payload).map_err(map_imap_error)
+        }
+    })
+    .unwrap();
+
+    assert_eq!(server.appended.lock().unwrap().as_slice(), payload);
 }
 
 #[test]
