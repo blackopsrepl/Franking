@@ -27,8 +27,12 @@ tui-textarea = { version = "0.7.0", features = ["search"] }
 rpassword = "7"
 mail-parser = "0.11"
 html2text = "0.16"
+# Legacy IMAP client, removed once the codec-based layer replaces every command.
 imap = "2.4"
 imap-proto = "0.10"
+# Own IMAP command layer: the codec is the grammar, we own the transport and policy.
+imap-codec = { version = "=2.0.0-alpha.9", features = ["ext_condstore_qresync", "ext_utf8"] }
+imap-types = { version = "=2.0.0-alpha.7", features = ["ext_condstore_qresync", "ext_utf8"] }
 base64 = "0.22"
 lettre = { version = "0.11", default-features = false, features = [
   "builder",
