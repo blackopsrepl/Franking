@@ -161,7 +161,11 @@ impl ImapSmtpService {
     pub fn delete_message(&self, account: Option<&str>, folder: &str, id: &str) -> MailResult<()> {
         self.ensure_requested_account(account)?;
 
-        if folder.eq_ignore_ascii_case("trash") {
+        let trash = self
+            .trash_folder_name()?
+            .unwrap_or_else(|| "Trash".to_string());
+
+        if folder.eq_ignore_ascii_case(&trash) {
             fn exec<S: Read + Write>(
                 session: &mut imap::Session<S>,
                 folder: &str,
@@ -183,7 +187,7 @@ impl ImapSmtpService {
                 });
         }
 
-        self.move_message(account, folder, "Trash", id)
+        self.move_message(account, folder, &trash, id)
     }
 
     pub fn move_message(
@@ -449,6 +453,16 @@ impl ImapSmtpService {
         Ok(pick_sent_folder(&folders))
     }
 
+    fn trash_folder_name(&self) -> MailResult<Option<String>> {
+        let folders = self
+            .pool
+            .with_connection(&self.account, |connection| match connection {
+                ConnectedImapSession::Plain(session) => list_folder_attributes(session),
+                ConnectedImapSession::Tls(session) => list_folder_attributes(session),
+            })?;
+        Ok(pick_trash_folder(&folders))
+    }
+
     fn ensure_requested_account(&self, account: Option<&str>) -> MailResult<()> {
         if let Some(name) = account {
             self.ensure_account(name)?;
@@ -643,6 +657,27 @@ fn pick_sent_folder(folders: &[(String, Vec<String>)]) -> Option<String> {
                 matches!(
                     name.to_ascii_lowercase().as_str(),
                     "sent" | "sent items" | "sent messages" | "inbox.sent"
+                )
+            })
+        })
+        .map(|(name, _)| name.clone())
+}
+
+/// Choose the Trash mailbox from LIST results, preferring the RFC 6154
+/// `\Trash` attribute over localized or historical names.
+fn pick_trash_folder(folders: &[(String, Vec<String>)]) -> Option<String> {
+    folders
+        .iter()
+        .find(|(_, attributes)| {
+            attributes
+                .iter()
+                .any(|attribute| attribute.eq_ignore_ascii_case("\\Trash"))
+        })
+        .or_else(|| {
+            folders.iter().find(|(name, _)| {
+                matches!(
+                    name.to_ascii_lowercase().as_str(),
+                    "trash" | "deleted" | "deleted items" | "bin" | "inbox.trash"
                 )
             })
         })
@@ -1056,7 +1091,10 @@ fn parse_mailbox(value: &str) -> MailResult<Mailbox> {
 
 #[cfg(test)]
 mod tests {
-    use super::{parse_template_message, pick_sent_folder, sanitize_file_name, search_criteria};
+    use super::{
+        parse_template_message, pick_sent_folder, pick_trash_folder, sanitize_file_name,
+        search_criteria,
+    };
 
     #[test]
     fn sanitize_file_name_replaces_path_separators() {
@@ -1111,5 +1149,25 @@ mod tests {
         ];
         assert_eq!(pick_sent_folder(&fallback).as_deref(), Some("Sent Items"));
         assert!(pick_sent_folder(&[("INBOX".to_string(), Vec::new())]).is_none());
+    }
+
+    #[test]
+    fn trash_folder_prefers_special_use_over_names() {
+        let folders = vec![
+            ("INBOX".to_string(), Vec::new()),
+            ("Papierkorb".to_string(), vec!["\\Trash".to_string()]),
+            ("Trash".to_string(), Vec::new()),
+        ];
+        assert_eq!(pick_trash_folder(&folders).as_deref(), Some("Papierkorb"));
+
+        let fallback = vec![
+            ("INBOX".to_string(), Vec::new()),
+            ("Deleted Items".to_string(), Vec::new()),
+        ];
+        assert_eq!(
+            pick_trash_folder(&fallback).as_deref(),
+            Some("Deleted Items")
+        );
+        assert!(pick_trash_folder(&[("INBOX".to_string(), Vec::new())]).is_none());
     }
 }
