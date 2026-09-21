@@ -51,7 +51,7 @@ cargo run -- --setup
 - **Drafts** - Save a draft and resume it from the Drafts folder; the draft is removed after sending
 - **Security indicators** - SPF/DKIM/DMARC verdicts from `Authentication-Results`, PGP/MIME and S/MIME structure detection, and OpenPGP/S/MIME verification and decryption
 - **Crypto keyring** - public/secret keys under `~/.local/share/solverforge/mail/keys` verify and decrypt OpenPGP (inline and PGP/MIME) and S/MIME (PKCS#7 signed/enveloped)
-- **Calendar invitations** - `text/calendar` events show their summary and start time
+- **Calendar invitations** - `text/calendar` events show their summary and time with its timezone, cancelled events are marked, and `c` hands the invitation to Planner123 (`planner123-cli ical import`)
 - **Desktop notifications** - `notify-send` on new mail when the IDLE watcher fires
 - **Offline cache** - Listings and search fall back to the local store when the server is unreachable
 - **Mark read/unread** - Press `N` to toggle the Seen flag
@@ -259,6 +259,7 @@ solverforge-mail/
 │   │   ├── message.rs       # Structured message content + display modes
 │   │   ├── mime.rs          # Shared raw-message MIME parser
 │   │   ├── pgp.rs           # PGP verify/decrypt/key generation
+│   │   ├── planner123.rs    # Handing invitations to Planner123
 │   │   ├── smime.rs         # S/MIME verify/decrypt
 │   │   ├── sieve.rs         # ManageSieve script management
 │   │   ├── maildir.rs       # Native local maildir backend

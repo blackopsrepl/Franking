@@ -23,4 +23,4 @@ pub use errors::{looks_like_auth_failure, map_codec_error};
 pub use idle::{wait as idle_wait, IdleOutcome};
 pub use pool::SessionPool;
 pub use security::Security;
-pub use transport::ReadWrite;
+pub use transport::{ReadWrite, NETWORK_TIMEOUT};

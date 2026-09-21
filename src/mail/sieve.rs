@@ -3,14 +3,17 @@ Talks to a Sieve script server to list, fetch, replace, activate, and delete
 server-side filter scripts. Supports implicit TLS, STARTTLS, and plaintext,
 with SASL PLAIN authentication. */
 
-use std::io::{BufRead, BufReader, Read, Write};
+use std::io::BufReader;
 use std::net::TcpStream;
 
-use anyhow::{anyhow, bail, Context, Result};
-use base64::Engine;
+use anyhow::{bail, Context, Result};
 
+mod session;
 mod wire;
-use wire::{assemble, literal_size, parse_script, quote, quoted_value, tls_connect, Transport};
+use wire::{parse_script, quote, quoted_value, tls_connect, Transport};
+
+#[cfg(test)]
+pub(crate) use wire::literal_size;
 
 /// How the ManageSieve connection is protected.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -61,6 +64,12 @@ impl SieveClient {
         let tcp = TcpStream::connect((config.host.as_str(), config.port))
             .with_context(|| format!("connect to {}:{}", config.host, config.port))?;
         tcp.set_nodelay(true).ok();
+        // Bound every read: a server that stops answering must not block the
+        // caller forever.
+        tcp.set_read_timeout(Some(crate::mail::session::NETWORK_TIMEOUT))
+            .context("set the ManageSieve read timeout")?;
+        tcp.set_write_timeout(Some(crate::mail::session::NETWORK_TIMEOUT))
+            .context("set the ManageSieve write timeout")?;
 
         let transport = match config.security {
             SieveSecurity::Tls => Transport::Tls(Box::new(tls_connect(&config.host, tcp)?)),
@@ -165,112 +174,6 @@ impl SieveClient {
     /// End the session politely.
     pub fn logout(&mut self) {
         let _ = self.send_line("LOGOUT");
-    }
-
-    fn upgrade_to_tls(&mut self) -> Result<()> {
-        let Transport::Tcp(tcp) = self.stream.get_ref() else {
-            bail!("connection is already encrypted");
-        };
-        let tcp = tcp.try_clone().context("clone ManageSieve socket")?;
-        let tls = tls_connect(&self.host, tcp)?;
-        self.stream = BufReader::new(Transport::Tls(Box::new(tls)));
-        Ok(())
-    }
-
-    fn authenticate(&mut self, username: &str, password: &str) -> Result<()> {
-        if !self.capabilities.iter().any(|line| {
-            line.to_ascii_uppercase().contains("SASL")
-                && line.to_ascii_uppercase().contains("PLAIN")
-        }) {
-            bail!("server does not advertise SASL PLAIN");
-        }
-        let mut payload = vec![0u8];
-        payload.extend_from_slice(username.as_bytes());
-        payload.push(0);
-        payload.extend_from_slice(password.as_bytes());
-        let encoded = base64::engine::general_purpose::STANDARD.encode(&payload);
-        self.command("AUTHENTICATE", &["\"PLAIN\"".to_string(), quote(&encoded)])?;
-        Ok(())
-    }
-
-    fn command(&mut self, name: &str, args: &[String]) -> Result<Vec<Response>> {
-        self.send_line(&assemble(name, args))?;
-        self.read_until_status()
-    }
-
-    fn literal_command(
-        &mut self,
-        name: &str,
-        args: &[String],
-        body: &[u8],
-    ) -> Result<Vec<Response>> {
-        let line = format!("{} {{{}+}}", assemble(name, args), body.len());
-        self.send_line(&line)?;
-        self.stream.get_mut().write_all(body)?;
-        self.stream.get_mut().flush()?;
-        self.read_until_status()
-    }
-
-    fn send_line(&mut self, line: &str) -> Result<()> {
-        let stream = self.stream.get_mut();
-        stream.write_all(line.as_bytes())?;
-        stream.write_all(b"\r\n")?;
-        stream.flush()?;
-        Ok(())
-    }
-
-    fn read_greeting(&mut self) -> Result<Vec<String>> {
-        let responses = self.read_until_status()?;
-        Ok(responses
-            .into_iter()
-            .filter_map(|response| match response {
-                Response::Line(line) => Some(line),
-                _ => None,
-            })
-            .collect())
-    }
-
-    fn read_until_status(&mut self) -> Result<Vec<Response>> {
-        let mut responses = Vec::new();
-        loop {
-            let line = self.read_line()?;
-            if let Some(size) = literal_size(&line) {
-                responses.push(Response::Literal(self.read_exact(size)?));
-                continue;
-            }
-            let trimmed = line.trim_start().to_string();
-            let status = trimmed
-                .split_whitespace()
-                .next()
-                .unwrap_or_default()
-                .to_ascii_uppercase();
-            if matches!(status.as_str(), "OK" | "NO" | "BYE") {
-                if status != "OK" {
-                    return Err(anyhow!("ManageSieve command failed: {trimmed}"));
-                }
-                responses.push(Response::Status(trimmed));
-                return Ok(responses);
-            }
-            responses.push(Response::Line(line));
-        }
-    }
-
-    fn read_line(&mut self) -> Result<String> {
-        let mut line = Vec::new();
-        let read = self.stream.read_until(b'\n', &mut line)?;
-        if read == 0 {
-            bail!("ManageSieve server closed the connection");
-        }
-        while matches!(line.last(), Some(b'\n' | b'\r')) {
-            line.pop();
-        }
-        Ok(String::from_utf8_lossy(&line).to_string())
-    }
-
-    fn read_exact(&mut self, size: usize) -> Result<Vec<u8>> {
-        let mut buffer = vec![0u8; size];
-        self.stream.read_exact(&mut buffer)?;
-        Ok(buffer)
     }
 }
 

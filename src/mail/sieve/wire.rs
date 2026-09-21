@@ -40,7 +40,7 @@ pub(super) fn quote(value: &str) -> String {
 }
 
 /// Literal size when a line ends with `{n}` or `{n+}`.
-pub(super) fn literal_size(line: &str) -> Option<usize> {
+pub(crate) fn literal_size(line: &str) -> Option<usize> {
     let trimmed = line.trim_end();
     let inner = trimmed.strip_suffix('}')?;
     let digits = inner.strip_suffix('+').unwrap_or(inner);
@@ -52,6 +52,17 @@ pub(super) fn literal_size(line: &str) -> Option<usize> {
 pub(super) enum Transport {
     Tcp(TcpStream),
     Tls(Box<native_tls::TlsStream<TcpStream>>),
+}
+
+impl Transport {
+    /// Adjust the read timeout, so the client can probe briefly for a
+    /// continuation without stalling.
+    pub(super) fn set_read_timeout(&self, timeout: std::time::Duration) -> std::io::Result<()> {
+        match self {
+            Transport::Tcp(stream) => stream.set_read_timeout(Some(timeout)),
+            Transport::Tls(stream) => stream.get_ref().set_read_timeout(Some(timeout)),
+        }
+    }
 }
 
 impl Read for Transport {
