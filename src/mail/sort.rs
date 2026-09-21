@@ -32,10 +32,20 @@ impl SortKey {
 }
 
 /// Current ordering of the message list.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SortOrder {
     pub key: SortKey,
     pub descending: bool,
+}
+
+impl Default for SortOrder {
+    /// Newest first, matching what servers return by default.
+    fn default() -> Self {
+        Self {
+            key: SortKey::Date,
+            descending: true,
+        }
+    }
 }
 
 impl SortOrder {
