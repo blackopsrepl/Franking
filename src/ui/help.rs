@@ -47,6 +47,7 @@ pub fn render(app: &App, frame: &mut Frame) {
         binding("u", "Clear selection"),
         binding("z", "Undo the last delete, move, or flag"),
         binding("[ / ]", "Collapse / expand a thread"),
+        binding("E", "Empty the current folder (twice to confirm)"),
         binding("t", "Toggle threaded view"),
         binding("n / p", "Next / previous page"),
         binding("Tab", "Focus folder sidebar"),

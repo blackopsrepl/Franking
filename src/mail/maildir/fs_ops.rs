@@ -7,6 +7,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use crate::mail::errors::{MailError, MailResult};
 use crate::mail::mime;
 use crate::mail::types::{Envelope, Sender};
+use crate::mail::types::{Folder, FolderRole};
 
 use super::flags::{file_name, flags_to_names, next_message_path, parse_flag_codes};
 
@@ -178,4 +179,38 @@ pub(super) struct MessageEntry {
     pub(super) sort_key: u64,
     pub(super) searchable: String,
     pub(super) envelope: Envelope,
+}
+
+/// Remove every message file from a folder, returning how many were removed.
+pub(super) fn empty_folder(root: &Path, folder: &str) -> MailResult<usize> {
+    let dir = folder_path(root, folder)?;
+    let mut removed = 0;
+    for bucket in ["cur", "new"] {
+        let Ok(entries) = fs::read_dir(dir.join(bucket)) else {
+            continue;
+        };
+        for entry in entries.flatten() {
+            if fs::remove_file(entry.path()).is_ok() {
+                removed += 1;
+            }
+        }
+    }
+    Ok(removed)
+}
+
+/// The fixed folder set of a local maildir account.
+pub(super) fn local_folders() -> Vec<Folder> {
+    [
+        ("INBOX", "Incoming messages", FolderRole::Inbox),
+        ("Sent", "Sent messages", FolderRole::Sent),
+        ("Drafts", "Draft messages", FolderRole::Drafts),
+        ("Trash", "Deleted messages", FolderRole::Trash),
+    ]
+    .into_iter()
+    .map(|(name, desc, role)| Folder {
+        name: name.to_string(),
+        desc: Some(desc.to_string()),
+        role,
+    })
+    .collect()
 }

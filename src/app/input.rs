@@ -94,6 +94,7 @@ impl App {
             Action::Undo => self.undo(),
             Action::CollapseThread => self.collapse_thread(),
             Action::ExpandThread => self.expand_thread(),
+            Action::EmptyFolder => self.empty_folder(),
             Action::FocusFolders => self.view = View::FolderList,
             Action::FocusEnvelopes => self.view = View::EnvelopeList,
             Action::ScrollUp => self.scroll(-1),

@@ -5,7 +5,7 @@ use std::fs;
 use crate::mail::errors::{MailError, MailResult};
 use crate::mail::mime;
 use crate::mail::service::{MailService, SendOptions};
-use crate::mail::types::{Account, Envelope, Folder, FolderRole};
+use crate::mail::types::{Account, Envelope, Folder};
 
 use super::flags::*;
 use super::fs_ops::*;
@@ -31,28 +31,7 @@ impl MailService for MaildirService {
 
     fn list_folders(&self, _account: Option<&str>) -> MailResult<Vec<Folder>> {
         self.ensure_ready()?;
-        Ok(vec![
-            Folder {
-                name: "INBOX".to_string(),
-                desc: Some("Incoming messages".to_string()),
-                role: FolderRole::Inbox,
-            },
-            Folder {
-                name: "Sent".to_string(),
-                desc: Some("Sent messages".to_string()),
-                role: FolderRole::Sent,
-            },
-            Folder {
-                name: "Drafts".to_string(),
-                desc: Some("Draft messages".to_string()),
-                role: FolderRole::Drafts,
-            },
-            Folder {
-                name: "Trash".to_string(),
-                desc: Some("Deleted messages".to_string()),
-                role: FolderRole::Trash,
-            },
-        ])
+        Ok(local_folders())
     }
 
     fn list_envelopes(
@@ -287,6 +266,12 @@ impl MailService for MaildirService {
         self.ensure_ready()?;
         let document = read_parsed_message(&find_message_path(&self.folder_path(folder)?, id)?)?;
         Ok(crate::mail::draft::draft_template(&document))
+    }
+
+    fn empty_folder(&self, _account: Option<&str>, folder: &str) -> MailResult<String> {
+        self.ensure_ready()?;
+        let removed = empty_folder(&self.root, folder)?;
+        Ok(format!("Emptied {folder} ({removed} messages)."))
     }
 
     fn folder_unread(&self, account: Option<&str>, folder: &str) -> MailResult<usize> {

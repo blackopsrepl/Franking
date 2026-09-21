@@ -226,3 +226,20 @@ fn expanding_without_a_collapsed_thread_reports_status() {
     app.expand_thread();
     assert!(app.status_message.contains("No collapsed thread"));
 }
+
+#[test]
+fn emptying_a_folder_requires_two_presses() {
+    use super::super::App;
+
+    let mut app = App::new(None);
+    app.current_folder = "Trash".to_string();
+
+    app.empty_folder();
+    assert_eq!(app.pending_empty_folder.as_deref(), Some("Trash"));
+    assert!(app.status_message.contains("Press E again"));
+
+    // Cancelling by moving away clears the confirmation.
+    app.pending_empty_folder = None;
+    app.empty_folder();
+    assert!(app.pending_empty_folder.is_some());
+}

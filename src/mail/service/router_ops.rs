@@ -251,6 +251,10 @@ impl MailService for RouterMailService {
         super::router_sieve::delete_script(self, account, name)
     }
 
+    fn empty_folder(&self, account: Option<&str>, folder: &str) -> MailResult<String> {
+        route!(self, account, service => service.empty_folder(account, folder))
+    }
+
     fn folder_unread(&self, account: Option<&str>, folder: &str) -> MailResult<usize> {
         route!(self, account, service => service.folder_unread(account, folder))
     }

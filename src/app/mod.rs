@@ -7,6 +7,7 @@ mod compose;
 mod contacts;
 mod crypto;
 mod editor;
+mod empty_folder;
 mod folders;
 mod identities;
 mod input;

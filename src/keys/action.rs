@@ -137,6 +137,8 @@ pub enum Action {
     CollapseThread,
     /// Restore a collapsed thread.
     ExpandThread,
+    /// Permanently remove every message in the current folder.
+    EmptyFolder,
     ClearSelection,
     // ── Sieve filters ─────────────────────────────────────────────────
     OpenSieve,

@@ -231,6 +231,10 @@ fn envelope_list_selects_for_batch_actions() {
         Action::CollapseThread
     );
     assert_eq!(
+        resolve(View::EnvelopeList, key(KeyCode::Char('E'))),
+        Action::EmptyFolder
+    );
+    assert_eq!(
         resolve(View::EnvelopeList, key(KeyCode::Char(']'))),
         Action::ExpandThread
     );

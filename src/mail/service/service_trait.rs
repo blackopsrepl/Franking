@@ -197,6 +197,14 @@ pub trait MailService: Send + Sync {
         ))
     }
 
+    /// Permanently remove every message in a folder.
+    fn empty_folder(&self, account: Option<&str>, folder: &str) -> MailResult<String> {
+        let _ = (account, folder);
+        Err(MailError::unsupported_feature(
+            "emptying folders is not supported by this backend",
+        ))
+    }
+
     /// Number of unseen messages in a folder.
     fn folder_unread(&self, account: Option<&str>, folder: &str) -> MailResult<usize> {
         let _ = (account, folder);

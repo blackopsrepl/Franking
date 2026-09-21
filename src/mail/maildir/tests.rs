@@ -223,3 +223,44 @@ fn sent_message_with_attachment_is_multipart() {
 
     let _ = fs::remove_dir_all(root);
 }
+
+#[test]
+fn empties_a_local_folder() {
+    use crate::mail::service::MailService;
+
+    let root = std::env::temp_dir().join(format!(
+        "sfmail-empty-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_nanos())
+            .unwrap_or_default()
+    ));
+    std::fs::create_dir_all(&root).unwrap();
+
+    let service = MaildirService::new("test", &root).with_default(true);
+    service.ensure_ready().unwrap();
+    service
+        .template_send(
+            Some("test"),
+            "To: bob@example.com\nSubject: Hi\n\nhello",
+            &Default::default(),
+        )
+        .expect("send");
+
+    assert_eq!(
+        service
+            .list_envelopes(Some("test"), "Sent", 1, 50, None)
+            .unwrap()
+            .len(),
+        1
+    );
+    let summary = service.empty_folder(Some("test"), "Sent").expect("empty");
+    assert!(summary.contains("Emptied Sent"), "{summary}");
+    assert!(service
+        .list_envelopes(Some("test"), "Sent", 1, 50, None)
+        .unwrap()
+        .is_empty());
+
+    let _ = std::fs::remove_dir_all(&root);
+}

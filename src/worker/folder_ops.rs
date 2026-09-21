@@ -19,6 +19,10 @@ impl Worker {
         });
     }
 
+    pub fn empty_folder(&self, account: Option<String>, name: String) {
+        self.spawn_action(move |service| service.empty_folder(account.as_deref(), &name));
+    }
+
     pub fn delete_folder(&self, account: Option<String>, name: String) {
         self.spawn_action(move |service| {
             service
