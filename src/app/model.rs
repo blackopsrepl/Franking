@@ -66,6 +66,13 @@ pub struct App {
     // ── Move prompt state ───────────────────────────────────────────
     pub move_target: String,
 
+    // ── Crypto unlock state ─────────────────────────────────────────
+    /// Passphrase for PGP secret keys, seeded from the environment or the
+    /// keys directory and replaceable through the unlock prompt.
+    pub(crate) crypto_passphrase: String,
+    /// Buffered input while the passphrase prompt is open.
+    pub(crate) unlock_input: String,
+
     // ── Help scroll ─────────────────────────────────────────────────
     pub help_scroll: u16,
 
@@ -149,6 +156,8 @@ impl App {
             search_query: String::new(),
             active_query: None,
             move_target: String::new(),
+            crypto_passphrase: crate::mail::pgp::resolve_passphrase(),
+            unlock_input: String::new(),
             threaded: false,
             ticks_since_refresh: 0,
             new_mail_count: 0,

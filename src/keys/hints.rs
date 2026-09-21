@@ -28,6 +28,7 @@ pub fn hints(view: View) -> Vec<(&'static str, &'static str)> {
             ("d", "del"),
             ("a", "attach"),
             ("N", "read"),
+            ("P", "unlock"),
             ("q", "back"),
             ("?", "help"),
         ],
@@ -41,6 +42,7 @@ pub fn hints(view: View) -> Vec<(&'static str, &'static str)> {
         View::Search => vec![("Enter", "search"), ("Esc", "cancel")],
         View::Help => vec![("j/k", "scroll"), ("q/?/Esc", "close")],
         View::MovePrompt => vec![("Enter", "move"), ("Esc", "cancel")],
+        View::PassphrasePrompt => vec![("Enter", "unlock"), ("Esc", "cancel")],
         View::Compose => vec![
             ("Tab/j/k", "nav"),
             ("Enter", "insert"),

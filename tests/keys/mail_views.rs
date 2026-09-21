@@ -228,6 +228,36 @@ fn move_prompt_input() {
     );
 }
 
+// ── Passphrase unlock prompt ────────────────────────────────────────
+
+#[test]
+fn message_view_opens_unlock_prompt() {
+    assert_eq!(
+        resolve(View::MessageView, key(KeyCode::Char('P'))),
+        Action::UnlockPrompt
+    );
+}
+
+#[test]
+fn unlock_prompt_input() {
+    assert_eq!(
+        resolve(View::PassphrasePrompt, key(KeyCode::Char('s'))),
+        Action::UnlockInput('s')
+    );
+    assert_eq!(
+        resolve(View::PassphrasePrompt, key(KeyCode::Backspace)),
+        Action::UnlockBackspace
+    );
+    assert_eq!(
+        resolve(View::PassphrasePrompt, key(KeyCode::Enter)),
+        Action::UnlockSubmit
+    );
+    assert_eq!(
+        resolve(View::PassphrasePrompt, key(KeyCode::Esc)),
+        Action::UnlockCancel
+    );
+}
+
 // ── Unrecognized keys ───────────────────────────────────────────────
 
 #[test]

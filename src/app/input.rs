@@ -92,6 +92,11 @@ impl App {
             }
             Action::MoveSubmit => self.submit_move(),
             Action::MoveCancel => self.cancel_move(),
+            Action::UnlockPrompt => self.enter_unlock_prompt(),
+            Action::UnlockInput(c) => self.unlock_input(c),
+            Action::UnlockBackspace => self.unlock_backspace(),
+            Action::UnlockSubmit => self.submit_unlock(),
+            Action::UnlockCancel => self.cancel_unlock(),
 
             // ── Compose editor ───────────────────────────────────────
             Action::ComposeFieldNext => {

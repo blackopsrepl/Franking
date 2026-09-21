@@ -2,6 +2,7 @@
 
 mod compose;
 mod contacts;
+mod crypto;
 mod editor;
 mod identities;
 mod input;

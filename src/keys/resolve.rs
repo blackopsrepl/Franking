@@ -38,6 +38,7 @@ pub fn resolve(view: View, key: KeyEvent) -> Action {
         View::Search => resolve_search(key),
         View::Help => resolve_help(key),
         View::MovePrompt => resolve_move_prompt(key),
+        View::PassphrasePrompt => resolve_unlock_prompt(key),
         View::ContactSearch => resolve_contact_search(key),
         View::ContactEdit => resolve_contact_edit(key),
         // Already handled above
@@ -141,6 +142,7 @@ fn resolve_message_view(key: KeyEvent) -> Action {
         KeyCode::Char('d') => Action::Delete,
         KeyCode::Char('a') => Action::DownloadAttachments,
         KeyCode::Char('N') => Action::ToggleRead,
+        KeyCode::Char('P') => Action::UnlockPrompt,
         KeyCode::Char('?') => Action::ToggleHelp,
         KeyCode::Char('g') => Action::JumpTop,
         KeyCode::Char('G') => Action::JumpBottom,
@@ -187,6 +189,16 @@ fn resolve_help(key: KeyEvent) -> Action {
         KeyCode::Esc | KeyCode::Char('q') | KeyCode::Char('?') => Action::ToggleHelp,
         KeyCode::Char('j') | KeyCode::Down => Action::ScrollDown,
         KeyCode::Char('k') | KeyCode::Up => Action::ScrollUp,
+        _ => Action::None,
+    }
+}
+
+fn resolve_unlock_prompt(key: KeyEvent) -> Action {
+    match key.code {
+        KeyCode::Enter => Action::UnlockSubmit,
+        KeyCode::Esc => Action::UnlockCancel,
+        KeyCode::Backspace => Action::UnlockBackspace,
+        KeyCode::Char(c) => Action::UnlockInput(c),
         _ => Action::None,
     }
 }

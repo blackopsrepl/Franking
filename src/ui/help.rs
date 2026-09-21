@@ -62,6 +62,7 @@ pub fn render(app: &App, frame: &mut Frame) {
         binding("f", "Forward"),
         binding("d", "Delete"),
         binding("a", "Download attachments"),
+        binding("P", "Unlock PGP with passphrase"),
         binding("q / Esc", "Back to list"),
         Line::from(""),
         Line::from(Span::styled(

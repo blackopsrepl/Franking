@@ -22,3 +22,39 @@ fn explain_himalaya_error_flags_oauth_failures() {
     let explained = himalaya_diagnostics::explain(Some("imap"), raw);
     assert!(explained.contains("OAuth credentials need reconfiguration"));
 }
+
+#[test]
+fn unlock_prompt_adopts_typed_passphrase() {
+    use super::App;
+    use crate::keys::View;
+
+    let mut app = App::new(None);
+    app.enter_unlock_prompt();
+    assert_eq!(app.view, View::PassphrasePrompt);
+
+    for c in "secret".chars() {
+        app.unlock_input(c);
+    }
+    app.unlock_backspace();
+    app.submit_unlock();
+
+    assert_eq!(app.view, View::MessageView);
+    assert_eq!(app.crypto_passphrase, "secre");
+    assert!(app.unlock_input.is_empty());
+}
+
+#[test]
+fn unlock_cancel_keeps_cached_passphrase() {
+    use super::App;
+    use crate::keys::View;
+
+    let mut app = App::new(None);
+    app.crypto_passphrase = "cached".to_string();
+    app.enter_unlock_prompt();
+    app.unlock_input('x');
+    app.cancel_unlock();
+
+    assert_eq!(app.view, View::MessageView);
+    assert!(app.unlock_input.is_empty());
+    assert_eq!(app.crypto_passphrase, "cached");
+}

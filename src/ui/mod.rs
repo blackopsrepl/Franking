@@ -10,6 +10,7 @@ mod identity_edit;
 mod identity_list;
 mod message_view;
 mod move_prompt;
+mod passphrase_prompt;
 mod search;
 mod status_bar;
 pub mod util;
@@ -68,6 +69,7 @@ pub fn render(app: &mut App, frame: &mut Frame) {
     match app.view {
         View::Search => search::render(app, frame, outer[2]),
         View::MovePrompt => move_prompt::render(app, frame, outer[2]),
+        View::PassphrasePrompt => passphrase_prompt::render(app, frame, outer[2]),
         _ => status_bar::render(app, frame, outer[2]),
     }
 

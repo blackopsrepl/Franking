@@ -9,6 +9,8 @@ pub enum View {
     Search,
     Help,
     MovePrompt,
+    /// Passphrase prompt for unlocking PGP secret keys.
+    PassphrasePrompt,
     /// Native compose / reply / forward editor.
     Compose,
     /// Address book browser.
@@ -95,6 +97,12 @@ pub enum Action {
     MoveBackspace,
     MoveSubmit,
     MoveCancel,
+    // ── Crypto unlock prompt ──────────────────────────────────────────
+    UnlockPrompt,
+    UnlockInput(char),
+    UnlockBackspace,
+    UnlockSubmit,
+    UnlockCancel,
     ScrollUp,
     ScrollDown,
     // ── Compose editor ────────────────────────────────────────────────
