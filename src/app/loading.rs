@@ -77,6 +77,32 @@ impl App {
         }
     }
 
+    pub(crate) fn toggle_read(&mut self) {
+        if let Some(id) = self.selected_envelope_id().map(|s| s.to_string()) {
+            let is_seen = self
+                .selected_envelope()
+                .map(|envelope| envelope.is_seen())
+                .unwrap_or(false);
+            self.loading = true;
+            self.pending_refresh_after_action = true;
+            if is_seen {
+                self.worker.flag_remove(
+                    self.acct_owned(),
+                    self.current_folder.clone(),
+                    id,
+                    "seen".to_string(),
+                );
+            } else {
+                self.worker.flag_add(
+                    self.acct_owned(),
+                    self.current_folder.clone(),
+                    id,
+                    "seen".to_string(),
+                );
+            }
+        }
+    }
+
     pub(crate) fn toggle_flag(&mut self) {
         if let Some(id) = self.selected_envelope_id().map(|s| s.to_string()) {
             let is_flagged = self

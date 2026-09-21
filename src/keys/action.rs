@@ -75,6 +75,7 @@ pub enum Action {
     Forward,
     Delete,
     ToggleFlag,
+    ToggleRead,
     DownloadAttachments,
     ToggleThread,
     Search,

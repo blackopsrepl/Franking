@@ -104,6 +104,18 @@ fn message_view_navigation() {
 }
 
 #[test]
+fn toggle_read_is_bound_in_mail_views() {
+    assert_eq!(
+        resolve(View::EnvelopeList, key(KeyCode::Char('N'))),
+        Action::ToggleRead
+    );
+    assert_eq!(
+        resolve(View::MessageView, key(KeyCode::Char('N'))),
+        Action::ToggleRead
+    );
+}
+
+#[test]
 fn message_view_actions() {
     assert_eq!(
         resolve(View::MessageView, key(KeyCode::Char('r'))),

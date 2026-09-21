@@ -66,6 +66,7 @@ impl App {
             Action::Forward => self.forward(),
             Action::Delete => self.delete(),
             Action::ToggleFlag => self.toggle_flag(),
+            Action::ToggleRead => self.toggle_read(),
             Action::DownloadAttachments => self.download_attachments(),
             Action::ToggleThread => self.toggle_thread(),
             Action::Search => self.enter_search(),
