@@ -52,6 +52,7 @@ fn smime_status_distinguishes_trusted_from_untrusted_signers() {
     use super::super::smime::signature_outcome;
 
     let signer = SmimeSigner {
+        revoked: false,
         subject: "CN=Alice, emailAddress=alice@example.com".to_string(),
         issuer: "CN=Alice".to_string(),
         fingerprint: "ab".repeat(32),
@@ -72,6 +73,7 @@ fn smime_status_distinguishes_trusted_from_untrusted_signers() {
     let trusted = signature_outcome(SmimeVerification {
         content: Some(vec![1]),
         signers: vec![SmimeSigner {
+            revoked: false,
             trusted: true,
             ..signer
         }],

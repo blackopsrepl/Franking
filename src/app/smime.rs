@@ -31,10 +31,10 @@ pub(super) fn process_smime(message: &mut MessageDocument) -> Option<SmimeOutcom
             let verification = message
                 .raw
                 .as_deref()
-                .and_then(|raw| smime::verify_mime_detailed(raw, &keyring.certs))
+                .and_then(|raw| smime::verify_mime_detailed(raw, &keyring.trust()))
                 .or_else(|| {
                     let der = find_pkcs7(message)?;
-                    smime::verify_detailed(&der, None, &keyring.certs)
+                    smime::verify_detailed(&der, None, &keyring.trust())
                 })?;
             Some(signature_outcome(verification))
         }
@@ -68,6 +68,16 @@ pub(super) fn signature_outcome(verification: SmimeVerification) -> SmimeOutcome
             untrusted: None,
         };
     };
+
+    if let Some(revoked) = verification.revoked_signer() {
+        return SmimeOutcome {
+            status: format!(
+                "S/MIME signature from a REVOKED certificate — {} (do not trust)",
+                revoked.subject
+            ),
+            untrusted: None,
+        };
+    }
 
     if verification.is_trusted() {
         return SmimeOutcome {

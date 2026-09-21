@@ -29,6 +29,7 @@ impl Fixture {
         let (bob_key, bob_cert) = certificate_for("bob@example.com", "Bob");
         Self {
             keyring: SmimeKeyring {
+                crl_paths: Vec::new(),
                 certs: vec![alice_cert.clone(), bob_cert.clone()],
                 pairs: vec![(alice_key.clone(), alice_cert.clone())],
             },
@@ -42,6 +43,7 @@ impl Fixture {
     /// The recipient-side keyring, holding only Bob's pair.
     fn bob_keyring(&self) -> SmimeKeyring {
         SmimeKeyring {
+            crl_paths: Vec::new(),
             certs: vec![self.bob_cert.clone()],
             pairs: vec![(self.bob_key.clone(), self.bob_cert.clone())],
         }
@@ -85,7 +87,7 @@ fn signed_message_verifies_and_carries_the_entity() {
     assert!(contains(&wrapped, b"application/pkcs7-signature"));
 
     let verification =
-        smime::verify_mime_detailed(&wrapped, &fixture.keyring.certs).expect("verify");
+        smime::verify_mime_detailed(&wrapped, &fixture.keyring.trust()).expect("verify");
     let signed = verification.content.expect("verified content");
     let text = String::from_utf8_lossy(&signed);
     assert!(text.contains("Content-Type: text/plain; charset=utf-8"));
@@ -116,7 +118,7 @@ fn signed_then_encrypted_message_round_trips() {
     assert!(contains(&entity, b"multipart/signed"));
 
     let verification =
-        smime::verify_mime_detailed(&entity_with_headers(&entity), &fixture.keyring.certs);
+        smime::verify_mime_detailed(&entity_with_headers(&entity), &fixture.keyring.trust());
     let Some(verification) = verification else {
         panic!(
             "the inner signed entity should parse: {}",
@@ -156,7 +158,7 @@ fn detached_signature_over_the_entity_verifies() {
         smime_sign::sign_detached(&entity, &fixture.alice_key, &fixture.alice_cert).expect("sign");
 
     let verification =
-        smime::verify_detached_detailed(&entity, &der, &fixture.keyring.certs).expect("verify");
+        smime::verify_detached_detailed(&entity, &der, &fixture.keyring.trust()).expect("verify");
     assert_eq!(
         verification.content.as_deref(),
         Some(entity.as_slice()),

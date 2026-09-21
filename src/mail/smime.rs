@@ -4,9 +4,11 @@ keys are loaded from PEM/DER files. */
 
 use std::path::Path;
 
+use std::path::PathBuf;
+
 use openssl::pkcs7::{Pkcs7, Pkcs7Flags};
 use openssl::pkey::PKey;
-use openssl::x509::X509;
+use openssl::x509::{X509Crl, X509};
 
 mod verify;
 
@@ -25,6 +27,8 @@ pub struct SmimeSigner {
     pub fingerprint: String,
     /// Whether the certificate chains to the configured trust store.
     pub trusted: bool,
+    /// Whether a configured revocation list revokes this certificate.
+    pub revoked: bool,
     pub not_before: String,
     pub not_after: String,
     /// DER bytes, so the signer can be added to the trust store.
@@ -49,12 +53,37 @@ impl SmimeVerification {
     pub fn untrusted_signer(&self) -> Option<&SmimeSigner> {
         self.signers.iter().find(|signer| !signer.trusted)
     }
+
+    /// The first signer whose certificate a revocation list revoked.
+    pub fn revoked_signer(&self) -> Option<&SmimeSigner> {
+        self.signers.iter().find(|signer| signer.revoked)
+    }
+}
+
+/// Trusted certificates and the revocation lists that apply to them.
+///
+/// Revocation is part of trust, not a separate check, so both travel together
+/// into verification.
+#[derive(Debug, Clone, Default)]
+pub struct TrustStore {
+    pub certs: Vec<X509>,
+    /// Revocation lists as file paths: the OpenSSL store loads them by file,
+    /// and the file is the auditable artifact the user placed there.
+    pub crl_paths: Vec<PathBuf>,
+}
+
+impl TrustStore {
+    /// True when there is nothing to verify against.
+    pub fn is_empty(&self) -> bool {
+        self.certs.is_empty()
+    }
 }
 
 /// Trusted certificates plus recipient key pairs for decryption.
 #[derive(Default)]
 pub struct SmimeKeyring {
     pub certs: Vec<X509>,
+    pub crl_paths: Vec<PathBuf>,
     pub pairs: Vec<(PKey<openssl::pkey::Private>, X509)>,
 }
 
@@ -63,10 +92,20 @@ impl SmimeKeyring {
         self.certs.is_empty() && self.pairs.is_empty()
     }
 
-    /// Load certificates (`*.crt`/`*.pem`/`*.der`) and keys (`*.key`) from `dir`,
-    /// pairing a key with the certificate that shares its file stem.
+    /// Trusted certificates and revocation lists from this keyring.
+    pub fn trust(&self) -> TrustStore {
+        TrustStore {
+            certs: self.certs.clone(),
+            crl_paths: self.crl_paths.clone(),
+        }
+    }
+
+    /// Load certificates (`*.crt`/`*.pem`/`*.der`), revocation lists
+    /// (`*.crl`), and keys (`*.key`) from `dir`, pairing a key with the
+    /// certificate that shares its file stem.
     pub fn load(dir: &Path) -> Self {
         let mut certs: Vec<(String, X509)> = Vec::new();
+        let mut crl_paths: Vec<PathBuf> = Vec::new();
         let mut keys: Vec<(String, PKey<openssl::pkey::Private>)> = Vec::new();
 
         if let Ok(entries) = std::fs::read_dir(dir) {
@@ -80,7 +119,12 @@ impl SmimeKeyring {
                 let Ok(bytes) = std::fs::read(&path) else {
                     continue;
                 };
-                if let Some(stem) = name.strip_suffix(".key") {
+                if name.ends_with(".crl") {
+                    // Keep the path: only a parsed list is trusted to be a CRL.
+                    if parse_crl(&bytes).is_some() {
+                        crl_paths.push(path.clone());
+                    }
+                } else if let Some(stem) = name.strip_suffix(".key") {
                     if let Ok(key) = PKey::private_key_from_pem(&bytes) {
                         keys.push((stem.to_string(), key));
                     }
@@ -106,6 +150,7 @@ impl SmimeKeyring {
 
         SmimeKeyring {
             certs: certs.into_iter().map(|(_, cert)| cert).collect(),
+            crl_paths,
             pairs,
         }
     }
@@ -153,6 +198,13 @@ pub fn cert_emails(cert: &X509) -> Vec<String> {
         }
     }
     addresses
+}
+
+/// Parse a revocation list from PEM or DER.
+fn parse_crl(bytes: &[u8]) -> Option<X509Crl> {
+    X509Crl::from_pem(bytes)
+        .ok()
+        .or_else(|| X509Crl::from_der(bytes).ok())
 }
 
 fn parse_cert(bytes: &[u8]) -> Option<X509> {
