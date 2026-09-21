@@ -182,7 +182,8 @@ impl App {
 
     pub(crate) fn handle_message_loaded(&mut self, mut message: MessageDocument) {
         self.harvest_contacts_from_message(&message);
-        self.pgp_status = super::pgp::process_pgp(&mut message);
+        self.pgp_status = super::pgp::process_pgp(&mut message)
+            .or_else(|| super::smime::process_smime(&mut message));
 
         self.message_content = Some(message);
         self.message_scroll = 0;

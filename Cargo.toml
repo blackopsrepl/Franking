@@ -45,6 +45,7 @@ roxmltree = "0.20"
 tokio = { version = "1", features = ["rt"] }
 hickory-resolver = "0.24"
 pgp = "0.20.0"
+openssl = "0.10"
 
 [dev-dependencies]
 pretty_assertions = "1"

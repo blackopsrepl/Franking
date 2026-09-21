@@ -6,7 +6,7 @@ use crate::mail::security::Protection;
 
 /// Verify or decrypt PGP on a message, returning a status line.
 pub(super) fn process_pgp(message: &mut MessageDocument) -> Option<String> {
-    let keyring = pgp::Keyring::load(&pgp_keys_dir());
+    let keyring = pgp::Keyring::load(&keys_dir());
 
     if message.protection() == Some(Protection::PgpSigned) {
         if let Some(raw) = message.raw.as_deref() {
@@ -57,7 +57,7 @@ pub(super) fn process_pgp(message: &mut MessageDocument) -> Option<String> {
     }
 }
 
-fn pgp_keys_dir() -> std::path::PathBuf {
+pub(super) fn keys_dir() -> std::path::PathBuf {
     dirs::data_dir()
         .unwrap_or_else(|| std::path::PathBuf::from("."))
         .join("solverforge")

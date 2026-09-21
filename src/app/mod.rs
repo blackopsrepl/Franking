@@ -10,6 +10,7 @@ mod model;
 mod mouse;
 mod navigation;
 mod pgp;
+mod smime;
 mod worker;
 
 #[cfg(test)]
