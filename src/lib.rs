@@ -7,7 +7,6 @@ pub mod contacts;
 pub mod db;
 pub mod event;
 pub mod file_picker;
-pub mod himalaya;
 pub mod identities;
 pub mod identity_edit;
 pub mod import;

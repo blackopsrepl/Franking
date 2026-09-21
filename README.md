@@ -247,16 +247,16 @@ solverforge-mail/
 │   ├── event.rs             # Terminal event handling
 │   ├── keys.rs              # Keybinding definitions
 │   ├── theme.rs             # Color theme loader
-│   ├── himalaya/
-│   │   ├── client.rs        # Legacy helper code retained for tests/migration work
-│   │   ├── config.rs        # Legacy backend discovery helpers
-│   │   ├── diagnostics.rs   # Shared error classification
-│   │   └── types.rs         # JSON types
 │   ├── mail/
 │   │   ├── service.rs       # App-facing mail service boundary
-│   │   ├── remote.rs        # Native IMAP/SMTP transport
+│   │   ├── remote/          # Native IMAP/SMTP transport
+│   │   │   ├── next/        # Commands on the app-owned IMAP client
+│   │   │   └── session/     # Transport, codec reading policy, pool, IDLE
 │   │   ├── message.rs       # Structured message content + display modes
 │   │   ├── mime.rs          # Shared raw-message MIME parser
+│   │   ├── pgp.rs           # PGP verify/decrypt/key generation
+│   │   ├── smime.rs         # S/MIME verify/decrypt
+│   │   ├── sieve.rs         # ManageSieve script management
 │   │   ├── maildir.rs       # Native local maildir backend
 │   │   └── account_store.rs # App-owned account metadata store
 │   └── ui/

@@ -1,6 +1,6 @@
 # ╔══════════════════════════════════════════════════════════════════════════════╗
 # ║                          SOLVERFORGE-MAIL                                  ║
-# ║                   ratatui TUI email client · himalaya backend              ║
+# ║                 ratatui TUI email client · app-owned mail engine           ║
 # ╚══════════════════════════════════════════════════════════════════════════════╝
 #
 # Part of SolverForge Linux — https://solverforge.com

@@ -174,55 +174,6 @@ impl Envelope {
     }
 }
 
-impl From<crate::himalaya::types::Account> for Account {
-    fn from(value: crate::himalaya::types::Account) -> Self {
-        Self {
-            name: value.name,
-            backend: value.backend,
-            default: value.default,
-        }
-    }
-}
-
-impl From<crate::himalaya::types::Folder> for Folder {
-    fn from(value: crate::himalaya::types::Folder) -> Self {
-        let role = FolderRole::from_name(&value.name);
-        Self {
-            name: value.name,
-            desc: value.desc,
-            role,
-        }
-    }
-}
-
-impl From<crate::himalaya::types::Sender> for Sender {
-    fn from(value: crate::himalaya::types::Sender) -> Self {
-        match value {
-            crate::himalaya::types::Sender::Plain(s) => Sender::Plain(s),
-            crate::himalaya::types::Sender::Structured { name, addr } => {
-                Sender::Structured { name, addr }
-            }
-            crate::himalaya::types::Sender::Unknown => Sender::Unknown,
-        }
-    }
-}
-
-impl From<crate::himalaya::types::Envelope> for Envelope {
-    fn from(value: crate::himalaya::types::Envelope) -> Self {
-        Self {
-            id: value.id,
-            flags: value.flags,
-            subject: value.subject,
-            sender: value.sender.into(),
-            date: value.date,
-            message_id: None,
-            in_reply_to: None,
-            account: None,
-            folder: None,
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::{preferred_account, sort_accounts, Account, FolderRole};
