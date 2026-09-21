@@ -73,7 +73,7 @@ pub fn downloads_dir() -> PathBuf {
 }
 
 fn unique_file_name(base: &Path, index: usize, requested: &str) -> String {
-    let sanitized = sanitize_file_name(requested);
+    let sanitized = safe_file_name(requested);
     let candidate = if sanitized.is_empty() {
         format!("attachment-{}", index + 1)
     } else {
@@ -102,7 +102,8 @@ fn unique_file_name(base: &Path, index: usize, requested: &str) -> String {
     candidate
 }
 
-fn sanitize_file_name(value: &str) -> String {
+/// Replace path separators and other unsafe characters in a file name.
+pub fn safe_file_name(value: &str) -> String {
     value
         .chars()
         .map(|ch| match ch {
@@ -116,7 +117,7 @@ fn sanitize_file_name(value: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{sanitize_file_name, save_attachments, unique_file_name};
+    use super::{safe_file_name, save_attachments, unique_file_name};
     use std::path::Path;
 
     fn temp_dir() -> std::path::PathBuf {
@@ -129,10 +130,7 @@ mod tests {
 
     #[test]
     fn sanitize_replaces_path_separators() {
-        assert_eq!(
-            sanitize_file_name("report:Q2/2026?.pdf"),
-            "report_Q2_2026_.pdf"
-        );
+        assert_eq!(safe_file_name("report:Q2/2026?.pdf"), "report_Q2_2026_.pdf");
     }
 
     #[test]

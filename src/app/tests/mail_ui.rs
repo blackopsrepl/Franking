@@ -207,3 +207,67 @@ fn header_toggle_switches_between_summary_and_raw_headers() {
     assert!(headers.iter().any(|h| h == "X-Custom: value"));
     assert!(!headers.iter().any(|h| h.contains("body")));
 }
+
+#[test]
+fn message_file_stem_prefers_the_message_id() {
+    use super::super::App;
+
+    let raw = b"From: alice@example.com\r\nMessage-ID: <abc.123@example.com>\r\nSubject: Hi\r\n\r\nbody\r\n";
+    let mut app = App::new(None);
+    app.message_content = Some(crate::mail::mime::parse_message(raw).unwrap());
+    assert_eq!(app.message_file_stem(), "abc.123@example.com");
+
+    app.message_content = None;
+    app.envelopes = vec![crate::mail::types::Envelope {
+        id: "42".to_string(),
+        flags: Vec::new(),
+        subject: "Hi".to_string(),
+        sender: crate::mail::types::Sender::Plain("alice@example.com".to_string()),
+        date: String::new(),
+        message_id: None,
+        in_reply_to: None,
+        account: None,
+        folder: Some("INBOX".to_string()),
+    }];
+    app.envelope_state.select(Some(0));
+    assert_eq!(app.message_file_stem(), "42");
+}
+
+#[test]
+fn saving_without_a_message_reports_an_error() {
+    use super::super::App;
+
+    let mut app = App::new(None);
+    app.save_message();
+    assert!(app.status_is_error);
+    assert!(app.status_message.contains("No message source"));
+}
+
+#[test]
+fn save_message_writes_the_source_and_reports_it() {
+    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+
+    use crate::keys::View;
+
+    use super::super::App;
+
+    let raw = b"From: alice@example.com\r\nMessage-ID: <save-test@example.com>\r\nSubject: Save\r\n\r\nbody\r\n";
+    let mut document = crate::mail::mime::parse_message(raw).unwrap();
+    document.raw = Some(raw.to_vec());
+
+    let mut app = App::new(None);
+    app.view = View::MessageView;
+    app.message_content = Some(document);
+    app.handle_key(KeyEvent::new(KeyCode::Char('s'), KeyModifiers::NONE));
+
+    assert!(!app.status_is_error, "status: {}", app.status_message);
+    assert!(
+        app.status_message.starts_with("Saved"),
+        "{}",
+        app.status_message
+    );
+
+    let path = app.status_message.trim_start_matches("Saved ").to_string();
+    assert!(std::path::Path::new(&path).exists(), "missing {path}");
+    let _ = std::fs::remove_file(&path);
+}

@@ -55,6 +55,34 @@ impl App {
             .collect()
     }
 
+    /// Base file name for saving the loaded message as an .eml file.
+    pub fn message_file_stem(&self) -> String {
+        let message_id = self.message_content.as_ref().and_then(|message| {
+            message
+                .header_fields()
+                .iter()
+                .find(|field| field.name.eq_ignore_ascii_case("message-id"))
+                .map(|field| {
+                    field
+                        .value
+                        .trim()
+                        .trim_start_matches('<')
+                        .trim_end_matches('>')
+                        .to_string()
+                })
+                .filter(|value| !value.is_empty())
+        });
+        let stem = message_id
+            .or_else(|| self.selected_envelope_id().map(str::to_string))
+            .unwrap_or_else(|| "message".to_string());
+        let sanitized = crate::mail::attachments::safe_file_name(&stem);
+        if sanitized.is_empty() {
+            "message".to_string()
+        } else {
+            sanitized
+        }
+    }
+
     pub fn current_message(&self) -> Option<&MessageDocument> {
         self.message_content.as_ref()
     }

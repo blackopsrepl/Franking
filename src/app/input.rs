@@ -86,6 +86,7 @@ impl App {
             Action::SwitchAccount => self.enter_account_picker(),
             Action::ToggleHelp => self.toggle_help(),
             Action::ToggleHeaders => self.toggle_headers(),
+            Action::SaveMessage => self.save_message(),
             Action::FocusFolders => self.view = View::FolderList,
             Action::FocusEnvelopes => self.view = View::EnvelopeList,
             Action::ScrollUp => self.scroll(-1),

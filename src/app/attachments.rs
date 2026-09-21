@@ -75,6 +75,23 @@ impl App {
         }
     }
 
+    /// Write the loaded message's source to the download directory.
+    pub(crate) fn save_message(&mut self) {
+        let Some(raw) = self
+            .message_content
+            .as_ref()
+            .and_then(|message| message.raw.clone())
+        else {
+            self.set_error("No message source is available to save.");
+            return;
+        };
+        let name = format!("{}.eml", self.message_file_stem());
+        match attachments::save_attachments(vec![(name, raw)], &attachments::downloads_dir()) {
+            Ok(path) => self.set_status(&format!("Saved {path}")),
+            Err(error) => self.set_error(&format!("Could not save message: {error}")),
+        }
+    }
+
     fn attachment_count(&self) -> usize {
         self.message_content
             .as_ref()

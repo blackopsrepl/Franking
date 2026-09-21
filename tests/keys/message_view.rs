@@ -23,6 +23,14 @@ fn message_view_toggles_all_headers() {
 }
 
 #[test]
+fn message_view_saves_the_source() {
+    assert_eq!(
+        resolve(View::MessageView, key(KeyCode::Char('s'))),
+        Action::SaveMessage
+    );
+}
+
+#[test]
 fn message_view_trusts_the_smime_signer() {
     assert_eq!(
         resolve(View::MessageView, key(KeyCode::Char('T'))),

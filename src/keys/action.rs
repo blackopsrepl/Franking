@@ -102,6 +102,8 @@ pub enum Action {
     ToggleHelp,
     /// Show every raw header in the message view.
     ToggleHeaders,
+    /// Save the loaded message as an .eml file.
+    SaveMessage,
     FocusFolders,
     FocusEnvelopes,
     MoveMessage,
