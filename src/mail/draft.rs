@@ -2,6 +2,12 @@
 
 use super::model::MessageDocument;
 
+/// True when a header value contains a line break, which would allow header
+/// injection (RFC 5322 forbids CR/LF in field values).
+pub fn has_header_injection(value: &str) -> bool {
+    value.contains('\n') || value.contains('\r')
+}
+
 /// Render a parsed draft back into the compose template format so it can be
 /// resumed in the editor.
 pub fn draft_template(document: &MessageDocument) -> String {
@@ -20,8 +26,15 @@ pub fn draft_template(document: &MessageDocument) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::draft_template;
+    use super::{draft_template, has_header_injection};
     use crate::mail::mime;
+
+    #[test]
+    fn detects_header_injection() {
+        assert!(!has_header_injection("Plain subject"));
+        assert!(has_header_injection("Subject\r\nBcc: evil@example.com"));
+        assert!(has_header_injection("line\nbreak"));
+    }
 
     #[test]
     fn builds_a_template_from_a_draft() {

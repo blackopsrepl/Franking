@@ -107,6 +107,13 @@ impl ImapSmtpService {
     /// Count unseen messages in a folder using server-side SEARCH.
     fn build_outgoing_message(&self, template: &str) -> MailResult<Message> {
         let draft = parse_template_message(template);
+        for (name, value) in &draft.headers {
+            if crate::mail::draft::has_header_injection(value) {
+                return Err(MailError::invalid_input(format!(
+                    "header {name} contains a line break"
+                )));
+            }
+        }
         let from = draft
             .header("from")
             .map(str::to_string)

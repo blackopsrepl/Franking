@@ -77,6 +77,14 @@ pub(super) fn parse_template_message(raw: &str) -> TemplateMessage {
 }
 
 pub(super) fn render_outgoing(parsed: &TemplateMessage) -> MailResult<String> {
+    for (name, value) in &parsed.headers {
+        if crate::mail::draft::has_header_injection(value) {
+            return Err(MailError::invalid_input(format!(
+                "header {name} contains a line break"
+            )));
+        }
+    }
+
     let header = |name: &str| {
         parsed
             .headers
@@ -102,27 +110,27 @@ pub(super) fn render_outgoing(parsed: &TemplateMessage) -> MailResult<String> {
     let date = Local::now().format("%Y-%m-%d %H:%M:%S%:z").to_string();
 
     let mut raw = String::new();
-    raw.push_str(&format!("From: {from}\n"));
+    raw.push_str(&format!("From: {from}\r\n"));
     if !to.is_empty() {
-        raw.push_str(&format!("To: {to}\n"));
+        raw.push_str(&format!("To: {to}\r\n"));
     }
     if !cc.is_empty() {
-        raw.push_str(&format!("Cc: {cc}\n"));
+        raw.push_str(&format!("Cc: {cc}\r\n"));
     }
     if !bcc.is_empty() {
-        raw.push_str(&format!("Bcc: {bcc}\n"));
+        raw.push_str(&format!("Bcc: {bcc}\r\n"));
     }
     if !subject.is_empty() {
-        raw.push_str(&format!("Subject: {subject}\n"));
+        raw.push_str(&format!("Subject: {subject}\r\n"));
     }
     if !in_reply_to.is_empty() {
-        raw.push_str(&format!("In-Reply-To: {in_reply_to}\n"));
+        raw.push_str(&format!("In-Reply-To: {in_reply_to}\r\n"));
     }
     if !references.is_empty() {
-        raw.push_str(&format!("References: {references}\n"));
+        raw.push_str(&format!("References: {references}\r\n"));
     }
-    raw.push_str(&format!("Message-ID: {}\n", local_message_id()));
-    raw.push_str(&format!("Date: {date}\n"));
+    raw.push_str(&format!("Message-ID: {}\r\n", local_message_id()));
+    raw.push_str(&format!("Date: {date}\r\n"));
 
     let attachments = parsed
         .headers
@@ -133,8 +141,8 @@ pub(super) fn render_outgoing(parsed: &TemplateMessage) -> MailResult<String> {
         .collect::<Vec<_>>();
 
     if attachments.is_empty() {
-        raw.push('\n');
-        raw.push_str(&parsed.body);
+        raw.push_str("\r\n");
+        raw.push_str(&crlf(&parsed.body));
         return Ok(raw);
     }
 
@@ -143,11 +151,11 @@ pub(super) fn render_outgoing(parsed: &TemplateMessage) -> MailResult<String> {
         local_message_id().trim_matches(['<', '>'])
     );
     raw.push_str(&format!(
-        "Content-Type: multipart/mixed; boundary=\"{boundary}\"\n\n"
+        "Content-Type: multipart/mixed; boundary=\"{boundary}\"\r\n\r\n"
     ));
     raw.push_str(&format!(
-        "--{boundary}\nContent-Type: text/plain; charset=utf-8\n\n{}\n",
-        parsed.body
+        "--{boundary}\r\nContent-Type: text/plain; charset=utf-8\r\n\r\n{}\r\n",
+        crlf(&parsed.body)
     ));
     for path in attachments {
         let bytes = fs::read(&path).map_err(|err| {
@@ -158,12 +166,12 @@ pub(super) fn render_outgoing(parsed: &TemplateMessage) -> MailResult<String> {
             .and_then(|name| name.to_str())
             .unwrap_or("attachment");
         raw.push_str(&format!(
-            "--{boundary}\nContent-Type: application/octet-stream; name=\"{file_name}\"\nContent-Disposition: attachment; filename=\"{file_name}\"\nContent-Transfer-Encoding: base64\n\n"
+            "--{boundary}\r\nContent-Type: application/octet-stream; name=\"{file_name}\"\r\nContent-Disposition: attachment; filename=\"{file_name}\"\r\nContent-Transfer-Encoding: base64\r\n\r\n"
         ));
         raw.push_str(&wrap_base64(&bytes));
-        raw.push('\n');
+        raw.push_str("\r\n");
     }
-    raw.push_str(&format!("--{boundary}--\n"));
+    raw.push_str(&format!("--{boundary}--\r\n"));
     Ok(raw)
 }
 
@@ -258,4 +266,8 @@ pub(super) fn forwarded_body(message: &MessageDocument) -> String {
 pub(super) struct TemplateMessage {
     headers: Vec<(String, String)>,
     body: String,
+}
+
+fn crlf(value: &str) -> String {
+    value.replace("\r\n", "\n").replace('\n', "\r\n")
 }
