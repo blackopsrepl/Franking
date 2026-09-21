@@ -2,6 +2,7 @@
 
 mod accessors;
 mod attachments;
+mod autosave;
 mod compose;
 mod contacts;
 mod crypto;

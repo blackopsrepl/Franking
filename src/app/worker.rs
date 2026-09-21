@@ -89,6 +89,7 @@ impl App {
                 }
                 WorkerResult::SendDone(Ok(msg)) => {
                     self.loading = false;
+                    self.clear_autosave();
                     self.compose_state = None;
                     self.view = View::EnvelopeList;
                     if let Some((folder, id)) = self.pending_draft.take() {

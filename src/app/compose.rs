@@ -219,6 +219,7 @@ impl App {
                 }
             } else {
                 // Empty / pristine — discard immediately
+                self.clear_autosave();
                 self.compose_state = None;
                 self.pending_draft = None;
                 self.view = View::EnvelopeList;

@@ -128,6 +128,12 @@ pub struct App {
     /// Reversible operation performed by the last destructive action.
     pub(crate) pending_undo: Option<super::undo::UndoOp>,
 
+    // ── Compose autosave ────────────────────────────────────────────
+    /// Directory holding the crash-safe autosave of the message in progress.
+    pub(crate) autosave_dir: std::path::PathBuf,
+    /// Ticks since the last autosave was written.
+    pub(crate) autosave_ticks: u64,
+
     // ── Database ────────────────────────────────────────────────────
     pub db: Option<Connection>,
 
@@ -199,6 +205,8 @@ impl App {
             pending_refresh_after_action: false,
             selected: Default::default(),
             pending_undo: None,
+            autosave_dir: super::autosave::default_dir(),
+            autosave_ticks: 0,
             db: None,
             compose_state: None,
             contacts: Vec::new(),
@@ -212,7 +220,7 @@ impl App {
         }
     }
 
-    /// Initial startup: open the DB and load accounts.
+    /// Initial startup: open the DB, recover an unsent message, load accounts.
     pub fn init(&mut self) {
         match db::open() {
             Ok(conn) => {
@@ -222,6 +230,7 @@ impl App {
                 self.set_error(&format!("DB error: {e}"));
             }
         }
+        self.recover_autosave();
         self.loading = true;
         self.worker.fetch_accounts();
     }
@@ -230,6 +239,7 @@ impl App {
     pub fn tick(&mut self) {
         self.tick_count = self.tick_count.wrapping_add(1);
         self.poll_worker();
+        self.autosave_tick();
 
         // Auto-refresh: only when idle (not loading, on envelope list, page 1, no search)
         if !self.loading
