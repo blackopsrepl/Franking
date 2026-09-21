@@ -97,9 +97,16 @@ fn cycles_the_message_list_ordering() {
 
     app.cycle_sort_order();
     assert_eq!(app.sort_order.key, SortKey::Sender);
+    assert!(app.sort_order.descending, "each key starts descending");
     let ids: Vec<&str> = app.envelopes.iter().map(|e| e.id.as_str()).collect();
-    assert_eq!(ids, vec!["2", "1"], "alice before carol");
+    assert_eq!(ids, vec!["1", "2"], "carol before alice when descending");
     assert!(app.status_message.contains("sender"));
+
+    app.cycle_sort_order();
+    assert_eq!(app.sort_order.key, SortKey::Sender);
+    assert!(!app.sort_order.descending);
+    let ids: Vec<&str> = app.envelopes.iter().map(|e| e.id.as_str()).collect();
+    assert_eq!(ids, vec!["2", "1"], "alice before carol when ascending");
 
     // Threaded view keeps the server order.
     app.threaded = true;
