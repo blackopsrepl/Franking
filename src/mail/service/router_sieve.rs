@@ -74,6 +74,10 @@ pub(super) fn save_script(
     body: &str,
 ) -> MailResult<()> {
     with_client(router, account, |client| {
+        // Validate first so a broken filter is never installed.
+        client.check_script(body).map_err(|error| {
+            MailError::invalid_input(format!("Sieve rejected the script: {error}"))
+        })?;
         client.put_script(name, body).map_err(sieve_error)
     })
 }

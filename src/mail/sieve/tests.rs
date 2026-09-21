@@ -201,6 +201,18 @@ fn deletes_a_script() {
 }
 
 #[test]
+fn checking_a_script_sends_the_literal() {
+    let server = MockServer::start();
+    let mut client = SieveClient::connect(&server.config(SieveSecurity::Plain)).expect("connect");
+    client.check_script("if true { stop; }").expect("check");
+    assert!(server
+        .commands()
+        .iter()
+        .any(|c| c.starts_with("CHECKSCRIPT")));
+    assert_eq!(server.literals(), vec!["if true { stop; }".to_string()]);
+}
+
+#[test]
 fn surfaces_server_failures() {
     let server = MockServer::start();
     let mut client = SieveClient::connect(&server.config(SieveSecurity::Plain)).expect("connect");
