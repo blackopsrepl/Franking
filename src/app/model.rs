@@ -146,6 +146,8 @@ pub struct App {
 
     /// Folder awaiting a second press of the empty-folder key.
     pub(crate) pending_empty_folder: Option<String>,
+    /// Account awaiting a second press of the delete key.
+    pub(crate) pending_delete_account: Option<String>,
     /// Envelopes hidden by collapsing a thread, keyed by thread root.
     pub(crate) collapsed_threads: std::collections::HashMap<String, Vec<Envelope>>,
 
@@ -235,6 +237,7 @@ impl App {
             selected: Default::default(),
             pending_undo: None,
             pending_empty_folder: None,
+            pending_delete_account: None,
             collapsed_threads: std::collections::HashMap::new(),
             autosave_dir: super::autosave::default_dir(),
             autosave_ticks: 0,

@@ -140,6 +140,10 @@ pub enum Action {
     Undo,
     /// Move the selection to the archive folder.
     Archive,
+    /// Make the highlighted account the default.
+    SetDefaultAccount,
+    /// Delete the highlighted account.
+    DeleteAccount,
     /// Hide the replies of the cursor's thread.
     CollapseThread,
     /// Restore a collapsed thread.

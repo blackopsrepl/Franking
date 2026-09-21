@@ -209,6 +209,8 @@ fn resolve_account_list(key: KeyEvent) -> Action {
         KeyCode::Char('j') | KeyCode::Down => Action::MoveDown,
         KeyCode::Char('k') | KeyCode::Up => Action::MoveUp,
         KeyCode::Enter => Action::Select,
+        KeyCode::Char('s') => Action::SetDefaultAccount,
+        KeyCode::Char('d') => Action::DeleteAccount,
         _ => Action::None,
     }
 }

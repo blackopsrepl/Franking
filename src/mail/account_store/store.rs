@@ -189,3 +189,45 @@ fn row_to_account_record(row: &rusqlite::Row<'_>) -> rusqlite::Result<AccountRec
         keyring_smtp_secret_id: row.get(15)?,
     })
 }
+
+/// Remove an account and everything derived from it.
+pub fn delete_account(conn: &Connection, name: &str) -> Result<()> {
+    let tx = conn.unchecked_transaction()?;
+    let account_id: Option<i64> = tx
+        .query_row("SELECT id FROM accounts WHERE name = ?1", [name], |row| {
+            row.get(0)
+        })
+        .ok();
+    let Some(account_id) = account_id else {
+        return Ok(());
+    };
+
+    for statement in [
+        "DELETE FROM auth_bindings WHERE account_id = ?1",
+        "DELETE FROM account_endpoints WHERE account_id = ?1",
+        "DELETE FROM oauth_states WHERE account_id = ?1",
+        "DELETE FROM folder_cache WHERE account_id = ?1",
+        "DELETE FROM accounts WHERE id = ?1",
+    ] {
+        tx.execute(statement, params![account_id])?;
+    }
+    for statement in [
+        "DELETE FROM messages WHERE account = ?1",
+        "DELETE FROM sync_state WHERE account = ?1",
+        "DELETE FROM identities WHERE account = ?1",
+    ] {
+        tx.execute(statement, params![name])?;
+    }
+    tx.commit()?;
+    Ok(())
+}
+
+/// Make one account the default and clear the flag from the others.
+pub fn set_default_account(conn: &Connection, name: &str) -> Result<()> {
+    conn.execute("UPDATE accounts SET is_default = 0", [])?;
+    conn.execute(
+        "UPDATE accounts SET is_default = 1, updated_at = datetime('now') WHERE name = ?1",
+        [name],
+    )?;
+    Ok(())
+}

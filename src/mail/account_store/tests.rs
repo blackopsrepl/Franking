@@ -93,3 +93,71 @@ fn upsert_oauth_state_persists_refresh_metadata() {
     );
     assert_eq!(stored.access_token_cached.as_deref(), Some("access"));
 }
+
+#[cfg(test)]
+mod account_lifecycle {
+    use crate::mail::account_store::{
+        delete_account, list_accounts, set_default_account, upsert_account, AccountConfig,
+    };
+
+    fn second_account() -> AccountConfig {
+        AccountConfig {
+            name: "work".to_string(),
+            backend_kind: "imap".to_string(),
+            provider_kind: "generic".to_string(),
+            enabled: true,
+            is_default: false,
+            maildir_path: None,
+            imap_host: Some("imap.example.com".to_string()),
+            imap_port: Some(993),
+            imap_security: Some("tls".to_string()),
+            smtp_host: Some("smtp.example.com".to_string()),
+            smtp_port: Some(465),
+            smtp_security: Some("tls".to_string()),
+            auth_mode: Some("password".to_string()),
+            username: Some("alice@example.com".to_string()),
+            keyring_imap_secret_id: Some("work-imap".to_string()),
+            keyring_smtp_secret_id: Some("work-smtp".to_string()),
+        }
+    }
+
+    #[test]
+    fn deletes_an_account_and_its_children() {
+        let conn = rusqlite::Connection::open_in_memory().unwrap();
+        crate::db::init_for_test(&conn).unwrap();
+        upsert_account(&conn, &second_account()).unwrap();
+        assert!(list_accounts(&conn)
+            .unwrap()
+            .iter()
+            .any(|record| record.name == "work"));
+
+        delete_account(&conn, "work").unwrap();
+        assert!(!list_accounts(&conn)
+            .unwrap()
+            .iter()
+            .any(|record| record.name == "work"));
+
+        let endpoints: i64 = conn
+            .query_row("SELECT COUNT(*) FROM account_endpoints", [], |row| {
+                row.get(0)
+            })
+            .unwrap();
+        assert_eq!(endpoints, 1, "only the seeded account endpoint remains");
+    }
+
+    #[test]
+    fn setting_the_default_clears_the_previous_one() {
+        let conn = rusqlite::Connection::open_in_memory().unwrap();
+        crate::db::init_for_test(&conn).unwrap();
+        upsert_account(&conn, &second_account()).unwrap();
+
+        set_default_account(&conn, "work").unwrap();
+        let accounts = list_accounts(&conn).unwrap();
+        let defaults: Vec<&str> = accounts
+            .iter()
+            .filter(|record| record.is_default)
+            .map(|record| record.name.as_str())
+            .collect();
+        assert_eq!(defaults, vec!["work"]);
+    }
+}

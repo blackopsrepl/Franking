@@ -1,6 +1,7 @@
 /*! Application module wiring. */
 
 mod accessors;
+mod accounts;
 mod archive;
 mod attachments;
 mod autosave;
