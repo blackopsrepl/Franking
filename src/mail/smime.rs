@@ -24,46 +24,50 @@ impl SmimeKeyring {
     }
 
     /// Load certificates (`*.crt`/`*.pem`/`*.der`) and keys (`*.key`) from `dir`,
-    /// pairing a key with the certificate of the same file stem.
+    /// pairing a key with the certificate that shares its file stem.
     pub fn load(dir: &Path) -> Self {
-        let mut keyring = SmimeKeyring::default();
-        let Ok(entries) = std::fs::read_dir(dir) else {
-            return keyring;
-        };
-        let mut keys = Vec::new();
-        for entry in entries.flatten() {
-            let path = entry.path();
-            let name = path
-                .file_name()
-                .and_then(|n| n.to_str())
-                .unwrap_or_default()
-                .to_string();
-            let Ok(bytes) = std::fs::read(&path) else {
-                continue;
-            };
-            if name.ends_with(".key") {
-                if let Ok(key) = PKey::private_key_from_pem(&bytes) {
-                    keys.push((name, key));
+        let mut certs: Vec<(String, X509)> = Vec::new();
+        let mut keys: Vec<(String, PKey<openssl::pkey::Private>)> = Vec::new();
+
+        if let Ok(entries) = std::fs::read_dir(dir) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                let name = path
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .unwrap_or_default()
+                    .to_string();
+                let Ok(bytes) = std::fs::read(&path) else {
+                    continue;
+                };
+                if let Some(stem) = name.strip_suffix(".key") {
+                    if let Ok(key) = PKey::private_key_from_pem(&bytes) {
+                        keys.push((stem.to_string(), key));
+                    }
+                } else if let Some(cert) = parse_cert(&bytes) {
+                    let stem = name
+                        .rsplit_once('.')
+                        .map(|(stem, _)| stem.to_string())
+                        .unwrap_or_else(|| name.clone());
+                    certs.push((stem, cert));
                 }
-            } else if let Some(cert) = parse_cert(&bytes) {
-                keyring.certs.push(cert);
             }
         }
 
-        for (name, key) in keys {
-            let stem = name.trim_end_matches(".key");
-            let cert = keyring
-                .certs
-                .iter()
-                .find(|_| true)
-                .cloned()
-                .or_else(|| None);
-            if let Some(cert) = cert {
-                let _ = stem;
-                keyring.pairs.push((key, cert));
-            }
+        let pairs = keys
+            .into_iter()
+            .filter_map(|(stem, key)| {
+                certs
+                    .iter()
+                    .find(|(cert_stem, _)| cert_stem == &stem)
+                    .map(|(_, cert)| (key, cert.clone()))
+            })
+            .collect();
+
+        SmimeKeyring {
+            certs: certs.into_iter().map(|(_, cert)| cert).collect(),
+            pairs,
         }
-        keyring
     }
 }
 
