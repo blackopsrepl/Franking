@@ -61,6 +61,7 @@ pub(super) fn create_schema(conn: &Connection) -> Result<()> {
              name         TEXT,
              display_name TEXT,
              email        TEXT    NOT NULL,
+             signature    TEXT,
              is_default   INTEGER NOT NULL DEFAULT 0,
              created_at   TEXT    NOT NULL DEFAULT (datetime('now')),
              UNIQUE(account, email)
@@ -195,5 +196,16 @@ pub(super) fn create_schema(conn: &Connection) -> Result<()> {
              PRIMARY KEY (account, folder)
          );",
     )?;
+    Ok(())
+}
+
+/// Add columns introduced after the first schema without resetting local data.
+pub(super) fn migrate_schema(conn: &Connection) -> Result<()> {
+    let has_signature: bool = conn
+        .prepare("SELECT 1 FROM pragma_table_info('identities') WHERE name = 'signature'")?
+        .exists([])?;
+    if !has_signature {
+        conn.execute_batch("ALTER TABLE identities ADD COLUMN signature TEXT;")?;
+    }
     Ok(())
 }

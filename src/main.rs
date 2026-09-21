@@ -202,7 +202,7 @@ fn run_identity_cmd(cmd: IdentityCmd) -> Result<()> {
             } else {
                 // List all identities across all accounts.
                 let mut stmt = conn.prepare(
-                    "SELECT id, account, name, display_name, email, is_default
+                    "SELECT id, account, name, display_name, email, signature, is_default
                      FROM identities ORDER BY account, is_default DESC, name, email",
                 )?;
                 let collected = stmt
@@ -213,7 +213,8 @@ fn run_identity_cmd(cmd: IdentityCmd) -> Result<()> {
                             name: row.get(2)?,
                             display_name: row.get(3)?,
                             email: row.get(4)?,
-                            is_default: row.get::<_, i32>(5)? != 0,
+                            signature: row.get(5)?,
+                            is_default: row.get::<_, i32>(6)? != 0,
                         })
                     })?
                     .collect::<rusqlite::Result<Vec<_>>>()?;

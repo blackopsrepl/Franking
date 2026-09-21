@@ -115,9 +115,34 @@ pub fn populate_from_template(state: &mut ComposeState, raw: &str) {
         }
         _ => FocusedField::Body,
     };
+    if state.mode == ComposeMode::New {
+        append_signature(state);
+    }
     state.dirty = false;
     let _ = headers.from; // used by display if needed
     let _ = headers.extra;
+}
+
+/// Append the selected (or default) identity's signature to a new message.
+fn append_signature(state: &mut ComposeState) {
+    let signature = state
+        .selected_identity()
+        .or_else(|| {
+            state
+                .from_identities
+                .iter()
+                .find(|identity| identity.is_default)
+        })
+        .and_then(|identity| identity.signature.clone());
+    let Some(signature) = signature else {
+        return;
+    };
+    if signature.trim().is_empty() {
+        return;
+    }
+    let body = state.body.text();
+    let text = format!("{}\n\n-- \n{}", body.trim_end(), signature.trim_end());
+    state.body = ComposeEditor::from_text(&text);
 }
 
 // ── Template reassembly ──────────────────────────────────────────────────────

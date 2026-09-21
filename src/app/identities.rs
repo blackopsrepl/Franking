@@ -166,7 +166,7 @@ impl App {
         };
 
         match validation_result {
-            Ok((name, display_name, email, is_default)) => {
+            Ok((name, display_name, email, signature, is_default)) => {
                 if let Some(ref conn) = self.db {
                     let result = if let Some(id) = identity_id {
                         crate::identities::delete(conn, id).and_then(|_| {
@@ -176,6 +176,7 @@ impl App {
                                 name.as_deref(),
                                 display_name.as_deref(),
                                 &email,
+                                signature.as_deref(),
                                 is_default,
                             )
                             .map(|_| ())
@@ -187,6 +188,7 @@ impl App {
                             name.as_deref(),
                             display_name.as_deref(),
                             &email,
+                            signature.as_deref(),
                             is_default,
                         )
                         .map(|_| ())

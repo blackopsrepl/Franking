@@ -20,6 +20,8 @@ pub struct Identity {
     pub display_name: Option<String>,
     /// Email address (e.g. "alice@example.com").
     pub email: String,
+    /// Optional signature appended to new messages sent from this identity.
+    pub signature: Option<String>,
     /// Whether this is the default identity for the account.
     pub is_default: bool,
 }
@@ -57,6 +59,7 @@ pub fn add(
     name: Option<&str>,
     display_name: Option<&str>,
     email: &str,
+    signature: Option<&str>,
     is_default: bool,
 ) -> Result<i64> {
     // If this is the new default, clear any existing default first.
@@ -64,13 +67,14 @@ pub fn add(
         clear_default(conn, account)?;
     }
     conn.execute(
-        "INSERT INTO identities (account, name, display_name, email, is_default)
-         VALUES (?1, ?2, ?3, ?4, ?5)",
+        "INSERT INTO identities (account, name, display_name, email, signature, is_default)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
         rusqlite::params![
             account,
             name,
             display_name,
             email.to_lowercase(),
+            signature,
             is_default as i32
         ],
     )
@@ -81,7 +85,7 @@ pub fn add(
 /// List all identities for an account, default first.
 pub fn list_for_account(conn: &Connection, account: &str) -> Result<Vec<Identity>> {
     let mut stmt = conn.prepare(
-        "SELECT id, account, name, display_name, email, is_default
+        "SELECT id, account, name, display_name, email, signature, is_default
          FROM identities
          WHERE account = ?1
          ORDER BY is_default DESC, name, display_name, email",
@@ -94,7 +98,7 @@ pub fn list_for_account(conn: &Connection, account: &str) -> Result<Vec<Identity
 /// Get the default identity for an account, if any.
 pub fn get_default(conn: &Connection, account: &str) -> Result<Option<Identity>> {
     let result = conn.query_row(
-        "SELECT id, account, name, display_name, email, is_default
+        "SELECT id, account, name, display_name, email, signature, is_default
          FROM identities WHERE account = ?1 AND is_default = 1 LIMIT 1",
         [account],
         row_to_identity,
@@ -136,6 +140,45 @@ fn row_to_identity(row: &rusqlite::Row<'_>) -> rusqlite::Result<Identity> {
         name: row.get(2)?,
         display_name: row.get(3)?,
         email: row.get(4)?,
-        is_default: row.get::<_, i32>(5)? != 0,
+        signature: row.get(5)?,
+        is_default: row.get::<_, i32>(6)? != 0,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{add, get_default, list_for_account};
+
+    #[test]
+    fn stores_and_returns_the_signature() {
+        let conn = rusqlite::Connection::open_in_memory().unwrap();
+        crate::db::init_for_test(&conn).unwrap();
+
+        add(
+            &conn,
+            "acct",
+            Some("Work"),
+            Some("Alice"),
+            "alice@example.com",
+            Some("-- \nAlice"),
+            true,
+        )
+        .unwrap();
+
+        let listed = list_for_account(&conn, "acct").unwrap();
+        assert_eq!(listed.len(), 1);
+        assert_eq!(listed[0].signature.as_deref(), Some("-- \nAlice"));
+
+        let default = get_default(&conn, "acct").unwrap().expect("default");
+        assert_eq!(default.signature.as_deref(), Some("-- \nAlice"));
+    }
+
+    #[test]
+    fn identities_without_a_signature_keep_none() {
+        let conn = rusqlite::Connection::open_in_memory().unwrap();
+        crate::db::init_for_test(&conn).unwrap();
+        add(&conn, "acct", None, None, "bob@example.com", None, false).unwrap();
+        let listed = list_for_account(&conn, "acct").unwrap();
+        assert!(listed[0].signature.is_none());
+    }
 }

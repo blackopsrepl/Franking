@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use anyhow::{Context, Result};
 use rusqlite::Connection;
 
-use super::schema::{create_schema, reset_schema};
+use super::schema::{create_schema, migrate_schema, reset_schema};
 
 /// Current schema version. Changing this resets local DB state.
 const SCHEMA_VERSION: u32 = 3;
@@ -56,6 +56,7 @@ fn ensure_current_schema(conn: &Connection) -> Result<()> {
         create_schema(conn)?;
         set_schema_version(conn, SCHEMA_VERSION)?;
     }
+    migrate_schema(conn)?;
 
     crate::mail::account_store::seed_defaults(conn)?;
     Ok(())

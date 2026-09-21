@@ -21,11 +21,9 @@ pub fn render(app: &App, frame: &mut Frame) {
     frame.render_widget(Clear, area);
 
     // Layout per field: 1 row label + 1 row input = 2 rows each.
-    // Fields: Name, SenderName, Email, IsDefault = 4 fields × 2 = 8 rows.
-    // Plus: 1 account label + 1 spacer + 1 action bar = 3 extra rows.
-    // Plus: 2 border rows = total 13. Add 1 for breathing room = 14.
+    // Fields: Name, SenderName, Email, Signature, IsDefault = 5 × 2 rows.
     let popup_w = area.width.min(56);
-    let popup_h = 16u16;
+    let popup_h = 18u16;
     let popup = Rect {
         x: area.x + area.width.saturating_sub(popup_w) / 2,
         y: area.y + area.height.saturating_sub(popup_h) / 2,
@@ -61,8 +59,8 @@ pub fn render(app: &App, frame: &mut Frame) {
         },
     );
 
-    // Rows 1–8: four fields (label + input each)
-    let fields: [(IdentityField, &str, &str); 4] = [
+    // Rows 1–10: five fields (label + input each)
+    let fields: [(IdentityField, &str, &str); 5] = [
         (IdentityField::Name, "Name   ", state.name.as_str()),
         (
             IdentityField::SenderName,
@@ -70,6 +68,11 @@ pub fn render(app: &App, frame: &mut Frame) {
             state.display_name.as_str(),
         ),
         (IdentityField::Email, "Email  ", state.email.as_str()),
+        (
+            IdentityField::Signature,
+            "Signat.",
+            state.signature.as_str(),
+        ),
         (
             IdentityField::IsDefault,
             "Default",
