@@ -1104,7 +1104,10 @@ impl App {
             FocusedField::Send => {
                 self.compose_send();
             }
-            FocusedField::Draft | FocusedField::Attach => {
+            FocusedField::Draft => {
+                self.compose_save_draft();
+            }
+            FocusedField::Attach => {
                 // Disabled — no-op
             }
             FocusedField::Discard => {
@@ -1139,6 +1142,14 @@ impl App {
             let template = crate::compose::reassemble_template(cs);
             self.loading = true;
             self.worker.send_template(self.acct_owned(), template);
+        }
+    }
+
+    fn compose_save_draft(&mut self) {
+        if let Some(ref cs) = self.compose_state {
+            let template = crate::compose::reassemble_template(cs);
+            self.loading = true;
+            self.worker.save_draft(self.acct_owned(), template);
         }
     }
 

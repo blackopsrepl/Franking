@@ -253,9 +253,9 @@ fn render_compose_action_bar(state: &ComposeState, frame: &mut Frame, area: Rect
             disabled: false,
         },
         Button {
-            label: &format!("{} Draft (soon)", ICON_DRAFT),
+            label: &format!("{} Draft", ICON_DRAFT),
             focused: state.focused == FocusedField::Draft,
-            disabled: true,
+            disabled: false,
         },
         Button {
             label: &format!("{} Attach (soon)", ICON_ATTACH),

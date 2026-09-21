@@ -378,6 +378,37 @@ impl ImapSmtpService {
 
     pub fn template_send(&self, account: Option<&str>, template: &str) -> MailResult<String> {
         self.ensure_requested_account(account)?;
+        let message = self.build_outgoing_message(template)?;
+        let transport = self.smtp_transport()?;
+        transport.send(&message).map_err(map_smtp_error)?;
+
+        let mut status = "Message sent.".to_string();
+        if let Err(error) = self.save_message_to_sent(&message.formatted()) {
+            status = format!("Message sent, but saving to Sent failed: {error}");
+        }
+        Ok(status)
+    }
+
+    /// Persist a compose template to the account's Drafts mailbox.
+    pub fn save_draft(&self, account: Option<&str>, template: &str) -> MailResult<String> {
+        self.ensure_requested_account(account)?;
+        let message = self.build_outgoing_message(template)?;
+        let Some(folder) = self.drafts_folder_name()? else {
+            return Ok("Draft saved locally only (no Drafts mailbox found).".to_string());
+        };
+        self.pool
+            .with_connection(&self.account, |connection| match connection {
+                ConnectedImapSession::Plain(session) => session
+                    .append_with_flags(&folder, message.formatted(), &[Flag::Draft])
+                    .map_err(map_imap_error),
+                ConnectedImapSession::Tls(session) => session
+                    .append_with_flags(&folder, message.formatted(), &[Flag::Draft])
+                    .map_err(map_imap_error),
+            })?;
+        Ok("Draft saved.".to_string())
+    }
+
+    fn build_outgoing_message(&self, template: &str) -> MailResult<Message> {
         let draft = parse_template_message(template);
         let from = draft
             .header("from")
@@ -413,17 +444,9 @@ impl ImapSmtpService {
             builder = builder.references(value.to_string());
         }
 
-        let message = builder
+        builder
             .body(draft.body)
-            .map_err(|err| MailError::invalid_input(err.to_string()))?;
-        let transport = self.smtp_transport()?;
-        transport.send(&message).map_err(map_smtp_error)?;
-
-        let mut status = "Message sent.".to_string();
-        if let Err(error) = self.save_message_to_sent(&message.formatted()) {
-            status = format!("Message sent, but saving to Sent failed: {error}");
-        }
-        Ok(status)
+            .map_err(|err| MailError::invalid_input(err.to_string()))
     }
 
     /// Append a sent message to the account's Sent mailbox, discovered via the
@@ -441,6 +464,16 @@ impl ImapSmtpService {
                     session.append(&folder, raw).map_err(map_imap_error)
                 }
             })
+    }
+
+    fn drafts_folder_name(&self) -> MailResult<Option<String>> {
+        let folders = self
+            .pool
+            .with_connection(&self.account, |connection| match connection {
+                ConnectedImapSession::Plain(session) => list_folder_attributes(session),
+                ConnectedImapSession::Tls(session) => list_folder_attributes(session),
+            })?;
+        Ok(pick_drafts_folder(&folders))
     }
 
     fn sent_folder_name(&self) -> MailResult<Option<String>> {
@@ -678,6 +711,27 @@ fn pick_trash_folder(folders: &[(String, Vec<String>)]) -> Option<String> {
                 matches!(
                     name.to_ascii_lowercase().as_str(),
                     "trash" | "deleted" | "deleted items" | "bin" | "inbox.trash"
+                )
+            })
+        })
+        .map(|(name, _)| name.clone())
+}
+
+/// Choose the Drafts mailbox from LIST results, preferring the RFC 6154
+/// `\Drafts` attribute over localized or historical names.
+fn pick_drafts_folder(folders: &[(String, Vec<String>)]) -> Option<String> {
+    folders
+        .iter()
+        .find(|(_, attributes)| {
+            attributes
+                .iter()
+                .any(|attribute| attribute.eq_ignore_ascii_case("\\Drafts"))
+        })
+        .or_else(|| {
+            folders.iter().find(|(name, _)| {
+                matches!(
+                    name.to_ascii_lowercase().as_str(),
+                    "drafts" | "inbox.drafts"
                 )
             })
         })
@@ -1092,8 +1146,8 @@ fn parse_mailbox(value: &str) -> MailResult<Mailbox> {
 #[cfg(test)]
 mod tests {
     use super::{
-        parse_template_message, pick_sent_folder, pick_trash_folder, sanitize_file_name,
-        search_criteria,
+        parse_template_message, pick_drafts_folder, pick_sent_folder, pick_trash_folder,
+        sanitize_file_name, search_criteria,
     };
 
     #[test]
@@ -1169,5 +1223,22 @@ mod tests {
             Some("Deleted Items")
         );
         assert!(pick_trash_folder(&[("INBOX".to_string(), Vec::new())]).is_none());
+    }
+
+    #[test]
+    fn drafts_folder_prefers_special_use_over_names() {
+        let folders = vec![
+            ("INBOX".to_string(), Vec::new()),
+            ("Entwuerfe".to_string(), vec!["\\Drafts".to_string()]),
+            ("Drafts".to_string(), Vec::new()),
+        ];
+        assert_eq!(pick_drafts_folder(&folders).as_deref(), Some("Entwuerfe"));
+
+        let fallback = vec![
+            ("INBOX".to_string(), Vec::new()),
+            ("Drafts".to_string(), Vec::new()),
+        ];
+        assert_eq!(pick_drafts_folder(&fallback).as_deref(), Some("Drafts"));
+        assert!(pick_drafts_folder(&[("INBOX".to_string(), Vec::new())]).is_none());
     }
 }

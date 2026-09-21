@@ -90,6 +90,14 @@ pub trait MailService: Send + Sync {
         -> MailResult<String>;
     fn template_send(&self, account: Option<&str>, template: &str) -> MailResult<String>;
 
+    /// Persist a compose template as a draft in the account's Drafts mailbox.
+    fn save_draft(&self, account: Option<&str>, template: &str) -> MailResult<String> {
+        let _ = (account, template);
+        Err(MailError::unsupported_feature(
+            "saving drafts is not supported by this backend",
+        ))
+    }
+
     /// Block until a folder changes or the timeout elapses. Backends without
     /// push support report it as unsupported so callers can stop watching.
     fn idle_watch(
@@ -443,6 +451,13 @@ impl MailService for RouterMailService {
         match self.route_account(account)? {
             Route::Maildir(service) => service.template_send(account, template),
             Route::Remote(service) => service.template_send(account, template),
+        }
+    }
+
+    fn save_draft(&self, account: Option<&str>, template: &str) -> MailResult<String> {
+        match self.route_account(account)? {
+            Route::Maildir(service) => service.save_draft(account, template),
+            Route::Remote(service) => service.save_draft(account, template),
         }
     }
 

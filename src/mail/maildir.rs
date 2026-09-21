@@ -277,60 +277,22 @@ impl MailService for MaildirService {
 
     fn template_send(&self, _account: Option<&str>, template: &str) -> MailResult<String> {
         self.ensure_ready()?;
-        let parsed = parse_template_message(template);
-        let header = |name: &str| {
-            parsed
-                .headers
-                .iter()
-                .find(|(key, _)| key.eq_ignore_ascii_case(name))
-                .map(|(_, value)| value.clone())
-                .unwrap_or_default()
-        };
-        let from = {
-            let value = header("from");
-            if value.is_empty() {
-                "SolverForge Mail <test@solverforge.local>".to_string()
-            } else {
-                value
-            }
-        };
-        let to = header("to");
-        let cc = header("cc");
-        let bcc = header("bcc");
-        let subject = header("subject");
-        let in_reply_to = header("in-reply-to");
-        let references = header("references");
-        let date = Local::now().format("%Y-%m-%d %H:%M:%S%:z").to_string();
-
-        let mut raw = String::new();
-        raw.push_str(&format!("From: {from}\n"));
-        if !to.is_empty() {
-            raw.push_str(&format!("To: {to}\n"));
-        }
-        if !cc.is_empty() {
-            raw.push_str(&format!("Cc: {cc}\n"));
-        }
-        if !bcc.is_empty() {
-            raw.push_str(&format!("Bcc: {bcc}\n"));
-        }
-        if !subject.is_empty() {
-            raw.push_str(&format!("Subject: {subject}\n"));
-        }
-        if !in_reply_to.is_empty() {
-            raw.push_str(&format!("In-Reply-To: {in_reply_to}\n"));
-        }
-        if !references.is_empty() {
-            raw.push_str(&format!("References: {references}\n"));
-        }
-        raw.push_str(&format!("Message-ID: {}\n", local_message_id()));
-        raw.push_str(&format!("Date: {date}\n\n"));
-        raw.push_str(&parsed.body);
-
+        let raw = render_outgoing(&parse_template_message(template));
         let sent_dir = self.folder_path("Sent")?;
         let destination = next_message_path(&sent_dir, &['S']);
         fs::write(&destination, raw)
             .map_err(|err| MailError::local_maildir_failure(err.to_string()))?;
         Ok("Message sent.".to_string())
+    }
+
+    fn save_draft(&self, _account: Option<&str>, template: &str) -> MailResult<String> {
+        self.ensure_ready()?;
+        let raw = render_outgoing(&parse_template_message(template));
+        let drafts_dir = self.folder_path("Drafts")?;
+        let destination = next_message_path(&drafts_dir, &['D']);
+        fs::write(&destination, raw)
+            .map_err(|err| MailError::local_maildir_failure(err.to_string()))?;
+        Ok("Draft saved.".to_string())
     }
 }
 
@@ -678,6 +640,57 @@ fn parse_template_message(raw: &str) -> TemplateMessage {
     }
 }
 
+fn render_outgoing(parsed: &TemplateMessage) -> String {
+    let header = |name: &str| {
+        parsed
+            .headers
+            .iter()
+            .find(|(key, _)| key.eq_ignore_ascii_case(name))
+            .map(|(_, value)| value.clone())
+            .unwrap_or_default()
+    };
+    let from = {
+        let value = header("from");
+        if value.is_empty() {
+            "SolverForge Mail <test@solverforge.local>".to_string()
+        } else {
+            value
+        }
+    };
+    let to = header("to");
+    let cc = header("cc");
+    let bcc = header("bcc");
+    let subject = header("subject");
+    let in_reply_to = header("in-reply-to");
+    let references = header("references");
+    let date = Local::now().format("%Y-%m-%d %H:%M:%S%:z").to_string();
+
+    let mut raw = String::new();
+    raw.push_str(&format!("From: {from}\n"));
+    if !to.is_empty() {
+        raw.push_str(&format!("To: {to}\n"));
+    }
+    if !cc.is_empty() {
+        raw.push_str(&format!("Cc: {cc}\n"));
+    }
+    if !bcc.is_empty() {
+        raw.push_str(&format!("Bcc: {bcc}\n"));
+    }
+    if !subject.is_empty() {
+        raw.push_str(&format!("Subject: {subject}\n"));
+    }
+    if !in_reply_to.is_empty() {
+        raw.push_str(&format!("In-Reply-To: {in_reply_to}\n"));
+    }
+    if !references.is_empty() {
+        raw.push_str(&format!("References: {references}\n"));
+    }
+    raw.push_str(&format!("Message-ID: {}\n", local_message_id()));
+    raw.push_str(&format!("Date: {date}\n\n"));
+    raw.push_str(&parsed.body);
+    raw
+}
+
 fn render_template(headers: &[(&str, String)], body: &str) -> String {
     let mut out = String::new();
     for (name, value) in headers {
@@ -889,6 +902,28 @@ mod tests {
         let raw = String::from_utf8_lossy(&raw);
 
         assert!(raw.contains("Message-ID: <"), "{raw}");
+
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn save_draft_writes_to_the_drafts_folder() {
+        let root = temp_maildir();
+        let service = MaildirService::new("test", &root).with_default(true);
+        service.ensure_ready().unwrap();
+
+        service
+            .save_draft(
+                Some("test"),
+                "To: bob@example.com\nSubject: Draft subject\n\nwork in progress",
+            )
+            .unwrap();
+
+        let drafts = service
+            .list_envelopes(Some("test"), "Drafts", 1, 50, None)
+            .unwrap();
+        assert_eq!(drafts.len(), 1);
+        assert_eq!(drafts[0].subject, "Draft subject");
 
         let _ = fs::remove_dir_all(root);
     }
