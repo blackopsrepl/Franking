@@ -226,3 +226,51 @@ fn html_toggle_reports_plain_text_messages() {
     assert!(!app.show_html_source);
     assert!(app.status_message.contains("no HTML part"));
 }
+
+#[test]
+fn a_search_shows_cached_matches_before_the_server_answers() {
+    use crate::keys::View;
+    use crate::mail::store::{self, StoredMessage};
+    use crate::mail::types::{Envelope, Sender};
+
+    use super::super::App;
+
+    let conn = rusqlite::Connection::open_in_memory().unwrap();
+    crate::db::init_for_test(&conn).unwrap();
+
+    let envelope = Envelope {
+        id: "7".to_string(),
+        flags: Vec::new(),
+        subject: "Quarterly report".to_string(),
+        sender: Sender::Plain("alice@example.com".to_string()),
+        date: "2026-04-13 09:00:00+00:00".to_string(),
+        message_id: None,
+        in_reply_to: None,
+        account: Some("work".to_string()),
+        folder: Some("INBOX".to_string()),
+    };
+    store::upsert_envelope(
+        &conn,
+        &StoredMessage::from_envelope("work", "INBOX", &envelope),
+    )
+    .unwrap();
+
+    let mut app = App::new(None);
+    app.db = Some(conn);
+    app.current_folder = "INBOX".to_string();
+    app.search_query = "quarterly".to_string();
+    app.view = View::Search;
+    app.submit_search();
+
+    assert_eq!(
+        app.envelopes.len(),
+        1,
+        "the cached match is shown immediately"
+    );
+    assert_eq!(app.envelopes[0].id, "7");
+    assert!(
+        app.status_message.contains("cached"),
+        "status tells the user the server is still working: {}",
+        app.status_message
+    );
+}
