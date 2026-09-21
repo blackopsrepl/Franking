@@ -12,7 +12,6 @@ mod folder_prompt;
 mod help;
 mod identity_edit;
 mod identity_list;
-mod invite;
 mod links;
 mod message_view;
 mod move_prompt;
@@ -100,7 +99,6 @@ pub fn render(app: &mut App, frame: &mut Frame) {
         View::PassphrasePrompt => passphrase_prompt::render(app, frame, outer[2]),
         View::FolderPrompt => folder_prompt::render(app, frame, outer[2]),
         View::SchedulePrompt => outbox::render_schedule_prompt(app, frame, outer[2]),
-        View::InviteReply => invite::render_prompt(app, frame, outer[2]),
         View::MessageSearch => message_view::render_search_prompt(app, frame, outer[2]),
         _ => status_bar::render(app, frame, outer[2]),
     }

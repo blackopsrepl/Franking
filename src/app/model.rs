@@ -87,6 +87,8 @@ pub struct App {
     pub(crate) notification_rule: super::notification_rules::NotificationRule,
     /// Whether a stored draft is encrypted to its sender.
     pub(crate) encrypt_drafts: bool,
+    /// Planner123 calendar to add invitations to; `None` uses its default.
+    pub(crate) planner123_calendar: Option<String>,
     /// Whether opening a message marks it read on the server.
     pub(crate) mark_read_on_open: bool,
     /// Highlighted preference row.
@@ -105,8 +107,6 @@ pub struct App {
     pub(crate) preview_scroll: u16,
     /// Buffered send-later delay input.
     pub(crate) schedule_input: String,
-    /// Invitation awaiting a response choice.
-    pub(crate) invite_pending: Option<crate::mail::calendar::Event>,
 
     // ── Move prompt state ───────────────────────────────────────────
     pub move_target: String,

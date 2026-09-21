@@ -95,10 +95,6 @@ fn a_cancelled_invitation_is_marked_and_not_repliable() {
     .unwrap();
 
     assert!(event.cancelled);
-    assert!(
-        !event.is_repliable(),
-        "answering a cancellation would claim attendance"
-    );
     let summary = event.summary_line().expect("a summary");
     assert!(summary.ends_with("(cancelled)"), "{summary}");
 }
@@ -110,5 +106,4 @@ fn a_cancelled_status_is_treated_as_a_cancellation() {
     ))
     .unwrap();
     assert!(event.cancelled);
-    assert!(!event.is_repliable());
 }

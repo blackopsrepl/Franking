@@ -67,26 +67,10 @@ fn message_view_toggles_quoted_lines() {
 }
 
 #[test]
-fn message_view_answers_invitations() {
+fn message_view_hands_an_invitation_to_the_calendar() {
     assert_eq!(
-        resolve(View::MessageView, key(KeyCode::Char('v'))),
-        Action::OpenInviteReply
-    );
-    assert_eq!(
-        resolve(View::InviteReply, key(KeyCode::Char('a'))),
-        Action::InviteRespond(solverforge_mail::mail::calendar_reply::PartStat::Accepted)
-    );
-    assert_eq!(
-        resolve(View::InviteReply, key(KeyCode::Char('t'))),
-        Action::InviteRespond(solverforge_mail::mail::calendar_reply::PartStat::Tentative)
-    );
-    assert_eq!(
-        resolve(View::InviteReply, key(KeyCode::Char('d'))),
-        Action::InviteRespond(solverforge_mail::mail::calendar_reply::PartStat::Declined)
-    );
-    assert_eq!(
-        resolve(View::InviteReply, key(KeyCode::Esc)),
-        Action::InviteCancel
+        resolve(View::MessageView, key(KeyCode::Char('c'))),
+        Action::AddToPlanner
     );
 }
 

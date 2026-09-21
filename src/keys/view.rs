@@ -18,8 +18,6 @@ pub enum View {
     Settings,
     /// Prompt for a send-later delay.
     SchedulePrompt,
-    /// Calendar invitation reply prompt.
-    InviteReply,
     Search,
     Help,
     MovePrompt,

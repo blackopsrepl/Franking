@@ -130,10 +130,8 @@ pub enum Action {
     ScheduleSubmit,
     ScheduleCancel,
     // ── Invitation replies ────────────────────────────────────────────
-    OpenInviteReply,
-    /// Respond to a calendar invitation with a participation status.
-    InviteRespond(crate::mail::calendar_reply::PartStat),
-    InviteCancel,
+    /// Add a message's calendar invitation to Planner123.
+    AddToPlanner,
     // ── Folder management ─────────────────────────────────────────────
     FolderNew,
     FolderRename,

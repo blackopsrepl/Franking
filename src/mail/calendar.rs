@@ -26,14 +26,6 @@ impl Event {
         self.summary.is_none() && self.start.is_none() && self.end.is_none()
     }
 
-    /// Whether the event carries what a reply needs.
-    ///
-    /// A cancellation is not repliable: answering it would tell the organizer
-    /// the attendee is attending an event that no longer exists.
-    pub fn is_repliable(&self) -> bool {
-        !self.cancelled && self.uid.is_some() && self.organizer.is_some()
-    }
-
     pub fn summary_line(&self) -> Option<String> {
         let summary = self
             .summary

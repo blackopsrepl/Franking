@@ -48,7 +48,7 @@ pub fn render(app: &App, frame: &mut Frame, area: Rect) {
     if let Some(event) = message.invitation() {
         if let Some(summary) = event.summary_line() {
             lines.push(Line::from(Span::styled(
-                format!("Invitation: {summary}"),
+                format!("Invitation: {summary}  \u{00b7}  c adds it to Planner123"),
                 t.dimmed(),
             )));
         }
