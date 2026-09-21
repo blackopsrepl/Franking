@@ -217,6 +217,18 @@ impl App {
         }
     }
 
+    /// Download every attachment of the selected message as one archive.
+    pub(crate) fn download_attachments_zip(&mut self) {
+        if let Some(id) = self.selected_envelope_id().map(|s| s.to_string()) {
+            self.loading = true;
+            self.worker.download_attachments_zip(
+                self.selected_account(),
+                self.selected_folder(),
+                id,
+            );
+        }
+    }
+
     pub(crate) fn toggle_thread(&mut self) {
         self.threaded = !self.threaded;
         if !self.threaded {

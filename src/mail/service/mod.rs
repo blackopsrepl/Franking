@@ -1,5 +1,6 @@
 /*! Mail service module wiring. */
 
+pub mod attachment_archive;
 mod cache;
 mod read;
 mod router;

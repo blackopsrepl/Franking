@@ -133,6 +133,24 @@ impl ImapSmtpService {
         self.set_flag(folder, id, flag, false)
     }
 
+    /// Write every attachment into one archive, alongside the single-file save.
+    pub fn download_attachments_zip(
+        &self,
+        account: Option<&str>,
+        folder: &str,
+        id: &str,
+    ) -> MailResult<String> {
+        self.ensure_requested_account(account)?;
+        let uid = id
+            .parse::<u32>()
+            .map_err(|_| MailError::invalid_input(format!("invalid message id {id}")))?;
+        let raw = self.pool.with_client(&self.account, |client| {
+            next::select(client, folder)?;
+            next::read_message_raw(client, uid)
+        })?;
+        crate::mail::service::attachment_archive::archive_from_raw(raw)
+    }
+
     pub fn download_attachments(
         &self,
         account: Option<&str>,

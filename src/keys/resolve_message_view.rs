@@ -15,6 +15,7 @@ pub(super) fn resolve_message_view(key: KeyEvent) -> Action {
         KeyCode::Char('f') => Action::Forward,
         KeyCode::Char('d') => Action::Delete,
         KeyCode::Char('a') => Action::DownloadAttachments,
+        KeyCode::Char('Z') => Action::DownloadAttachmentsZip,
         KeyCode::Char('N') => Action::ToggleRead,
         KeyCode::Char('P') => Action::UnlockPrompt,
         KeyCode::Char('T') => Action::TrustSigner,

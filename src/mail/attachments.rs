@@ -66,6 +66,59 @@ pub fn save_attachments(items: Vec<(String, Vec<u8>)>, base: &Path) -> MailResul
     Ok(saved.join(", "))
 }
 
+/// Write attachment payloads into one archive in `base`, returning its path.
+///
+/// Names inside the archive are made unique, because two parts can carry the
+/// same file name.
+pub fn save_attachments_as_zip(
+    items: Vec<(String, Vec<u8>)>,
+    base: &Path,
+    archive_name: &str,
+) -> MailResult<String> {
+    use std::io::Write as _;
+
+    if items.is_empty() {
+        return Err(MailError::unsupported_feature(
+            "this message does not include any downloadable attachments",
+        ));
+    }
+    std::fs::create_dir_all(base).map_err(|err| MailError::io(err.to_string()))?;
+
+    let stem = safe_file_name(archive_name);
+    let stem = if stem.is_empty() {
+        "attachments".to_string()
+    } else {
+        stem
+    };
+    let archive = unique_file_name(base, 0, &format!("{stem}.zip"));
+    let path = base.join(&archive);
+
+    let file = std::fs::File::create(&path).map_err(|err| MailError::io(err.to_string()))?;
+    let mut writer = zip::ZipWriter::new(file);
+    let options: zip::write::FileOptions<'_, ()> =
+        zip::write::FileOptions::default().compression_method(zip::CompressionMethod::Deflated);
+
+    for (name, bytes) in &items {
+        let name = safe_file_name(name);
+        let name = if name.is_empty() {
+            "attachment".to_string()
+        } else {
+            name
+        };
+        writer
+            .start_file(name, options)
+            .map_err(|err| MailError::other(err.to_string()))?;
+        writer
+            .write_all(bytes)
+            .map_err(|err| MailError::io(err.to_string()))?;
+    }
+    writer
+        .finish()
+        .map_err(|err| MailError::other(err.to_string()))?;
+
+    Ok(path.display().to_string())
+}
+
 /// Directory where attachments are written when no explicit base is given.
 pub fn downloads_dir() -> PathBuf {
     dirs::download_dir()
@@ -215,3 +268,6 @@ AAECAwQ=
         assert!(save_attachments(Vec::new(), &base).is_err());
     }
 }
+
+#[cfg(test)]
+mod zip_tests;

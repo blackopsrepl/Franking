@@ -78,6 +78,7 @@ impl App {
             Action::SyncFolder => self.sync_folder(),
             Action::MarkFolderRead => self.mark_folder_read(),
             Action::DownloadAttachments => self.download_attachments(),
+            Action::DownloadAttachmentsZip => self.download_attachments_zip(),
             Action::ToggleThread => self.toggle_thread(),
             Action::Search => self.enter_search(),
             Action::SearchSubmit => self.submit_search(),

@@ -139,7 +139,7 @@ pub trait MailService: Send + Sync {
     fn draft_template(&self, account: Option<&str>, folder: &str, id: &str) -> MailResult<String> {
         let _ = (account, folder, id);
         Err(MailError::unsupported_feature(
-            "resuming drafts is not supported by this backend",
+            "this backend cannot resume drafts",
         ))
     }
 
@@ -147,15 +147,27 @@ pub trait MailService: Send + Sync {
     fn save_draft(&self, account: Option<&str>, template: &str) -> MailResult<String> {
         let _ = (account, template);
         Err(MailError::unsupported_feature(
-            "saving drafts is not supported by this backend",
+            "this backend cannot save drafts",
         ))
+    }
+
+    /// Write every attachment of a message into one archive.
+    ///
+    /// Works for any backend, because it only needs the raw message.
+    fn download_attachments_zip(
+        &self,
+        account: Option<&str>,
+        folder: &str,
+        id: &str,
+    ) -> MailResult<String> {
+        super::attachment_archive::archive_from_raw(self.read_message_raw(account, folder, id)?)
     }
 
     /// Create a new mailbox.
     fn create_folder(&self, account: Option<&str>, name: &str) -> MailResult<()> {
         let _ = (account, name);
         Err(MailError::unsupported_feature(
-            "creating folders is not supported by this backend",
+            "this backend cannot create folders",
         ))
     }
 
@@ -163,7 +175,7 @@ pub trait MailService: Send + Sync {
     fn rename_folder(&self, account: Option<&str>, from: &str, to: &str) -> MailResult<()> {
         let _ = (account, from, to);
         Err(MailError::unsupported_feature(
-            "renaming folders is not supported by this backend",
+            "this backend cannot rename folders",
         ))
     }
 
@@ -171,13 +183,11 @@ pub trait MailService: Send + Sync {
     fn delete_folder(&self, account: Option<&str>, name: &str) -> MailResult<()> {
         let _ = (account, name);
         Err(MailError::unsupported_feature(
-            "deleting folders is not supported by this backend",
+            "this backend cannot delete folders",
         ))
     }
 
-    /// Folder listing that also reports subscription state when the backend
-    /// knows it. The default is the plain listing, so no backend is required to
-    /// track subscriptions.
+    /// Folder listing that also reports subscription state when it is known.
     fn list_folders_detailed(&self, account: Option<&str>) -> MailResult<Vec<Folder>> {
         self.list_folders(account)
     }
@@ -186,7 +196,7 @@ pub trait MailService: Send + Sync {
     fn subscribe_folder(&self, account: Option<&str>, name: &str) -> MailResult<()> {
         let _ = (account, name);
         Err(MailError::unsupported_feature(
-            "subscribing to folders is not supported by this backend",
+            "this backend cannot subscribe to folders",
         ))
     }
 
@@ -194,7 +204,7 @@ pub trait MailService: Send + Sync {
     fn unsubscribe_folder(&self, account: Option<&str>, name: &str) -> MailResult<()> {
         let _ = (account, name);
         Err(MailError::unsupported_feature(
-            "subscriptions are not supported by this backend",
+            "this backend does not support subscriptions",
         ))
     }
 
@@ -258,7 +268,7 @@ pub trait MailService: Send + Sync {
     fn mark_folder_seen(&self, account: Option<&str>, folder: &str) -> MailResult<()> {
         let _ = (account, folder);
         Err(MailError::unsupported_feature(
-            "marking a folder read is not supported by this backend",
+            "this backend cannot mark a folder read",
         ))
     }
 

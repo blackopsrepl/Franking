@@ -51,6 +51,7 @@ pub enum Action {
     SyncFolder,
     MarkFolderRead,
     DownloadAttachments,
+    DownloadAttachmentsZip,
     ToggleThread,
     Search,
     SearchSubmit,

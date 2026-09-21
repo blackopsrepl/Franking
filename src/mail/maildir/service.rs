@@ -165,6 +165,18 @@ impl MailService for MaildirService {
         update_flag(&path, flag, false)
     }
 
+    fn download_attachments_zip(
+        &self,
+        _account: Option<&str>,
+        folder: &str,
+        id: &str,
+    ) -> MailResult<String> {
+        self.ensure_ready()?;
+        crate::mail::service::attachment_archive::archive_from_raw(
+            self.read_message_raw(None, folder, id)?,
+        )
+    }
+
     fn download_attachments(
         &self,
         _account: Option<&str>,

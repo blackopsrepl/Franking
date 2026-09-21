@@ -131,6 +131,15 @@ impl MailService for RouterMailService {
         Ok(())
     }
 
+    fn download_attachments_zip(
+        &self,
+        account: Option<&str>,
+        folder: &str,
+        id: &str,
+    ) -> MailResult<String> {
+        route!(self, account, service => service.download_attachments_zip(account, folder, id))
+    }
+
     fn download_attachments(
         &self,
         account: Option<&str>,

@@ -20,6 +20,14 @@ impl Worker {
         });
     }
 
+    /// Download every attachment of a message as one archive.
+    pub fn download_attachments_zip(&self, account: Option<String>, folder: String, id: String) {
+        self.spawn(
+            move |service| service.download_attachments_zip(account.as_deref(), &folder, &id),
+            WorkerResult::ActionDone,
+        );
+    }
+
     pub fn download_attachments(&self, account: Option<String>, folder: String, id: String) {
         self.spawn_action(move |service| {
             service
