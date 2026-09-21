@@ -58,15 +58,34 @@ pub(crate) fn test_address() -> Option<(String, u16)> {
 /// separate process, so a shared INBOX would let them mutate each other.
 pub(crate) const FOLDER: &str = "codec-tests";
 
-/// Create the test mailbox when it does not exist yet.
+/// Create the test mailbox when it does not exist, then wait until the server
+/// reports it.
+///
+/// Dovecot answers existence from a per-user mailbox index, so a CREATE from
+/// one connection is not always visible to the next connection immediately;
+/// without this check a following APPEND fails with TRYCREATE on a fresh
+/// container.
 pub(crate) fn ensure_mailbox(account: &AccountRecord) {
+    use std::time::{Duration, Instant};
+
     let pool = SessionPool::with_credentials(std::sync::Arc::new(FixedCredentials));
     pool.with_client(account, |client| {
-        match next::create_folder(client, FOLDER) {
-            Ok(()) => Ok(()),
-            Err(error) if error.is_transport() => Err(error),
-            // The mailbox already exists, which is the common case.
-            Err(_) => Ok(()),
+        next::select(client, "INBOX")?;
+        // Whichever reason CREATE reports, the folder must end up listed.
+        let created = next::create_folder(client, FOLDER).err();
+
+        let deadline = Instant::now() + Duration::from_secs(5);
+        loop {
+            let listed = next::list_folders(client)?;
+            if listed.iter().any(|folder| folder.name == FOLDER) {
+                return Ok(());
+            }
+            if Instant::now() >= deadline {
+                return Err(solverforge_mail::mail::MailError::other(format!(
+                    "the test mailbox {FOLDER} was not created: {created:?}"
+                )));
+            }
+            std::thread::sleep(Duration::from_millis(100));
         }
     })
     .expect("test mailbox");

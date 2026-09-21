@@ -48,7 +48,8 @@ fn sorts_threads_and_tracks_modseq_over_the_codec_layer() {
 
     let select = client
         .run(CommandBody::Select {
-            mailbox: imap_types::mailbox::Mailbox::Inbox,
+            mailbox: imap_types::mailbox::Mailbox::try_from(FOLDER.to_string())
+                .expect("test mailbox"),
             parameters: vec![SelectParameter::CondStore],
         })
         .expect("select")
@@ -160,7 +161,7 @@ fn codec_layer_matches_the_legacy_client() {
         .collect();
     assert_eq!(new_names, old_names, "folder names and roles agree");
 
-    // Envelopes for every message in INBOX.
+    // Envelopes for every message in the test mailbox.
     next::select(&mut client, FOLDER).expect("select");
     let uids = next::search_uids(&mut client, next::search::criteria(None)).expect("search");
     let new_envelopes = next::fetch_envelopes(&mut client, &uids).expect("new FETCH");

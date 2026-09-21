@@ -216,6 +216,10 @@ cargo build --release
 # Test
 cargo test
 
+# Live integration tests: Dovecot (IMAP + ManageSieve) and Mailpit (SMTP) in
+# throwaway containers, removed again on exit (KEEP=1 leaves them running)
+make live-test
+
 # Local CI-style validation
 make ci
 

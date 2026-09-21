@@ -1,18 +1,17 @@
 //! Live IMAP integration test.
 //!
-//! Runs only when `SOLVERFORGE_IMAP_TEST_ADDR` is set, pointing at a Dovecot
-//! test container started per the official docs (rootless image, non-privileged
-//! port, password via env):
+//! Runs only when `SOLVERFORGE_IMAP_TEST_ADDR` is set. `scripts/live-test.sh`
+//! (or `make live-test`) starts a Dovecot container with the cleartext drop-in
+//! the tests need, waits for it to accept connections, and runs this target;
+//! any username authenticates with the container's password.
+//!
+//! The test is skipped when the variable is unset, so `cargo test` stays
+//! self-contained. To run it against a server of your own, set the address and
+//! point the credentials at that account:
 //!
 //! ```text
-//! printf 'auth_allow_cleartext = yes\n' > 99-test.conf
-//! podman run -d --name sfm-dovecot -p 1143:31143 -e USER_PASSWORD=password \
-//!   -v $PWD/99-test.conf:/etc/dovecot/conf.d/99-test.conf:Z dovecot/dovecot:latest
 //! SOLVERFORGE_IMAP_TEST_ADDR=127.0.0.1:1153 cargo test --test dovecot_test
 //! ```
-//!
-//! Any username authenticates with that password; the drop-in allows cleartext
-//! auth for the non-TLS test port. Skipped otherwise.
 
 use std::sync::Arc;
 
