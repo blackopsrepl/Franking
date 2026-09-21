@@ -117,6 +117,8 @@ pub enum Action {
     // ── Settings ──────────────────────────────────────────────────────
     OpenSettings,
     SettingsToggleNotifications,
+    SettingsNext,
+    SettingsPrev,
     SettingsClose,
     // ── Scheduled send ────────────────────────────────────────────────
     OpenSchedule,

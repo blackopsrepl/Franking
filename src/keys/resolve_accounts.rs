@@ -48,6 +48,8 @@ pub(super) fn resolve_schedule(key: KeyEvent) -> Action {
 pub(super) fn resolve_settings(key: KeyEvent) -> Action {
     match key.code {
         KeyCode::Char(' ') | KeyCode::Enter => Action::SettingsToggleNotifications,
+        KeyCode::Char('j') | KeyCode::Down => Action::SettingsNext,
+        KeyCode::Char('k') | KeyCode::Up => Action::SettingsPrev,
         KeyCode::Esc | KeyCode::Char('q') => Action::SettingsClose,
         _ => Action::None,
     }

@@ -107,6 +107,18 @@ fn outbox_keys() {
 }
 
 #[test]
+fn settings_navigation_keys() {
+    assert_eq!(
+        resolve(View::Settings, key(KeyCode::Char('j'))),
+        Action::SettingsNext
+    );
+    assert_eq!(
+        resolve(View::Settings, key(KeyCode::Char('k'))),
+        Action::SettingsPrev
+    );
+}
+
+#[test]
 fn settings_keys() {
     assert_eq!(
         resolve(View::EnvelopeList, key(KeyCode::Char('P'))),

@@ -20,6 +20,7 @@ mod input;
 mod invite;
 mod links;
 mod loading;
+mod message_loaded;
 mod message_search;
 mod model;
 mod mouse;

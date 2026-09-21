@@ -147,6 +147,8 @@ impl App {
             active_query: None,
             search_all_folders: false,
             notifications_enabled: true,
+            mark_read_on_open: true,
+            settings_index: 0,
             schedule_input: String::new(),
             invite_pending: None,
             move_target: String::new(),

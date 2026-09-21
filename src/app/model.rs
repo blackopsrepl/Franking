@@ -78,6 +78,10 @@ pub struct App {
     pub(crate) search_all_folders: bool,
     /// Whether new-mail desktop notifications are sent.
     pub(crate) notifications_enabled: bool,
+    /// Whether opening a message marks it read on the server.
+    pub(crate) mark_read_on_open: bool,
+    /// Highlighted preference row.
+    pub(crate) settings_index: usize,
     /// Buffered send-later delay input.
     pub(crate) schedule_input: String,
     /// Invitation awaiting a response choice.

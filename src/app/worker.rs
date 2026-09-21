@@ -218,28 +218,6 @@ impl App {
         }
     }
 
-    pub(crate) fn handle_message_loaded(&mut self, mut message: MessageDocument) {
-        self.harvest_contacts_from_message(&message);
-        let passphrase = self.crypto_passphrase.clone();
-        let smime = super::smime::process_smime(&mut message);
-        self.smime_signer = smime.as_ref().and_then(|outcome| outcome.untrusted.clone());
-        self.pgp_status = super::pgp::process_pgp(&mut message, &passphrase)
-            .or_else(|| smime.map(|outcome| outcome.status));
-
-        self.message_content = Some(message);
-        self.message_scroll = 0;
-        self.loading = false;
-        self.view = View::MessageView;
-        // Mark as seen in local state
-        if let Some(idx) = self.envelope_state.selected() {
-            if let Some(env) = self.envelopes.get_mut(idx) {
-                if !env.is_seen() {
-                    env.flags.push("Seen".to_string());
-                }
-            }
-        }
-    }
-
     /// Parse From/To/Cc/Reply-To addresses from message headers and upsert them
     /// into the contacts DB. Errors are silently ignored (harvest is
     /// best-effort).
