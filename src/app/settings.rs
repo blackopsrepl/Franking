@@ -7,6 +7,8 @@ use super::model::App;
 
 /// Preference key for the desktop-notification rule.
 const NOTIFICATION_RULE: &str = "notification_rule";
+/// Preference key for encrypting stored drafts.
+const ENCRYPT_DRAFTS: &str = "encrypt_drafts";
 /// Preference key for marking messages read when they are opened.
 const MARK_READ_ON_OPEN: &str = "mark_read_on_open";
 /// Preference keys for the page size and autosave interval.
@@ -19,7 +21,7 @@ const PAGE_SIZES: [usize; 4] = [25, 50, 100, 200];
 const AUTOSAVE_CHOICES: [u64; 4] = [15, 30, 60, 0];
 
 /// Number of rows in the preferences overlay.
-pub(crate) const SETTINGS_ROWS: usize = 4;
+pub(crate) const SETTINGS_ROWS: usize = 5;
 
 impl App {
     /// Load persisted preferences (called during startup).
@@ -40,6 +42,9 @@ impl App {
             self.autosave_seconds = stored_number(conn, AUTOSAVE_SECONDS)
                 .map(|value| value as u64)
                 .unwrap_or(self.autosave_seconds);
+            if let Ok(enabled) = preferences::get(conn, ENCRYPT_DRAFTS, false) {
+                self.encrypt_drafts = enabled;
+            }
         }
     }
 
@@ -69,6 +74,7 @@ impl App {
                 self.persist_number(PAGE_SIZE, self.page_size);
                 self.set_status(&format!("Page size: {}.", self.page_size));
             }
+            3 => self.toggle_encrypt_drafts(),
             _ => {
                 let index = AUTOSAVE_CHOICES
                     .iter()
@@ -100,6 +106,22 @@ impl App {
 }
 
 impl App {
+    /// Toggle encrypting stored drafts and remember the choice.
+    pub(crate) fn toggle_encrypt_drafts(&mut self) {
+        self.encrypt_drafts = !self.encrypt_drafts;
+        if let Some(conn) = self.db.as_ref() {
+            if let Err(error) = preferences::set(conn, ENCRYPT_DRAFTS, self.encrypt_drafts) {
+                self.set_error(&format!("Could not save the preference: {error}"));
+                return;
+            }
+        }
+        self.set_status(if self.encrypt_drafts {
+            "Drafts are encrypted to you when stored."
+        } else {
+            "Drafts are stored unencrypted."
+        });
+    }
+
     /// Toggle "mark read on open" and remember the choice.
     pub(crate) fn toggle_mark_read_on_open(&mut self) {
         self.mark_read_on_open = !self.mark_read_on_open;

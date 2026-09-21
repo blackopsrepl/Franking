@@ -181,8 +181,13 @@ impl MailService for RouterMailService {
         route!(self, account, service => service.template_send(account, template, options))
     }
 
-    fn save_draft(&self, account: Option<&str>, template: &str) -> MailResult<String> {
-        route!(self, account, service => service.save_draft(account, template))
+    fn save_draft(
+        &self,
+        account: Option<&str>,
+        template: &str,
+        options: &SendOptions,
+    ) -> MailResult<String> {
+        route!(self, account, service => service.save_draft(account, template, options))
     }
 
     fn sync_folder(&self, account: Option<&str>, folder: &str) -> MailResult<Vec<Envelope>> {

@@ -215,14 +215,16 @@ impl App {
             sent_folder: cs
                 .selected_identity()
                 .and_then(|identity| identity.sent_folder.clone()),
+            encrypt_draft: self.encrypt_drafts,
         }
     }
 
     pub(crate) fn compose_save_draft(&mut self) {
         if let Some(ref cs) = self.compose_state {
             let template = crate::compose::reassemble_template(cs);
+            let options = self.send_options(cs);
             self.loading = true;
-            self.worker.save_draft(self.acct_owned(), template);
+            self.worker.save_draft(self.acct_owned(), template, options);
         }
     }
 

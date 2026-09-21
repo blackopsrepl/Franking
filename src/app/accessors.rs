@@ -150,6 +150,7 @@ impl App {
             active_query: None,
             search_scope: Default::default(),
             notification_rule: Default::default(),
+            encrypt_drafts: false,
             mark_read_on_open: true,
             settings_index: 0,
             folder_jump: String::new(),

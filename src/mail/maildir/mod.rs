@@ -3,6 +3,7 @@
 mod flags;
 mod fs_ops;
 mod model;
+mod reply_templates;
 mod service;
 mod template;
 

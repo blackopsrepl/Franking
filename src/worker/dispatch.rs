@@ -276,12 +276,12 @@ impl Worker {
         });
     }
 
-    /// Persist a compiled template as a draft.
-    pub fn save_draft(&self, account: Option<String>, template: String) {
+    /// Persist a compiled template as a draft, protected as `options` asks.
+    pub fn save_draft(&self, account: Option<String>, template: String, options: SendOptions) {
         let tx = self.tx.clone();
         let service = self.service.clone();
         thread::spawn(move || {
-            let result = service.save_draft(account.as_deref(), &template);
+            let result = service.save_draft(account.as_deref(), &template, &options);
             let _ = tx.send(WorkerResult::ActionDone(result));
         });
     }

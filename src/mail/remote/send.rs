@@ -121,17 +121,47 @@ impl ImapSmtpService {
             .map_err(|err| MailError::invalid_input(err.to_string()))
     }
 
+    /// Encrypt a draft to its own sender, when that key is available.
+    ///
+    /// A draft is a private note until it is sent, so it is encrypted to the
+    /// sender rather than to the recipients. Without a key for the sender the
+    /// draft is stored as it is, and the status line says so.
+    fn encrypt_draft(&self, raw: &[u8], template: &str) -> MailResult<Vec<u8>> {
+        let sender = template
+            .lines()
+            .find_map(|line| line.strip_prefix("From:"))
+            .map(str::trim)
+            .unwrap_or_default();
+        if sender.is_empty() {
+            return Ok(raw.to_vec());
+        }
+        let keys_dir = crate::mail::pgp::default_keys_dir();
+        let keyring = crate::mail::pgp::Keyring::load(&keys_dir);
+        crate::mail::pgp_mime::encrypt_for_emails(raw, &[sender.to_string()], &keyring)
+            .map_err(|error| MailError::invalid_input(error.to_string()))
+    }
+
     /// Persist a compose template to the account's Drafts mailbox.
-    pub fn save_draft(&self, account: Option<&str>, template: &str) -> MailResult<String> {
+    pub fn save_draft(
+        &self,
+        account: Option<&str>,
+        template: &str,
+        options: &SendOptions,
+    ) -> MailResult<String> {
         self.ensure_requested_account(account)?;
         let message = self.build_outgoing_message(template)?;
         let Some(folder) = self.drafts_folder_name()? else {
             return Ok("Draft saved locally only (no Drafts mailbox found).".to_string());
         };
         let draft = next::flag_of("draft")?;
+        let formatted = message.formatted();
+        let stored = if options.encrypt_draft {
+            self.encrypt_draft(&formatted, template)?
+        } else {
+            formatted
+        };
         self.pool.with_client(&self.account, |client| {
-            let formatted = message.formatted();
-            next::append(client, &folder, vec![draft.clone()], &formatted)?;
+            next::append(client, &folder, vec![draft.clone()], &stored)?;
             Ok(())
         })?;
         Ok("Draft saved.".to_string())

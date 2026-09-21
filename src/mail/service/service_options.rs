@@ -17,6 +17,9 @@ pub struct SendOptions {
     pub keys_dir: Option<std::path::PathBuf>,
     /// Mailbox for the sent copy, overriding the account's Sent mailbox.
     pub sent_folder: Option<String>,
+    /// Encrypt a saved draft to the sender, so the stored copy is unreadable
+    /// without the private key.
+    pub encrypt_draft: bool,
 }
 
 impl SendOptions {

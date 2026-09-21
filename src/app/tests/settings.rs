@@ -42,6 +42,13 @@ fn settings_cycle_between_preferences() {
 
     app.settings_move(1);
     assert_eq!(app.settings_index, 3);
+    assert!(!app.encrypt_drafts);
+    app.settings_toggle();
+    assert!(app.encrypt_drafts);
+    assert!(app.status_message.contains("encrypted to you"));
+
+    app.settings_move(1);
+    assert_eq!(app.settings_index, 4);
     assert_eq!(app.autosave_seconds, 30);
     app.settings_toggle();
     assert_eq!(app.autosave_seconds, 60);
@@ -50,7 +57,7 @@ fn settings_cycle_between_preferences() {
     app.settings_move(1);
     assert_eq!(app.settings_index, 0, "wraps around");
     app.settings_move(-1);
-    assert_eq!(app.settings_index, 3);
+    assert_eq!(app.settings_index, 4);
 
     // The stored values come back on the next start.
     let mut reloaded = App::new(None);
@@ -58,6 +65,7 @@ fn settings_cycle_between_preferences() {
     reloaded.load_preferences();
     assert_eq!(reloaded.page_size, 100);
     assert_eq!(reloaded.autosave_seconds, 60);
+    assert!(reloaded.encrypt_drafts, "the choice comes back");
 }
 
 #[test]

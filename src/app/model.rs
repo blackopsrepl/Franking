@@ -85,6 +85,8 @@ pub struct App {
     pub(crate) search_scope: crate::mail::search_scope::SearchScope,
     /// When new mail deserves a desktop notification.
     pub(crate) notification_rule: super::notification_rules::NotificationRule,
+    /// Whether a stored draft is encrypted to its sender.
+    pub(crate) encrypt_drafts: bool,
     /// Whether opening a message marks it read on the server.
     pub(crate) mark_read_on_open: bool,
     /// Highlighted preference row.

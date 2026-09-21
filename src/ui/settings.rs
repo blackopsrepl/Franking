@@ -33,6 +33,10 @@ pub fn render(app: &App, frame: &mut Frame) {
             "Mark read on open".to_string(),
             toggle_label(app.mark_read_on_open),
         ),
+        (
+            "Encrypt drafts".to_string(),
+            toggle_label(app.encrypt_drafts),
+        ),
         ("Page size".to_string(), app.page_size.to_string()),
         ("Compose autosave".to_string(), autosave),
     ];

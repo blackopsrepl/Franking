@@ -138,8 +138,13 @@ pub trait MailService: Send + Sync {
     }
 
     /// Persist a compose template as a draft in the account's Drafts mailbox.
-    fn save_draft(&self, account: Option<&str>, template: &str) -> MailResult<String> {
-        let _ = (account, template);
+    fn save_draft(
+        &self,
+        account: Option<&str>,
+        template: &str,
+        options: &SendOptions,
+    ) -> MailResult<String> {
+        let _ = (account, template, options);
         Err(MailError::unsupported_feature(
             "this backend cannot save drafts",
         ))

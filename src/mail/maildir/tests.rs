@@ -147,6 +147,7 @@ fn save_draft_writes_to_the_drafts_folder() {
         .save_draft(
             Some("test"),
             "To: bob@example.com\nSubject: Draft subject\n\nwork in progress",
+            &crate::mail::service::SendOptions::default(),
         )
         .unwrap();
 

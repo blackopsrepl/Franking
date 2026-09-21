@@ -80,8 +80,30 @@ fn encrypt_entity(entity: &[u8], recipients: &[String], keyring: &Keyring) -> Re
     if keys.is_empty() {
         return Err(anyhow!("no public key found for {}", recipients.join(", ")));
     }
-    let ciphertext =
-        pgp_sign::encrypt_to_keys(entity, &keys).context("encrypt outgoing message")?;
+    encrypt_to_keys(entity, &keys)
+}
+
+/// Encrypt the message to explicit keys, keeping the envelope headers.
+///
+/// Used for drafts, which are encrypted to the sender rather than to the
+/// message's recipients: a draft is a private note until it is sent.
+pub fn encrypt_for_emails(raw: &[u8], emails: &[String], keyring: &Keyring) -> Result<Vec<u8>> {
+    let keys = pgp_sign::recipient_keys(&keyring.public, emails);
+    if keys.is_empty() {
+        return Err(anyhow!("no public key found for {}", emails.join(", ")));
+    }
+    let message = split_message(raw);
+    let entity = entity_bytes(&message);
+    let protected = encrypt_to_keys(&entity, &keys)?;
+    Ok(assemble(
+        &message.envelope,
+        &protected.content_type,
+        &protected.body,
+    ))
+}
+
+fn encrypt_to_keys(entity: &[u8], keys: &[::pgp::composed::SignedPublicKey]) -> Result<Protected> {
+    let ciphertext = pgp_sign::encrypt_to_keys(entity, keys).context("encrypt outgoing message")?;
 
     let boundary = unique_boundary(entity, "encrypted");
     let mut body = Vec::new();

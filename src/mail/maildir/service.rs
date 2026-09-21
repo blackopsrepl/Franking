@@ -201,24 +201,7 @@ impl MailService for MaildirService {
         id: &str,
         all: bool,
     ) -> MailResult<String> {
-        self.ensure_ready()?;
-        let original = read_parsed_message(&find_message_path(&self.folder_path(folder)?, id)?)?;
-        let to = original
-            .header_value("Reply-To")
-            .map(str::to_string)
-            .or_else(|| original.header_value("From").map(str::to_string))
-            .unwrap_or_default();
-        let cc = if all {
-            original.header_value("Cc").unwrap_or_default().to_string()
-        } else {
-            String::new()
-        };
-        let subject = reply_subject(original.header_value("Subject").map(str::to_string));
-        let body = quoted_reply_body(&original);
-
-        let mut headers: Vec<(&str, String)> = vec![("To", to), ("Cc", cc), ("Subject", subject)];
-        headers.extend(original.thread.reply_headers());
-        Ok(render_template(&headers, &body))
+        self.reply_template(folder, id, all)
     }
 
     fn template_forward(
@@ -227,12 +210,7 @@ impl MailService for MaildirService {
         folder: &str,
         id: &str,
     ) -> MailResult<String> {
-        self.ensure_ready()?;
-        let original = read_parsed_message(&find_message_path(&self.folder_path(folder)?, id)?)?;
-        let subject = forward_subject(original.header_value("Subject").map(str::to_string));
-        let body = forwarded_body(&original);
-
-        Ok(render_template(&[("Subject", subject)], &body))
+        self.forward_template(folder, id)
     }
 
     fn template_send(
@@ -252,7 +230,14 @@ impl MailService for MaildirService {
         Ok("Message sent.".to_string())
     }
 
-    fn save_draft(&self, _account: Option<&str>, template: &str) -> MailResult<String> {
+    fn save_draft(
+        &self,
+        _account: Option<&str>,
+        template: &str,
+        options: &SendOptions,
+    ) -> MailResult<String> {
+        // A local maildir account cannot wrap a draft as PGP/MIME.
+        ensure_no_pgp(options)?;
         self.ensure_ready()?;
         let raw = render_outgoing(&parse_template_message(template))?;
         let drafts_dir = self.folder_path("Drafts")?;
