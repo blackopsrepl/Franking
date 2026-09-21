@@ -192,6 +192,7 @@ fn resolve_folder_list(key: KeyEvent) -> Action {
         KeyCode::Char('r') => Action::FolderRename,
         KeyCode::Char('d') => Action::FolderDelete,
         KeyCode::Char('F') => Action::OpenSieve,
+        KeyCode::Char('s') => Action::FolderSubscribe,
         _ => Action::None,
     }
 }

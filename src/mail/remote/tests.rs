@@ -9,6 +9,7 @@ fn folder(name: &str, role: FolderRole) -> Folder {
         name: name.to_string(),
         desc: None,
         role,
+        subscribed: None,
     }
 }
 

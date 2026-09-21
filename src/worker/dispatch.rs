@@ -87,11 +87,37 @@ impl Worker {
         });
     }
 
+    /// Subscribe or unsubscribe a folder, then reload the listing.
+    pub fn set_folder_subscription(
+        &self,
+        account: Option<String>,
+        folder: String,
+        subscribed: bool,
+    ) {
+        let tx = self.tx.clone();
+        let service = self.service.clone();
+        thread::spawn(move || {
+            let result = if subscribed {
+                service.subscribe_folder(account.as_deref(), &folder)
+            } else {
+                service.unsubscribe_folder(account.as_deref(), &folder)
+            };
+            let message = result.map(|()| {
+                if subscribed {
+                    format!("Subscribed to {folder}.")
+                } else {
+                    format!("Unsubscribed from {folder}.")
+                }
+            });
+            let _ = tx.send(WorkerResult::ActionDone(message));
+        });
+    }
+
     pub fn fetch_folders(&self, account: Option<String>) {
         let tx = self.tx.clone();
         let service = self.service.clone();
         thread::spawn(move || {
-            let result = service.list_folders(account.as_deref());
+            let result = service.list_folders_detailed(account.as_deref());
             let _ = tx.send(WorkerResult::Folders(result));
         });
     }

@@ -211,6 +211,8 @@ pub(super) fn local_folders() -> Vec<Folder> {
         name: name.to_string(),
         desc: Some(desc.to_string()),
         role,
+        // A maildir has no subscriptions; the filesystem is the source of truth.
+        subscribed: None,
     })
     .collect()
 }

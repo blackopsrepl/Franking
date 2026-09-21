@@ -160,6 +160,7 @@ impl App {
                     name: super::model::UNIFIED_INBOX.to_string(),
                     desc: Some("All accounts".to_string()),
                     role: crate::mail::types::FolderRole::Inbox,
+                    subscribed: None,
                 },
             );
         }

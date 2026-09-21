@@ -130,3 +130,19 @@ fn translates_the_search_grammar_to_typed_keys() {
     let keys = criteria(Some("revenue"));
     assert!(matches!(keys.as_ref()[0], SearchKey::Text(_)));
 }
+
+#[test]
+fn maps_an_lsub_response_to_folders() {
+    // LSUB uses its own response variant; a listing that only understood LIST
+    // reported every folder as unsubscribed.
+    let output = output_from(
+        "* LSUB () \"/\" \"subscribe-probe\"\r\n\
+         * LSUB (\\Sent) \"/\" \"Sent\"\r\n\
+         a001 OK Lsub completed\r\n",
+    );
+    let folders = super::map::folders_from_list(&output);
+    assert_eq!(folders.len(), 2, "both LSUB responses map: {folders:?}");
+    assert_eq!(folders[0].name, "subscribe-probe");
+    assert_eq!(folders[1].name, "Sent");
+    assert_eq!(folders[1].role, FolderRole::Sent);
+}

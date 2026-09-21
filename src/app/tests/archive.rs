@@ -10,6 +10,7 @@ fn archive_targets_the_archive_role_or_name() {
         name: name.to_string(),
         desc: None,
         role,
+        subscribed: None,
     };
 
     let mut app = App::new(None);

@@ -152,19 +152,23 @@ pub fn append(
     flags: Vec<Flag<'static>>,
     raw: &[u8],
 ) -> MailResult<Option<AppendResult>> {
-    let message = LiteralOrLiteral8::Literal(
-        imap_types::core::Literal::try_from(raw.to_vec())
-            .map_err(|error| MailError::other(format!("message is not appendable: {error:?}")))?,
-    );
-    let output = client
-        .run(CommandBody::Append {
-            mailbox: mailbox_of(folder)?,
-            flags,
-            date: None,
-            message,
-        })
-        .map_err(imap_error)?
-        .require_ok("APPEND")?;
+    // A server that does not yet know the mailbox refuses the *literal* with
+    // TRYCREATE, so the refusal arrives as an error from the command writer
+    // rather than as a completion. Refresh this connection's mailbox list and
+    // try once more before giving up.
+    let mut attempt = run_append(client, folder, &flags, raw);
+    if let Err(error) = &attempt {
+        if error.to_string().contains("TRYCREATE") {
+            let _ = super::read::list_folders(client);
+            attempt = run_append(client, folder, &flags, raw);
+        }
+    }
+    let mut output = attempt?;
+    if !is_ok(&output) && output.any_code(try_create).is_some() {
+        let _ = super::read::list_folders(client);
+        output = run_append(client, folder, &flags, raw)?;
+    }
+    let output = output.require_ok("APPEND")?;
 
     // APPENDUID arrives as a response code on the tagged completion.
     Ok(output.any_code(|code| match code {
@@ -176,68 +180,44 @@ pub fn append(
     }))
 }
 
-/// CREATE a mailbox.
-pub fn create_folder(client: &mut Connection, name: &str) -> MailResult<()> {
-    client
-        .run(CommandBody::Create {
-            mailbox: mailbox_of(name)?,
-        })
-        .map_err(imap_error)?
-        .require_ok("CREATE")?;
-    Ok(())
-}
-
-/// DELETE a mailbox.
-pub fn delete_folder(client: &mut Connection, name: &str) -> MailResult<()> {
-    client
-        .run(CommandBody::Delete {
-            mailbox: mailbox_of(name)?,
-        })
-        .map_err(imap_error)?
-        .require_ok("DELETE")?;
-    Ok(())
-}
-
-/// RENAME a mailbox.
-pub fn rename_folder(client: &mut Connection, from: &str, to: &str) -> MailResult<()> {
-    client
-        .run(CommandBody::Rename {
-            from: mailbox_of(from)?,
-            to: mailbox_of(to)?,
-        })
-        .map_err(imap_error)?
-        .require_ok("RENAME")?;
-    Ok(())
-}
-
-/// SUBSCRIBE to a mailbox.
-pub fn subscribe(client: &mut Connection, name: &str) -> MailResult<()> {
-    client
-        .run(CommandBody::Subscribe {
-            mailbox: mailbox_of(name)?,
-        })
-        .map_err(imap_error)?
-        .require_ok("SUBSCRIBE")?;
-    Ok(())
-}
-
-/// UNSUBSCRIBE from a mailbox.
-pub fn unsubscribe(client: &mut Connection, name: &str) -> MailResult<()> {
-    client
-        .run(CommandBody::Unsubscribe {
-            mailbox: mailbox_of(name)?,
-        })
-        .map_err(imap_error)?
-        .require_ok("UNSUBSCRIBE")?;
-    Ok(())
-}
-
 /// LSUB: the mailboxes the account is subscribed to.
 pub fn list_subscribed(client: &mut Connection) -> MailResult<Vec<Folder>> {
     let body = CommandBody::lsub("", "*")
         .map_err(|error| MailError::other(format!("cannot build LSUB command: {error:?}")))?;
     let output = client.run(body).map_err(imap_error)?.require_ok("LSUB")?;
     Ok(folders_from_list(&output))
+}
+
+fn run_append(
+    client: &mut Connection,
+    folder: &str,
+    flags: &[Flag<'static>],
+    raw: &[u8],
+) -> MailResult<crate::mail::session::CommandOutput> {
+    let message = LiteralOrLiteral8::Literal(
+        imap_types::core::Literal::try_from(raw.to_vec())
+            .map_err(|error| MailError::other(format!("message is not appendable: {error:?}")))?,
+    );
+    client
+        .run(CommandBody::Append {
+            mailbox: mailbox_of(folder)?,
+            flags: flags.to_vec(),
+            date: None,
+            message,
+        })
+        .map_err(imap_error)
+}
+
+fn is_ok(output: &crate::mail::session::CommandOutput) -> bool {
+    output
+        .completion
+        .as_ref()
+        .is_some_and(crate::mail::session::Completion::is_ok)
+}
+
+/// The TRYCREATE response code, which asks the client to create the mailbox.
+fn try_create(code: &Code) -> Option<()> {
+    matches!(code, Code::TryCreate).then_some(())
 }
 
 fn copy_result(output: &crate::mail::session::CommandOutput) -> Option<CopyResult> {

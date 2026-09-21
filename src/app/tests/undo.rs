@@ -14,11 +14,13 @@ fn deleting_records_a_move_back_from_trash() {
             name: "INBOX".to_string(),
             desc: None,
             role: FolderRole::Inbox,
+            subscribed: None,
         },
         Folder {
             name: "Deleted Items".to_string(),
             desc: None,
             role: FolderRole::Trash,
+            subscribed: None,
         },
     ];
     app.envelopes = vec![Envelope {
@@ -59,6 +61,7 @@ fn deleting_inside_trash_is_not_undoable() {
         name: "Trash".to_string(),
         desc: None,
         role: FolderRole::Trash,
+        subscribed: None,
     }];
     app.envelopes = vec![Envelope {
         id: "7".to_string(),

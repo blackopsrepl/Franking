@@ -187,6 +187,7 @@ impl App {
             Action::FolderNew => self.folder_prompt_new(),
             Action::FolderRename => self.folder_prompt_rename(),
             Action::FolderDelete => self.folder_prompt_delete(),
+            Action::FolderSubscribe => self.toggle_folder_subscription(),
             Action::FolderPromptInput(c) => self.folder_prompt_input(c),
             Action::FolderPromptBackspace => self.folder_prompt_backspace(),
             Action::FolderPromptSubmit => self.submit_folder_prompt(),

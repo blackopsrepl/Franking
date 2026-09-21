@@ -57,6 +57,12 @@ pub fn render(app: &App, frame: &mut Frame, area: Rect) {
             } else {
                 format!("{icon}{}", folder.name)
             };
+            // A dot marks a folder the account is not subscribed to, which is
+            // why it does not appear in other mail clients.
+            let content = match folder.subscribed {
+                Some(false) => format!("{content} ·"),
+                _ => content,
+            };
             let style = if folder.name == app.current_folder {
                 if focused && i == app.folder_index {
                     t.folder_active()

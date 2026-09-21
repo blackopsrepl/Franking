@@ -85,6 +85,9 @@ pub struct Folder {
     pub name: String,
     pub desc: Option<String>,
     pub role: FolderRole,
+    /// Whether the account is subscribed to this mailbox, when the backend
+    /// reports subscriptions.
+    pub subscribed: Option<bool>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

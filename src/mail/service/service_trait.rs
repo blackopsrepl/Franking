@@ -6,39 +6,7 @@ use crate::mail::session::IdleOutcome;
 use crate::mail::sieve::SieveScript;
 use crate::mail::types::{Account, Envelope, Folder};
 
-/// How an outgoing message should be protected.
-#[derive(Debug, Clone, Default)]
-pub struct SendOptions {
-    /// Sign the message as PGP/MIME.
-    pub sign: bool,
-    /// Encrypt the message to its recipients as PGP/MIME.
-    pub encrypt: bool,
-    /// Sign the message with S/MIME.
-    pub smime_sign: bool,
-    /// Encrypt the message to its recipients with S/MIME.
-    pub smime_encrypt: bool,
-    /// Passphrase for the PGP signing secret key.
-    pub passphrase: String,
-    /// Directory holding key material; defaults to the app keyring.
-    pub keys_dir: Option<std::path::PathBuf>,
-}
-
-impl SendOptions {
-    /// True when PGP/MIME wrapping is requested.
-    pub fn is_pgp(&self) -> bool {
-        self.sign || self.encrypt
-    }
-
-    /// True when S/MIME wrapping is requested.
-    pub fn is_smime(&self) -> bool {
-        self.smime_sign || self.smime_encrypt
-    }
-
-    /// True when any cryptographic wrapping is requested.
-    pub fn is_protected(&self) -> bool {
-        self.is_pgp() || self.is_smime()
-    }
-}
+use super::service_options::SendOptions;
 
 pub trait MailService: Send + Sync {
     fn list_accounts(&self) -> MailResult<Vec<Account>>;
@@ -204,6 +172,29 @@ pub trait MailService: Send + Sync {
         let _ = (account, name);
         Err(MailError::unsupported_feature(
             "deleting folders is not supported by this backend",
+        ))
+    }
+
+    /// Folder listing that also reports subscription state when the backend
+    /// knows it. The default is the plain listing, so no backend is required to
+    /// track subscriptions.
+    fn list_folders_detailed(&self, account: Option<&str>) -> MailResult<Vec<Folder>> {
+        self.list_folders(account)
+    }
+
+    /// Subscribe to a mailbox.
+    fn subscribe_folder(&self, account: Option<&str>, name: &str) -> MailResult<()> {
+        let _ = (account, name);
+        Err(MailError::unsupported_feature(
+            "subscribing to folders is not supported by this backend",
+        ))
+    }
+
+    /// Unsubscribe from a mailbox.
+    fn unsubscribe_folder(&self, account: Option<&str>, name: &str) -> MailResult<()> {
+        let _ = (account, name);
+        Err(MailError::unsupported_feature(
+            "subscriptions are not supported by this backend",
         ))
     }
 

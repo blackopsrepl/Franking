@@ -6,7 +6,8 @@ use crate::mail::store;
 use crate::mail::types::{Account, Envelope, Folder};
 
 use super::router::{route, RouterMailService};
-use super::service_trait::{MailService, SendOptions};
+use super::service_options::SendOptions;
+use super::service_trait::MailService;
 
 impl MailService for RouterMailService {
     fn list_accounts(&self) -> MailResult<Vec<Account>> {
@@ -193,6 +194,18 @@ impl MailService for RouterMailService {
 
     fn delete_folder(&self, account: Option<&str>, name: &str) -> MailResult<()> {
         route!(self, account, service => service.delete_folder(account, name))
+    }
+
+    fn list_folders_detailed(&self, account: Option<&str>) -> MailResult<Vec<Folder>> {
+        route!(self, account, service => service.list_folders_detailed(account))
+    }
+
+    fn subscribe_folder(&self, account: Option<&str>, name: &str) -> MailResult<()> {
+        route!(self, account, service => service.subscribe_folder(account, name))
+    }
+
+    fn unsubscribe_folder(&self, account: Option<&str>, name: &str) -> MailResult<()> {
+        route!(self, account, service => service.unsubscribe_folder(account, name))
     }
 
     fn sieve_scripts(

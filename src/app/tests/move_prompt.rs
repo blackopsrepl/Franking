@@ -13,21 +13,25 @@ fn move_picker_filters_and_highlights_folders() {
             name: "INBOX".to_string(),
             desc: None,
             role: FolderRole::Inbox,
+            subscribed: None,
         },
         Folder {
             name: "Archive".to_string(),
             desc: None,
             role: FolderRole::Archive,
+            subscribed: None,
         },
         Folder {
             name: "Archive 2024".to_string(),
             desc: None,
             role: FolderRole::Archive,
+            subscribed: None,
         },
         Folder {
             name: "Trash".to_string(),
             desc: None,
             role: FolderRole::Trash,
+            subscribed: None,
         },
     ];
 

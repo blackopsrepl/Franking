@@ -11,13 +11,20 @@ use imap_types::response::{Data, Response};
 use crate::mail::session::CommandOutput;
 use crate::mail::types::{Envelope, Folder, FolderRole, Sender};
 
-/// Folders from a LIST/SELECT response, skipping unselectable names.
+/// Folders from a LIST or LSUB response, skipping unselectable names.
+///
+/// LSUB answers with its own response variant, so both are matched here; a
+/// listing that only understood LIST would report every folder as
+/// unsubscribed.
 pub fn folders_from_list(output: &CommandOutput) -> Vec<Folder> {
+    use imap_types::response::Data as DataResponse;
+
     output
         .responses
         .iter()
         .filter_map(|response| match response {
-            Response::Data(Data::List { items, mailbox, .. }) => {
+            Response::Data(DataResponse::List { items, mailbox, .. })
+            | Response::Data(DataResponse::Lsub { items, mailbox, .. }) => {
                 if items
                     .iter()
                     .any(|item| matches!(item, FlagNameAttribute::Noselect))
@@ -30,6 +37,7 @@ pub fn folders_from_list(output: &CommandOutput) -> Vec<Folder> {
                     name: mailbox_name(mailbox),
                     desc: role.description().map(str::to_string),
                     role,
+                    subscribed: None,
                 })
             }
             _ => None,

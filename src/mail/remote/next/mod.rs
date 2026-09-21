@@ -9,6 +9,7 @@ use crate::mail::errors::{MailError, MailResult};
 use crate::mail::session::{map_codec_error, ImapClient, ReadWrite};
 
 mod condstore;
+mod mailboxes;
 mod map;
 mod read;
 pub mod search;
@@ -17,15 +18,15 @@ mod write;
 pub use condstore::{
     enable_qresync, fetch_changed_flags, select_condstore, SelectState, SyncAnchor,
 };
+pub use mailboxes::{create_folder, delete_folder, rename_folder, subscribe, unsubscribe};
 pub use map::{envelopes_from_fetch, folders_from_list, thread_groups, uids_from_search};
 pub use read::{
-    examine, fetch_envelopes, list_folders, read_message_raw, search_uids, select, sort_uids,
-    status, thread_uids, MailboxStatus,
+    examine, fetch_envelopes, list_folders, list_folders_marked, read_message_raw, search_uids,
+    select, sort_uids, status, thread_uids, MailboxStatus,
 };
 pub use write::{
-    append, copy, create_folder, delete_folder, expunge, expunge_uids, flag_of, list_subscribed,
-    move_messages, rename_folder, store_flags, subscribe, unsubscribe, AppendResult, CopyResult,
-    FlagChange,
+    append, copy, expunge, expunge_uids, flag_of, list_subscribed, move_messages, store_flags,
+    AppendResult, CopyResult, FlagChange,
 };
 
 /// An app-owned IMAP client over any transport.

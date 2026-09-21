@@ -112,3 +112,69 @@ fn qresync_reports_vanished_and_changed_flags() {
         delta.vanished
     );
 }
+
+/// SUBSCRIBE and LSUB drive the subscription marker in the folder list.
+#[test]
+fn subscriptions_are_listed_and_toggled() {
+    let Some((host, port)) = test_address() else {
+        return;
+    };
+    let _guard = mailbox_lock();
+    let account = account(&host, port);
+
+    let pool = Arc::new(SessionPool::with_credentials(Arc::new(FixedCredentials)));
+    let service = solverforge_mail::mail::remote::ImapSmtpService::new(account.clone(), pool);
+    service.create_folder(None, "subscribe-probe").ok();
+
+    // The listing reports unknown subscriptions only until LSUB is available;
+    // on Dovecot every folder is marked either way.
+    let marked = service
+        .list_folders_detailed(None)
+        .expect("detailed listing");
+    let probe = marked
+        .iter()
+        .find(|folder| folder.name == "subscribe-probe")
+        .expect("the probe folder");
+    assert!(probe.subscribed.is_some(), "Dovecot answers LSUB");
+
+    service
+        .subscribe_folder(None, "subscribe-probe")
+        .expect("subscribe");
+    assert_eq!(
+        subscribed_state(&service, "subscribe-probe", true),
+        Some(true),
+        "the subscription is reported"
+    );
+
+    service
+        .unsubscribe_folder(None, "subscribe-probe")
+        .expect("unsubscribe");
+    assert_eq!(
+        subscribed_state(&service, "subscribe-probe", false),
+        Some(false),
+        "the unsubscription is reported"
+    );
+
+    service.delete_folder(None, "subscribe-probe").ok();
+}
+
+/// The subscription state of a folder, waiting for the server's subscription
+/// index to catch up with the change that was just made.
+fn subscribed_state(
+    service: &solverforge_mail::mail::remote::ImapSmtpService,
+    folder: &str,
+    wanted: bool,
+) -> Option<bool> {
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+    loop {
+        let marked = service.list_folders_detailed(None).expect("listing");
+        let state = marked
+            .iter()
+            .find(|candidate| candidate.name == folder)
+            .and_then(|candidate| candidate.subscribed);
+        if state == Some(wanted) || std::time::Instant::now() >= deadline {
+            return state;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(100));
+    }
+}

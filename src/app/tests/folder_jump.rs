@@ -11,6 +11,7 @@ fn typing_in_the_sidebar_jumps_to_matching_folders() {
         name: name.to_string(),
         desc: None,
         role: FolderRole::Other,
+        subscribed: None,
     };
 
     let mut app = App::new(None);
@@ -57,6 +58,7 @@ fn a_folder_query_with_no_match_reports_it() {
         name: "INBOX".to_string(),
         desc: None,
         role: FolderRole::Inbox,
+        subscribed: None,
     }];
     app.folder_jump_input('z');
     assert!(app.status_message.contains("No folder starts with"));

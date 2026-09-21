@@ -28,6 +28,26 @@ pub fn list_folders(client: &mut Connection) -> MailResult<Vec<Folder>> {
     Ok(folders_from_list(&output))
 }
 
+/// LIST every selectable mailbox, marking the subscribed ones.
+///
+/// LSUB is not a capability, so a server that refuses it leaves every folder's
+/// subscription unknown rather than reporting everything as unsubscribed.
+pub fn list_folders_marked(client: &mut Connection) -> MailResult<Vec<Folder>> {
+    let mut folders = list_folders(client)?;
+    let subscribed = match super::write::list_subscribed(client) {
+        Ok(folders) => folders
+            .into_iter()
+            .map(|folder| folder.name)
+            .collect::<Vec<_>>(),
+        Err(error) if error.is_transport() => return Err(error),
+        Err(_) => return Ok(folders),
+    };
+    for folder in &mut folders {
+        folder.subscribed = Some(subscribed.contains(&folder.name));
+    }
+    Ok(folders)
+}
+
 /// SELECT a mailbox read-write.
 pub fn select(client: &mut Connection, folder: &str) -> MailResult<CommandOutput> {
     client

@@ -95,10 +95,15 @@ pub(crate) fn ensure_mailbox(account: &AccountRecord) {
 pub(crate) fn seed(account: &AccountRecord) {
     let pool = SessionPool::with_credentials(std::sync::Arc::new(FixedCredentials));
     let raw = b"From: alice@example.com\r\nTo: test@example.com\r\nSubject: Codec probe\r\nMessage-ID: <codec-probe@example.com>\r\nDate: 2026-04-13 09:00:00+00:00\r\n\r\nhello from the codec test";
-    for _ in 0..2 {
-        pool.with_client(account, |client| {
-            next::append(client, FOLDER, vec![], raw).map(|_| ())
-        })
-        .expect("seed append");
-    }
+    // Both appends go through one connection, which also ensures the mailbox
+    // exists on it: Dovecot's per-user mailbox index lags between sessions, so
+    // a mailbox created elsewhere is not always appendable from here yet.
+    pool.with_client(account, |client| {
+        let _ = next::create_folder(client, FOLDER);
+        for _ in 0..2 {
+            next::append(client, FOLDER, vec![], raw)?;
+        }
+        Ok(())
+    })
+    .expect("seed append");
 }

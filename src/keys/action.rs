@@ -137,6 +137,7 @@ pub enum Action {
     FolderNew,
     FolderRename,
     FolderDelete,
+    FolderSubscribe,
     FolderPromptInput(char),
     FolderPromptBackspace,
     FolderPromptSubmit,

@@ -40,6 +40,31 @@ impl FolderPrompt {
 }
 
 impl App {
+    /// Subscribe to the current folder, or unsubscribe from it.
+    pub(crate) fn toggle_folder_subscription(&mut self) {
+        if self.current_folder == super::model::UNIFIED_INBOX {
+            self.set_status("The unified inbox is not a mailbox on the server.");
+            return;
+        }
+        let Some(folder) = self
+            .folders
+            .iter()
+            .find(|folder| folder.name == self.current_folder)
+        else {
+            self.set_status("No folder is selected.");
+            return;
+        };
+        let Some(subscribed) = folder.subscribed else {
+            self.set_status("This backend does not report subscriptions.");
+            return;
+        };
+        let name = folder.name.clone();
+        self.loading = true;
+        self.pending_folder_refresh = true;
+        self.worker
+            .set_folder_subscription(self.acct_owned(), name, !subscribed);
+    }
+
     pub(crate) fn folder_prompt_new(&mut self) {
         self.open_folder_prompt(FolderPromptKind::Create);
     }

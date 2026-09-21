@@ -12,6 +12,14 @@ impl ImapSmtpService {
         self.pool.with_client(&self.account, next::list_folders)
     }
 
+    /// Folder listing that also reports which folders are subscribed, matching
+    /// the `MailService` contract the router forwards.
+    pub fn list_folders_detailed(&self, account: Option<&str>) -> MailResult<Vec<Folder>> {
+        self.ensure_requested_account(account)?;
+        self.pool
+            .with_client(&self.account, next::list_folders_marked)
+    }
+
     pub fn list_envelopes(
         &self,
         account: Option<&str>,
