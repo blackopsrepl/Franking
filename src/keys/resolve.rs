@@ -40,6 +40,7 @@ pub fn resolve(view: View, key: KeyEvent) -> Action {
         View::MovePrompt => resolve_move_prompt(key),
         View::PassphrasePrompt => resolve_unlock_prompt(key),
         View::AttachmentList => resolve_attachment_list(key),
+        View::FolderPrompt => resolve_folder_prompt(key),
         View::ContactSearch => resolve_contact_search(key),
         View::ContactEdit => resolve_contact_edit(key),
         // Already handled above
@@ -162,6 +163,9 @@ fn resolve_folder_list(key: KeyEvent) -> Action {
         KeyCode::Tab => Action::FocusEnvelopes,
         KeyCode::Char('?') => Action::ToggleHelp,
         KeyCode::Char('I') => Action::OpenIdentities,
+        KeyCode::Char('n') => Action::FolderNew,
+        KeyCode::Char('r') => Action::FolderRename,
+        KeyCode::Char('d') => Action::FolderDelete,
         _ => Action::None,
     }
 }
@@ -192,6 +196,16 @@ fn resolve_help(key: KeyEvent) -> Action {
         KeyCode::Esc | KeyCode::Char('q') | KeyCode::Char('?') => Action::ToggleHelp,
         KeyCode::Char('j') | KeyCode::Down => Action::ScrollDown,
         KeyCode::Char('k') | KeyCode::Up => Action::ScrollUp,
+        _ => Action::None,
+    }
+}
+
+fn resolve_folder_prompt(key: KeyEvent) -> Action {
+    match key.code {
+        KeyCode::Enter => Action::FolderPromptSubmit,
+        KeyCode::Esc => Action::FolderPromptCancel,
+        KeyCode::Backspace => Action::FolderPromptBackspace,
+        KeyCode::Char(c) => Action::FolderPromptInput(c),
         _ => Action::None,
     }
 }

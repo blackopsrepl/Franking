@@ -106,6 +106,13 @@ impl App {
             Action::AttachmentOpen => self.open_selected_attachment(),
             Action::AttachmentSave => self.save_selected_attachment(),
             Action::AttachmentClose => self.close_attachments(),
+            Action::FolderNew => self.folder_prompt_new(),
+            Action::FolderRename => self.folder_prompt_rename(),
+            Action::FolderDelete => self.folder_prompt_delete(),
+            Action::FolderPromptInput(c) => self.folder_prompt_input(c),
+            Action::FolderPromptBackspace => self.folder_prompt_backspace(),
+            Action::FolderPromptSubmit => self.submit_folder_prompt(),
+            Action::FolderPromptCancel => self.cancel_folder_prompt(),
 
             // ── Compose editor ───────────────────────────────────────
             Action::ComposeFieldNext => {

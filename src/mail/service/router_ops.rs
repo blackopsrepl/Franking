@@ -216,6 +216,18 @@ impl MailService for RouterMailService {
         route!(self, account, service => service.draft_template(account, folder, id))
     }
 
+    fn create_folder(&self, account: Option<&str>, name: &str) -> MailResult<()> {
+        route!(self, account, service => service.create_folder(account, name))
+    }
+
+    fn rename_folder(&self, account: Option<&str>, from: &str, to: &str) -> MailResult<()> {
+        route!(self, account, service => service.rename_folder(account, from, to))
+    }
+
+    fn delete_folder(&self, account: Option<&str>, name: &str) -> MailResult<()> {
+        route!(self, account, service => service.delete_folder(account, name))
+    }
+
     fn folder_unread(&self, account: Option<&str>, folder: &str) -> MailResult<usize> {
         route!(self, account, service => service.folder_unread(account, folder))
     }

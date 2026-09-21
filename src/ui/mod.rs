@@ -6,6 +6,7 @@ mod contact_edit;
 mod contacts;
 mod envelope_list;
 mod folder_list;
+mod folder_prompt;
 mod help;
 mod identity_edit;
 mod identity_list;
@@ -71,6 +72,7 @@ pub fn render(app: &mut App, frame: &mut Frame) {
         View::Search => search::render(app, frame, outer[2]),
         View::MovePrompt => move_prompt::render(app, frame, outer[2]),
         View::PassphrasePrompt => passphrase_prompt::render(app, frame, outer[2]),
+        View::FolderPrompt => folder_prompt::render(app, frame, outer[2]),
         _ => status_bar::render(app, frame, outer[2]),
     }
 

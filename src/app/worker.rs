@@ -53,6 +53,10 @@ impl App {
                         self.pending_refresh_after_action = false;
                         self.load_envelopes();
                     }
+                    if self.pending_folder_refresh {
+                        self.pending_folder_refresh = false;
+                        self.load_folders();
+                    }
                 }
                 WorkerResult::ActionDone(Err(e)) => {
                     self.loading = false;

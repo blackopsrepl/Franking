@@ -74,6 +74,9 @@ pub fn render(app: &App, frame: &mut Frame) {
         )),
         binding("j / k", "Navigate"),
         binding("Enter", "Select folder"),
+        binding("n", "Create folder"),
+        binding("r", "Rename folder"),
+        binding("d", "Delete folder"),
         binding("Tab", "Focus envelope list"),
         Line::from(""),
         Line::from(Span::styled(

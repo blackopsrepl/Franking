@@ -3,6 +3,7 @@
 mod envelope;
 mod errors;
 mod folders;
+mod mailboxes;
 mod model;
 mod ops;
 mod roles;

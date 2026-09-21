@@ -232,3 +232,65 @@ fn attachment_actions_without_a_message_report_status() {
     app.save_selected_attachment();
     assert!(app.status_message.contains("No attachment is selected"));
 }
+
+#[test]
+fn folder_prompts_open_with_the_expected_input() {
+    use crate::keys::View;
+
+    use super::folders::FolderPromptKind;
+    use super::App;
+
+    let mut app = App::new(None);
+    app.current_folder = "Archive".to_string();
+
+    app.folder_prompt_new();
+    assert_eq!(app.view, View::FolderPrompt);
+    let prompt = app.folder_prompt.as_ref().expect("prompt");
+    assert_eq!(prompt.kind, FolderPromptKind::Create);
+    assert!(prompt.input.is_empty());
+
+    app.folder_prompt_rename();
+    let prompt = app.folder_prompt.as_ref().expect("prompt");
+    assert_eq!(prompt.kind, FolderPromptKind::Rename);
+    assert_eq!(prompt.input, "Archive");
+
+    app.folder_prompt_delete();
+    assert_eq!(
+        app.folder_prompt.as_ref().expect("prompt").kind,
+        FolderPromptKind::Delete
+    );
+}
+
+#[test]
+fn folder_prompt_edits_and_cancels() {
+    use crate::keys::View;
+
+    use super::App;
+
+    let mut app = App::new(None);
+    app.folder_prompt_new();
+    for c in "Receipts".chars() {
+        app.folder_prompt_input(c);
+    }
+    app.folder_prompt_backspace();
+    assert_eq!(app.folder_prompt.as_ref().expect("prompt").input, "Receipt");
+
+    app.cancel_folder_prompt();
+    assert_eq!(app.view, View::FolderList);
+    assert!(app.folder_prompt.is_none());
+}
+
+#[test]
+fn deleting_a_folder_requires_confirmation() {
+    use super::App;
+
+    let mut app = App::new(None);
+    app.current_folder = "Old".to_string();
+    app.folder_prompt_delete();
+
+    app.folder_prompt_input('n');
+    app.folder_prompt_input('o');
+    app.submit_folder_prompt();
+    assert!(app.status_message.contains("not deleted"));
+    assert!(!app.pending_folder_refresh);
+}

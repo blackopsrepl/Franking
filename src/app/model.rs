@@ -65,6 +65,12 @@ pub struct App {
     /// Selected attachment index while the attachment list is open.
     pub(crate) attachment_index: usize,
 
+    // ── Folder management ───────────────────────────────────────────
+    /// Pending folder-management prompt, if open.
+    pub(crate) folder_prompt: Option<super::folders::FolderPrompt>,
+    /// Whether to reload the folder list after the next action completes.
+    pub(crate) pending_folder_refresh: bool,
+
     // ── Search state ────────────────────────────────────────────────
     pub search_query: String,
     pub active_query: Option<String>,
@@ -161,6 +167,8 @@ impl App {
             pgp_status: None,
             smime_signer: None,
             attachment_index: 0,
+            folder_prompt: None,
+            pending_folder_refresh: false,
             search_query: String::new(),
             active_query: None,
             move_target: String::new(),

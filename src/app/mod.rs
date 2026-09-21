@@ -5,6 +5,7 @@ mod compose;
 mod contacts;
 mod crypto;
 mod editor;
+mod folders;
 mod identities;
 mod input;
 mod loading;

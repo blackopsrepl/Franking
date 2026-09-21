@@ -13,6 +13,8 @@ pub enum View {
     PassphrasePrompt,
     /// Attachment list overlay for the current message.
     AttachmentList,
+    /// Folder management prompt (create, rename, delete).
+    FolderPrompt,
     /// Native compose / reply / forward editor.
     Compose,
     /// Address book browser.
@@ -107,6 +109,14 @@ pub enum Action {
     UnlockCancel,
     /// Trust the S/MIME signer certificate of the current message.
     TrustSigner,
+    // ── Folder management ─────────────────────────────────────────────
+    FolderNew,
+    FolderRename,
+    FolderDelete,
+    FolderPromptInput(char),
+    FolderPromptBackspace,
+    FolderPromptSubmit,
+    FolderPromptCancel,
     // ── Attachment list ───────────────────────────────────────────────
     OpenAttachments,
     AttachmentNext,

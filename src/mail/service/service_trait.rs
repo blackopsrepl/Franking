@@ -132,6 +132,30 @@ pub trait MailService: Send + Sync {
         ))
     }
 
+    /// Create a new mailbox.
+    fn create_folder(&self, account: Option<&str>, name: &str) -> MailResult<()> {
+        let _ = (account, name);
+        Err(MailError::unsupported_feature(
+            "creating folders is not supported by this backend",
+        ))
+    }
+
+    /// Rename a mailbox.
+    fn rename_folder(&self, account: Option<&str>, from: &str, to: &str) -> MailResult<()> {
+        let _ = (account, from, to);
+        Err(MailError::unsupported_feature(
+            "renaming folders is not supported by this backend",
+        ))
+    }
+
+    /// Delete a mailbox.
+    fn delete_folder(&self, account: Option<&str>, name: &str) -> MailResult<()> {
+        let _ = (account, name);
+        Err(MailError::unsupported_feature(
+            "deleting folders is not supported by this backend",
+        ))
+    }
+
     /// Number of unseen messages in a folder.
     fn folder_unread(&self, account: Option<&str>, folder: &str) -> MailResult<usize> {
         let _ = (account, folder);

@@ -2,6 +2,7 @@ use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
 use std::thread;
 
+use crate::mail::errors::MailResult;
 use crate::mail::service::SendOptions;
 use crate::mail::types::*;
 use crate::mail::{default_mail_service, MailError, MailService, MessageDocument};
@@ -142,36 +143,39 @@ impl Worker {
         });
     }
 
-    pub fn delete_message(&self, account: Option<String>, folder: String, id: String) {
+    /// Run an action against the service on a background thread.
+    pub(super) fn spawn_action<F>(&self, action: F)
+    where
+        F: FnOnce(&dyn MailService) -> MailResult<String> + Send + 'static,
+    {
         let tx = self.tx.clone();
         let service = self.service.clone();
         thread::spawn(move || {
-            let result = service
+            let _ = tx.send(WorkerResult::ActionDone(action(service.as_ref())));
+        });
+    }
+
+    pub fn delete_message(&self, account: Option<String>, folder: String, id: String) {
+        self.spawn_action(move |service| {
+            service
                 .delete_message(account.as_deref(), &folder, &id)
-                .map(|()| "Message deleted.".to_string());
-            let _ = tx.send(WorkerResult::ActionDone(result));
+                .map(|()| "Message deleted.".to_string())
         });
     }
 
     pub fn flag_add(&self, account: Option<String>, folder: String, id: String, flag: String) {
-        let tx = self.tx.clone();
-        let service = self.service.clone();
-        thread::spawn(move || {
-            let result = service
+        self.spawn_action(move |service| {
+            service
                 .flag_add(account.as_deref(), &folder, &id, &flag)
-                .map(|()| format!("Flag '{flag}' added."));
-            let _ = tx.send(WorkerResult::ActionDone(result));
+                .map(|()| format!("Flag '{flag}' added."))
         });
     }
 
     pub fn flag_remove(&self, account: Option<String>, folder: String, id: String, flag: String) {
-        let tx = self.tx.clone();
-        let service = self.service.clone();
-        thread::spawn(move || {
-            let result = service
+        self.spawn_action(move |service| {
+            service
                 .flag_remove(account.as_deref(), &folder, &id, &flag)
-                .map(|()| format!("Flag '{flag}' removed."));
-            let _ = tx.send(WorkerResult::ActionDone(result));
+                .map(|()| format!("Flag '{flag}' removed."))
         });
     }
 
@@ -182,28 +186,22 @@ impl Worker {
         target: String,
         id: String,
     ) {
-        let tx = self.tx.clone();
-        let service = self.service.clone();
-        thread::spawn(move || {
-            let result = service
+        self.spawn_action(move |service| {
+            service
                 .move_message(account.as_deref(), &folder, &target, &id)
-                .map(|()| format!("Moved to {target}."));
-            let _ = tx.send(WorkerResult::ActionDone(result));
-        });
-    }
-
-    pub fn download_attachments(&self, account: Option<String>, folder: String, id: String) {
-        let tx = self.tx.clone();
-        let service = self.service.clone();
-        thread::spawn(move || {
-            let result = service
-                .download_attachments(account.as_deref(), &folder, &id)
-                .map(|s| format!("Attachments: {}", s.trim()));
-            let _ = tx.send(WorkerResult::ActionDone(result));
+                .map(|()| format!("Moved to {target}."))
         });
     }
 
     /// Fetch a compose template (new message).
+    pub fn download_attachments(&self, account: Option<String>, folder: String, id: String) {
+        self.spawn_action(move |service| {
+            service
+                .download_attachments(account.as_deref(), &folder, &id)
+                .map(|saved| format!("Attachments: {}", saved.trim()))
+        });
+    }
+
     pub fn fetch_template_write(&self, account: Option<String>) {
         let tx = self.tx.clone();
         let service = self.service.clone();

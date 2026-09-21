@@ -147,3 +147,46 @@ fn dovecot_threads_messages() {
         .iter()
         .any(|envelope| envelope.subject == "Re: Thread root"));
 }
+
+#[test]
+fn dovecot_folder_lifecycle() {
+    let Ok(address) = std::env::var("SOLVERFORGE_IMAP_TEST_ADDR") else {
+        return;
+    };
+    let (host, port) = address.rsplit_once(':').expect("host:port");
+    let port: u16 = port.parse().expect("port");
+    let account = account(host, port);
+
+    let pool = Arc::new(SessionPool::with_credentials(Arc::new(FixedCredentials)));
+    let service = ImapSmtpService::new(account.clone(), pool.clone());
+
+    let created = "SolverForge Lifecycle";
+    let renamed = "SolverForge Lifecycle Renamed";
+
+    service.create_folder(None, created).expect("create");
+    let names = || {
+        service
+            .list_folders(None)
+            .expect("folders")
+            .into_iter()
+            .map(|folder| folder.name)
+            .collect::<Vec<_>>()
+    };
+    assert!(names().contains(&created.to_string()), "folder created");
+
+    service
+        .rename_folder(None, created, renamed)
+        .expect("rename");
+    let after_rename = names();
+    assert!(
+        after_rename.contains(&renamed.to_string()),
+        "folder renamed"
+    );
+    assert!(
+        !after_rename.contains(&created.to_string()),
+        "old name gone"
+    );
+
+    service.delete_folder(None, renamed).expect("delete");
+    assert!(!names().contains(&renamed.to_string()), "folder deleted");
+}
