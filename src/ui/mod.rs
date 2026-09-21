@@ -15,6 +15,7 @@ mod identity_list;
 mod links;
 mod message_view;
 mod move_prompt;
+mod outbox;
 mod passphrase_prompt;
 mod search;
 mod sieve;
@@ -105,6 +106,9 @@ pub fn render(app: &mut App, frame: &mut Frame) {
     }
     if app.view == View::LinkList {
         links::render(app, frame);
+    }
+    if app.view == View::Outbox {
+        outbox::render(app, frame);
     }
     if app.view == View::ContactEdit {
         contact_edit::render(app, frame);

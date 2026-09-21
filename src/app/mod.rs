@@ -22,6 +22,7 @@ mod model;
 mod mouse;
 mod move_prompt;
 mod navigation;
+mod outbox;
 mod pgp;
 mod selection;
 mod sieve;

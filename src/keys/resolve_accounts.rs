@@ -19,6 +19,17 @@ pub(super) fn resolve_account_list(key: KeyEvent) -> Action {
     }
 }
 
+pub(super) fn resolve_outbox(key: KeyEvent) -> Action {
+    match key.code {
+        KeyCode::Char('j') | KeyCode::Down => Action::OutboxNext,
+        KeyCode::Char('k') | KeyCode::Up => Action::OutboxPrev,
+        KeyCode::Enter => Action::OutboxSend,
+        KeyCode::Char('d') => Action::OutboxDiscard,
+        KeyCode::Esc | KeyCode::Char('q') => Action::OutboxClose,
+        _ => Action::None,
+    }
+}
+
 pub(super) fn resolve_file_picker(key: KeyEvent) -> Action {
     match key.code {
         KeyCode::Char('j') | KeyCode::Down => Action::FilePickerNext,

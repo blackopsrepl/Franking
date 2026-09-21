@@ -20,6 +20,7 @@ pub(super) fn reset_schema(conn: &Connection) -> Result<()> {
          DROP TABLE IF EXISTS account_endpoints;
          DROP TABLE IF EXISTS accounts;
          DROP TABLE IF EXISTS credentials;
+         DROP TABLE IF EXISTS outbox;
          DROP TABLE IF EXISTS legacy_credentials_backup;
          DROP TABLE IF EXISTS meta;",
     )?;
@@ -186,6 +187,15 @@ pub(super) fn create_schema(conn: &Connection) -> Result<()> {
              VALUES (new.id, new.subject, new.from_display, new.to_display, new.body_text);
          END;
 
+         CREATE TABLE outbox (
+             id         INTEGER PRIMARY KEY AUTOINCREMENT,
+             account    TEXT,
+             template   TEXT    NOT NULL,
+             sign       INTEGER NOT NULL DEFAULT 0,
+             encrypt    INTEGER NOT NULL DEFAULT 0,
+             created_at TEXT    NOT NULL DEFAULT (datetime('now'))
+         );
+
          CREATE TABLE sync_state (
              account        TEXT    NOT NULL,
              folder         TEXT    NOT NULL,
@@ -207,5 +217,15 @@ pub(super) fn migrate_schema(conn: &Connection) -> Result<()> {
     if !has_signature {
         conn.execute_batch("ALTER TABLE identities ADD COLUMN signature TEXT;")?;
     }
+    conn.execute_batch(
+        "CREATE TABLE IF NOT EXISTS outbox (
+             id         INTEGER PRIMARY KEY AUTOINCREMENT,
+             account    TEXT,
+             template   TEXT    NOT NULL,
+             sign       INTEGER NOT NULL DEFAULT 0,
+             encrypt    INTEGER NOT NULL DEFAULT 0,
+             created_at TEXT    NOT NULL DEFAULT (datetime('now'))
+         );",
+    )?;
     Ok(())
 }

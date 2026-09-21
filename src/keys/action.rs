@@ -10,6 +10,8 @@ pub enum View {
     AccountEdit,
     /// Filesystem picker for attachment paths.
     FilePicker,
+    /// Outbox of messages waiting to be sent.
+    Outbox,
     Search,
     Help,
     MovePrompt,
@@ -149,6 +151,13 @@ pub enum Action {
     FilePickerEnter,
     FilePickerUp,
     FilePickerClose,
+    // ── Outbox ────────────────────────────────────────────────────────
+    OpenOutbox,
+    OutboxNext,
+    OutboxPrev,
+    OutboxSend,
+    OutboxDiscard,
+    OutboxClose,
     // ── Folder management ─────────────────────────────────────────────
     FolderNew,
     FolderRename,

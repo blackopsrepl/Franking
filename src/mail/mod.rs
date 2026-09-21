@@ -8,6 +8,7 @@ pub mod maildir;
 pub mod mime;
 pub mod model;
 pub mod oauth;
+pub mod outbox;
 pub mod pgp;
 pub mod pgp_mime;
 pub mod pgp_sign;

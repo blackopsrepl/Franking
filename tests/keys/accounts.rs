@@ -79,3 +79,29 @@ fn file_picker_keys() {
         Action::FilePickerClose
     );
 }
+
+// ── Outbox ──────────────────────────────────────────────────────────
+
+#[test]
+fn outbox_keys() {
+    assert_eq!(
+        resolve(View::EnvelopeList, key(KeyCode::Char('O'))),
+        Action::OpenOutbox
+    );
+    assert_eq!(
+        resolve(View::Outbox, key(KeyCode::Char('j'))),
+        Action::OutboxNext
+    );
+    assert_eq!(
+        resolve(View::Outbox, key(KeyCode::Enter)),
+        Action::OutboxSend
+    );
+    assert_eq!(
+        resolve(View::Outbox, key(KeyCode::Char('d'))),
+        Action::OutboxDiscard
+    );
+    assert_eq!(
+        resolve(View::Outbox, key(KeyCode::Esc)),
+        Action::OutboxClose
+    );
+}

@@ -102,3 +102,61 @@ fn picking_a_file_attaches_it() {
 
     let _ = std::fs::remove_dir_all(&root);
 }
+
+#[test]
+fn a_failed_send_is_queued_in_the_outbox() {
+    use crate::mail::outbox;
+
+    use super::super::App;
+
+    let conn = rusqlite::Connection::open_in_memory().unwrap();
+    crate::db::init_for_test(&conn).unwrap();
+
+    let mut app = App::new(None);
+    app.db = Some(conn);
+    app.remember_pending_send(
+        "To: bob@example.com\nSubject: Offline\n\nbody".to_string(),
+        true,
+        false,
+    );
+    app.queue_failed_send(Some("acct".to_string()));
+
+    assert!(app.status_message.contains("kept in the outbox"));
+    let conn = app.db.as_ref().unwrap();
+    let items = outbox::list(conn).unwrap();
+    assert_eq!(items.len(), 1);
+    assert_eq!(items[0].subject, "Offline");
+    assert!(items[0].sign);
+    assert_eq!(items[0].account.as_deref(), Some("acct"));
+
+    // A repeated failure of the same message must not queue a duplicate.
+    app.remember_pending_send(
+        "To: bob@example.com\nSubject: Offline\n\nbody".to_string(),
+        true,
+        false,
+    );
+    app.queue_failed_send(Some("acct".to_string()));
+    assert_eq!(outbox::count(app.db.as_ref().unwrap()).unwrap(), 1);
+}
+
+#[test]
+fn outbox_discard_requires_two_presses() {
+    use crate::mail::outbox::OutboxItem;
+
+    use super::super::App;
+
+    let mut app = App::new(None);
+    app.outbox.items = vec![OutboxItem {
+        id: 7,
+        account: None,
+        subject: "Queued".to_string(),
+        sign: false,
+        encrypt: false,
+        created_at: "2026-01-01 00:00:00".to_string(),
+        template: "To: a@example.com\n\nbody".to_string(),
+    }];
+
+    app.discard_outbox_item();
+    assert_eq!(app.outbox.pending_discard, Some(7));
+    assert!(app.status_message.contains("Press d again"));
+}

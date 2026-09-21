@@ -64,7 +64,6 @@ pub struct App {
     /// Selected attachment index while the attachment list is open.
     pub(crate) attachment_index: usize,
 
-    // ── Folder management ───────────────────────────────────────────
     /// Pending folder-management prompt, if open.
     pub(crate) folder_prompt: Option<super::folders::FolderPrompt>,
     /// Whether to reload the folder list after the next action completes.
@@ -110,7 +109,6 @@ pub struct App {
 
     pub folder_unread: HashMap<String, usize>,
 
-    // ── Layout areas for mouse hit-testing ──────────────────────────
     pub last_terminal_height: u16,
     /// Width of the last rendered frame, used to render the message body.
     pub(crate) last_terminal_width: u16,
@@ -151,13 +149,11 @@ pub struct App {
     /// Envelopes hidden by collapsing a thread, keyed by thread root.
     pub(crate) collapsed_threads: std::collections::HashMap<String, Vec<Envelope>>,
 
-    // ── Compose autosave ────────────────────────────────────────────
     /// Directory holding the crash-safe autosave of the message in progress.
     pub(crate) autosave_dir: std::path::PathBuf,
     /// Ticks since the last autosave was written.
     pub(crate) autosave_ticks: u64,
 
-    // ── Database ────────────────────────────────────────────────────
     pub db: Option<Connection>,
 
     // ── Compose editor state ─────────────────────────────────────────
@@ -184,6 +180,9 @@ pub struct App {
     pub account_edit_state: Option<crate::account_edit::AccountEditState>,
     /// Filesystem picker used to choose an attachment path.
     pub(crate) file_picker: Option<crate::file_picker::FilePickerState>,
+
+    /// Queued messages and send state.
+    pub(crate) outbox: super::outbox::OutboxState,
 }
 
 impl App {
@@ -257,6 +256,7 @@ impl App {
             identity_index: None,
             account_edit_state: None,
             file_picker: None,
+            outbox: Default::default(),
             identity_edit_state: None,
         }
     }

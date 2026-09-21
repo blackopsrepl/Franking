@@ -3,7 +3,9 @@
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
 use super::action::{Action, ComposeFocus, ComposeKeyContext, View};
-use super::resolve_accounts::{resolve_account_edit, resolve_account_list, resolve_file_picker};
+use super::resolve_accounts::{
+    resolve_account_edit, resolve_account_list, resolve_file_picker, resolve_outbox,
+};
 use super::resolve_contacts::{
     resolve_compose, resolve_contact_edit, resolve_contact_search, resolve_contacts,
     resolve_identity_edit, resolve_identity_list,
@@ -21,6 +23,7 @@ pub fn resolve(view: View, key: KeyEvent) -> Action {
         View::MessageSearch => return resolve_message_search(key),
         View::AccountEdit => return resolve_account_edit(key),
         View::FilePicker => return resolve_file_picker(key),
+        View::Outbox => return resolve_outbox(key),
         View::LinkList => return resolve_link_list(key),
         View::SieveScripts => return resolve_sieve_scripts(key),
         View::SieveName => return resolve_sieve_name(key),
@@ -63,7 +66,8 @@ pub fn resolve(view: View, key: KeyEvent) -> Action {
         | View::SieveName
         | View::SieveEdit
         | View::AccountEdit
-        | View::FilePicker => Action::None,
+        | View::FilePicker
+        | View::Outbox => Action::None,
     }
 }
 
@@ -149,6 +153,7 @@ fn resolve_envelope_list(key: KeyEvent) -> Action {
         KeyCode::Char('z') => Action::Undo,
         KeyCode::Char('e') => Action::Archive,
         KeyCode::Char('E') => Action::EmptyFolder,
+        KeyCode::Char('O') => Action::OpenOutbox,
         KeyCode::Char('[') | KeyCode::Left => Action::CollapseThread,
         KeyCode::Char(']') | KeyCode::Right => Action::ExpandThread,
         KeyCode::Char('?') => Action::ToggleHelp,

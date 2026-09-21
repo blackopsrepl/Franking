@@ -5,6 +5,7 @@ mod dispatch;
 mod folder_ops;
 mod folders;
 mod inbox;
+mod outbox_ops;
 mod sieve_ops;
 mod template_ops;
 mod watch;

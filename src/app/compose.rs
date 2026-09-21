@@ -175,6 +175,7 @@ impl App {
             let template = crate::compose::reassemble_template(cs);
             let options = self.send_options(cs);
             self.loading = true;
+            self.remember_pending_send(template.clone(), options.sign, options.encrypt);
             self.worker
                 .send_template(self.acct_owned(), template, options);
         }

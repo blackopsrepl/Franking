@@ -71,6 +71,7 @@ impl App {
                     self.pending_refresh_after_action = false;
                 }
                 WorkerResult::Discovered(config) => self.apply_discovered(config),
+                WorkerResult::Outbox(result) => self.handle_outbox(result),
                 WorkerResult::SieveScripts(result) => self.handle_sieve_scripts(result),
                 WorkerResult::SieveBody(name, result) => self.handle_sieve_body(name, result),
                 WorkerResult::FolderUnread(folder_name, Ok(count)) => {
@@ -104,6 +105,11 @@ impl App {
                     if let Some(ref mut cs) = self.compose_state {
                         cs.send_error = Some(e.to_string());
                     }
+                    let account = self
+                        .compose_state
+                        .as_ref()
+                        .and_then(|cs| cs.account.clone());
+                    self.queue_failed_send(account);
                 }
                 WorkerResult::MailboxChanged(_account, folder) => {
                     notify_new_mail(&folder);

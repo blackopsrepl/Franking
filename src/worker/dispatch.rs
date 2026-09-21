@@ -31,6 +31,8 @@ pub enum WorkerResult {
     SieveBody(String, Result<String, MailError>),
     /// Provider settings discovered for an email address.
     Discovered(Option<crate::mail::account_store::DiscoveredConfig>),
+    /// Queued outgoing messages.
+    Outbox(Result<Vec<crate::mail::outbox::OutboxItem>, MailError>),
 }
 
 /// Lightweight handle for dispatching work to background threads.
