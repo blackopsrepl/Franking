@@ -2,13 +2,17 @@
 Uses rpgp for cleartext-signed and inline-encrypted messages, and for detached
 signatures. Keyrings are loaded from armored/binary key files. */
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
+use anyhow::{Context, Result};
 use mail_parser::{MessageParser, MimeHeaders, PartType};
 use pgp::composed::{
     CleartextSignedMessage, Deserializable, Message, SignedPublicKey, SignedSecretKey,
 };
+use pgp::composed::{EncryptionCaps, KeyType, SecretKeyParamsBuilder, SubkeyParamsBuilder};
+use pgp::crypto::ecc_curve::ECCCurve;
 use pgp::types::{KeyDetails, Password};
+use rand::thread_rng;
 
 /// Inline OpenPGP found in a message body.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -206,6 +210,73 @@ impl Keyring {
         }
         keyring
     }
+}
+
+/// Default directory for PGP/S/MIME key material.
+pub fn default_keys_dir() -> PathBuf {
+    dirs::data_dir()
+        .unwrap_or_else(|| PathBuf::from("."))
+        .join("solverforge")
+        .join("mail")
+        .join("keys")
+}
+
+/// Resolve a passphrase for encrypted secret keys from the environment or a
+/// `passphrase` file in the keys directory.
+pub fn resolve_passphrase() -> String {
+    if let Ok(value) = std::env::var("SOLVERFORGE_PGP_PASSPHRASE") {
+        return value;
+    }
+    std::fs::read_to_string(default_keys_dir().join("passphrase"))
+        .map(|value| value.trim().to_string())
+        .unwrap_or_default()
+}
+
+/// Generate an Ed25519 key pair with signing and encryption subkeys.
+pub fn generate_keypair(uid: &str) -> Result<(SignedSecretKey, SignedPublicKey)> {
+    let mut signing = SubkeyParamsBuilder::default();
+    signing
+        .key_type(KeyType::Ed25519Legacy)
+        .can_sign(true)
+        .can_encrypt(EncryptionCaps::None)
+        .can_authenticate(false);
+    let mut encryption = SubkeyParamsBuilder::default();
+    encryption
+        .key_type(KeyType::ECDH(ECCCurve::Curve25519Legacy))
+        .can_sign(false)
+        .can_encrypt(EncryptionCaps::All)
+        .can_authenticate(false);
+
+    let params = SecretKeyParamsBuilder::default()
+        .key_type(KeyType::Ed25519Legacy)
+        .can_certify(true)
+        .can_sign(false)
+        .can_encrypt(EncryptionCaps::None)
+        .primary_user_id(uid.into())
+        .passphrase(None)
+        .subkey(signing.build().context("signing subkey")?)
+        .subkey(encryption.build().context("encryption subkey")?)
+        .build()
+        .context("secret key parameters")?;
+
+    let secret = params.generate(thread_rng()).context("generate key")?;
+    let public = SignedPublicKey::from(secret.clone());
+    Ok((secret, public))
+}
+
+/// Write a key pair as armored files into `dir`.
+pub fn write_keypair(
+    dir: &Path,
+    name: &str,
+    secret: &SignedSecretKey,
+    public: &SignedPublicKey,
+) -> Result<()> {
+    std::fs::create_dir_all(dir).with_context(|| format!("create {}", dir.display()))?;
+    let secret_armor = secret.to_armored_string(Default::default())?;
+    let public_armor = public.to_armored_string(Default::default())?;
+    std::fs::write(dir.join(format!("{name}.sec.asc")), secret_armor)?;
+    std::fs::write(dir.join(format!("{name}.pub.asc")), public_armor)?;
+    Ok(())
 }
 
 #[cfg(test)]

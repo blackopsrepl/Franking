@@ -7,6 +7,7 @@ use crate::mail::security::Protection;
 /// Verify or decrypt PGP on a message, returning a status line.
 pub(super) fn process_pgp(message: &mut MessageDocument) -> Option<String> {
     let keyring = pgp::Keyring::load(&keys_dir());
+    let passphrase = pgp::resolve_passphrase();
 
     if message.protection() == Some(Protection::PgpSigned) {
         if let Some(raw) = message.raw.as_deref() {
@@ -21,7 +22,7 @@ pub(super) fn process_pgp(message: &mut MessageDocument) -> Option<String> {
 
     if message.protection() == Some(Protection::PgpEncrypted) {
         if let Some(raw) = message.raw.as_deref() {
-            return Some(match pgp::decrypt_mime(raw, &keyring.secret, "") {
+            return Some(match pgp::decrypt_mime(raw, &keyring.secret, &passphrase) {
                 Some(data) => {
                     let text = String::from_utf8_lossy(&data).to_string();
                     message.body = BodyDocument::from_plain(&text);
@@ -45,7 +46,7 @@ pub(super) fn process_pgp(message: &mut MessageDocument) -> Option<String> {
                 format!("PGP signature valid: {}", fingerprints.join(", "))
             })
         }
-        InlinePgp::Encrypted => match pgp::decrypt_inline(&body, &keyring.secret, "") {
+        InlinePgp::Encrypted => match pgp::decrypt_inline(&body, &keyring.secret, &passphrase) {
             Some(data) => {
                 let text = String::from_utf8_lossy(&data).to_string();
                 message.body = BodyDocument::from_plain(&text);

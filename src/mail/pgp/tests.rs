@@ -127,3 +127,18 @@ fn decrypts_a_pgp_mime_message() {
     let decrypted = decrypt_mime(&message, &[secret], "").unwrap();
     assert_eq!(decrypted, b"mime secret");
 }
+
+#[test]
+fn writes_and_reloads_a_keypair() {
+    let dir = std::env::temp_dir().join(format!("sfm-pgp-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+
+    let (secret, public) = super::generate_keypair("Eve <eve@example.com>").unwrap();
+    super::write_keypair(&dir, "eve", &secret, &public).unwrap();
+
+    let keyring = super::Keyring::load(&dir);
+    assert_eq!(keyring.public.len(), 1);
+    assert_eq!(keyring.secret.len(), 1);
+
+    let _ = std::fs::remove_dir_all(&dir);
+}

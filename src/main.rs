@@ -29,6 +29,11 @@ fn main() -> Result<()> {
         parse_account_flag(&args)
     };
 
+    // ── PGP key generation (non-interactive, exits after writing) ───
+    if let Some(uid) = flag_value(&args, "--pgp-keygen") {
+        return run_pgp_keygen(&uid);
+    }
+
     // ── Contact import (non-interactive, exits after import) ────────
     if let Some(path) = parse_import_flag(&args) {
         return run_import(&path);
@@ -106,6 +111,31 @@ fn run(
 fn restore_terminal() -> Result<()> {
     disable_raw_mode()?;
     execute!(io::stdout(), DisableMouseCapture, LeaveAlternateScreen)?;
+    Ok(())
+}
+
+fn flag_value(args: &[String], flag: &str) -> Option<String> {
+    let position = args.iter().position(|arg| arg == flag)?;
+    args.get(position + 1).cloned()
+}
+
+fn run_pgp_keygen(uid: &str) -> Result<()> {
+    use solverforge_mail::mail::pgp;
+
+    let dir = pgp::default_keys_dir();
+    let (secret, public) = pgp::generate_keypair(uid)?;
+    let name: String = uid
+        .split('@')
+        .next()
+        .unwrap_or("key")
+        .chars()
+        .map(|c| if c.is_ascii_alphanumeric() { c } else { '-' })
+        .collect();
+    pgp::write_keypair(&dir, &name, &secret, &public)?;
+    println!(
+        "Wrote {name}.pub.asc and {name}.sec.asc to {}",
+        dir.display()
+    );
     Ok(())
 }
 
