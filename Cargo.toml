@@ -31,8 +31,8 @@ html2text = "0.16"
 imap = "2.4"
 imap-proto = "0.10"
 # Own IMAP command layer: the codec is the grammar, we own the transport and policy.
-imap-codec = { version = "=2.0.0-alpha.9", features = ["ext_condstore_qresync", "ext_utf8"] }
-imap-types = { version = "=2.0.0-alpha.7", features = ["ext_condstore_qresync", "ext_utf8"] }
+imap-codec = { version = "=2.0.0-alpha.9", features = ["ext_condstore_qresync", "ext_utf8", "starttls"] }
+imap-types = { version = "=2.0.0-alpha.7", features = ["ext_condstore_qresync", "ext_utf8", "starttls"] }
 base64 = "0.22"
 lettre = { version = "0.11", default-features = false, features = [
   "builder",

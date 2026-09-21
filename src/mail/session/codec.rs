@@ -4,7 +4,7 @@ legacy `imap` crate aborted (or panicked) on an untagged line it could not
 parse, which desynchronized the reader; here an unparseable line is counted,
 logged, and skipped, and the next valid line still parses. */
 
-use std::io::{BufRead, BufReader, Read};
+use std::io::{BufRead, BufReader, Read, Write};
 
 use anyhow::{anyhow, Context, Result};
 use imap_codec::decode::Decoder;
@@ -43,8 +43,11 @@ impl Completion {
 /// Everything a command produced: untagged data plus the tagged completion.
 #[derive(Debug, Default)]
 pub struct CommandOutput {
+    /// Untagged data responses.
     pub responses: Vec<Response<'static>>,
-    pub untagged_status: Vec<String>,
+    /// Untagged status responses, whose response codes carry UIDVALIDITY,
+    /// UIDNEXT, HIGHESTMODSEQ, APPENDUID, COPYUID, and friends.
+    pub untagged: Vec<imap_types::response::StatusBody<'static>>,
     pub completion: Option<Completion>,
     /// Lines that did not decode, kept for diagnostics.
     pub skipped: Vec<String>,
@@ -54,6 +57,38 @@ impl CommandOutput {
     /// Untagged data responses only.
     pub fn data(&self) -> impl Iterator<Item = &Response<'static>> {
         self.responses.iter()
+    }
+
+    /// Untagged status text, for diagnostics.
+    pub fn untagged_text(&self) -> Vec<String> {
+        self.untagged
+            .iter()
+            .map(|body| body.text.to_string())
+            .collect()
+    }
+
+    /// First untagged response code matching `wanted`.
+    pub fn untagged_code<T>(
+        &self,
+        wanted: impl Fn(&imap_types::response::Code<'static>) -> Option<T>,
+    ) -> Option<T> {
+        self.untagged
+            .iter()
+            .find_map(|body| body.code.as_ref().and_then(&wanted))
+    }
+
+    /// First response code from any source matching `wanted`.
+    pub fn any_code<T>(
+        &self,
+        wanted: impl Fn(&imap_types::response::Code<'static>) -> Option<T>,
+    ) -> Option<T> {
+        if let Some(found) = self.untagged_code(&wanted) {
+            return Some(found);
+        }
+        self.completion
+            .as_ref()
+            .and_then(|completion| completion.code.as_ref())
+            .and_then(&wanted)
     }
 
     /// Fail unless the server completed the command with OK.
@@ -73,21 +108,36 @@ impl CommandOutput {
     }
 }
 
-/// Reads IMAP responses from a stream, decoding each one individually.
-pub struct ResponseReader<R: Read> {
+/// Reads and writes IMAP over one stream, decoding each response.
+pub struct ResponseReader<R: Read + Write> {
     reader: BufReader<R>,
     buffer: Vec<u8>,
     /// Undecodable lines seen so far, newest last (bounded).
     pub skipped: Vec<String>,
 }
 
-impl<R: Read> ResponseReader<R> {
+impl<R: Read + Write> ResponseReader<R> {
     pub fn new(inner: R) -> Self {
         Self {
             reader: BufReader::new(inner),
             buffer: Vec::new(),
             skipped: Vec::new(),
         }
+    }
+
+    /// The wrapped stream, for upgrading the transport.
+    pub fn into_inner(self) -> R {
+        self.reader.into_inner()
+    }
+
+    /// Write bytes straight to the socket (the reader only buffers reads).
+    pub fn write_all(&mut self, bytes: &[u8]) -> Result<()> {
+        self.reader
+            .get_mut()
+            .write_all(bytes)
+            .context("writing to the IMAP server")?;
+        self.reader.get_mut().flush().context("flush")?;
+        Ok(())
     }
 
     /// Read raw bytes until at least one more byte is buffered.
@@ -191,9 +241,7 @@ impl<R: Read> ResponseReader<R> {
                     output.skipped = std::mem::take(&mut self.skipped);
                     return Ok(output);
                 }
-                Response::Status(Status::Untagged(status)) => {
-                    output.untagged_status.push(status.text.to_string());
-                }
+                Response::Status(Status::Untagged(body)) => output.untagged.push(body),
                 Response::Status(Status::Bye(bye)) => {
                     return Err(MailError::connection_dropped(format!(
                         "server closed the session: {}",

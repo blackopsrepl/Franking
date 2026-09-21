@@ -6,7 +6,7 @@ use std::time::Duration;
 
 use imap::extensions::idle::{SetReadTimeout, WaitOutcome};
 use imap::Authenticator;
-use native_tls::{TlsConnector, TlsStream};
+use native_tls::TlsStream;
 
 use crate::mail::account_store::AccountRecord;
 use crate::mail::errors::{MailError, MailResult};
@@ -14,8 +14,7 @@ use crate::mail::oauth;
 
 use super::capabilities::Capabilities;
 use super::credentials::CredentialProvider;
-
-const NETWORK_TIMEOUT: Duration = Duration::from_secs(60);
+use super::transport::{connect_tcp, tls_connector};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum IdleOutcome {
@@ -236,29 +235,6 @@ impl Authenticator for XOAuth2Authenticator {
             self.username, self.access_token
         )
     }
-}
-
-pub fn connect_tcp(host: &str, port: u16) -> MailResult<TcpStream> {
-    let stream = TcpStream::connect((host, port)).map_err(|err| {
-        if err.kind() == std::io::ErrorKind::TimedOut {
-            MailError::transport_timeout(err.to_string())
-        } else {
-            MailError::io(err.to_string())
-        }
-    })?;
-    stream
-        .set_read_timeout(Some(NETWORK_TIMEOUT))
-        .map_err(|err| MailError::io(err.to_string()))?;
-    stream
-        .set_write_timeout(Some(NETWORK_TIMEOUT))
-        .map_err(|err| MailError::io(err.to_string()))?;
-    Ok(stream)
-}
-
-fn tls_connector() -> MailResult<TlsConnector> {
-    TlsConnector::builder()
-        .build()
-        .map_err(|err| MailError::tls_failure(err.to_string()))
 }
 
 /// Look up a secret from the OS keyring via `secret-tool`.

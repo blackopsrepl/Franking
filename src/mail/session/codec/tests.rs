@@ -30,8 +30,37 @@ const TRANSCRIPT: &[&str] = &[
     "* BYE Logging out\r\n",
 ];
 
-fn reader(input: &[u8]) -> ResponseReader<&[u8]> {
-    ResponseReader::new(input)
+/// A duplex view over borrowed bytes: it reads the script and discards writes.
+struct Duplex<'a> {
+    data: &'a [u8],
+    position: usize,
+}
+
+impl std::io::Read for Duplex<'_> {
+    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+        let remaining = &self.data[self.position..];
+        let take = remaining.len().min(buf.len());
+        buf[..take].copy_from_slice(&remaining[..take]);
+        self.position += take;
+        Ok(take)
+    }
+}
+
+impl std::io::Write for Duplex<'_> {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        Ok(buf.len())
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
+}
+
+fn reader(input: &[u8]) -> ResponseReader<Duplex<'_>> {
+    ResponseReader::new(Duplex {
+        data: input,
+        position: 0,
+    })
 }
 
 #[test]
@@ -144,6 +173,16 @@ fn parses_when_the_socket_delivers_one_byte_at_a_time() {
         }
     }
 
+    impl std::io::Write for Drip<'_> {
+        fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+            Ok(buf.len())
+        }
+
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+
     let transcript = "* SORT 1 2 3\r\na001 OK done\r\n";
     let mut reader = ResponseReader::new(Drip {
         data: transcript.as_bytes(),
@@ -197,7 +236,14 @@ fn collects_untagged_status_lines() {
     let input = "* OK [UIDNEXT 5] predicted\r\na001 OK done\r\n";
     let mut reader = reader(input.as_bytes());
     let output = reader.collect("a001").expect("collect");
-    assert_eq!(output.untagged_status, vec!["predicted".to_string()]);
+    assert_eq!(output.untagged_text(), vec!["predicted".to_string()]);
+    assert_eq!(
+        output.untagged_code(|code| match code {
+            Code::UidNext(value) => Some(*value),
+            _ => None,
+        }),
+        std::num::NonZeroU32::new(5)
+    );
     assert!(matches!(
         output.completion.map(|c| c.status),
         Some(StatusKind::Ok)
