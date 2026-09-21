@@ -15,7 +15,8 @@ use crate::mail::types::*;
 use crate::mail::MessageDocument;
 use crate::worker::Worker;
 
-pub(crate) const PAGE_SIZE: usize = 50;
+/// Default page size for a folder listing.
+pub(crate) const DEFAULT_PAGE_SIZE: usize = 50;
 
 pub(crate) const AUTO_REFRESH_TICKS: u64 = 240;
 
@@ -88,6 +89,10 @@ pub struct App {
     pub(crate) folder_jump: String,
     /// Ordering applied to the listed page.
     pub(crate) sort_order: crate::mail::sort::SortOrder,
+    /// Messages fetched per page.
+    pub(crate) page_size: usize,
+    /// Seconds between compose autosaves (0 disables).
+    pub(crate) autosave_seconds: u64,
     /// Text attachment being previewed: (name, text).
     pub(crate) attachment_preview: Option<(String, String)>,
     /// Scroll offset inside the attachment preview.

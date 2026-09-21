@@ -12,8 +12,8 @@ use super::model::App;
 
 const DRAFT_FILE: &str = "unsent-message.mml";
 
-/// Ticks between autosaves (250ms each): 120 ticks ≈ 30 seconds.
-const AUTOSAVE_INTERVAL: u64 = 120;
+/// Ticks per second (the tick rate is 250ms).
+const TICKS_PER_SECOND: u64 = 4;
 
 /// Directory used for autosaves.
 pub(crate) fn default_dir() -> PathBuf {
@@ -43,6 +43,9 @@ pub(crate) fn clear(dir: &Path) {
 impl App {
     /// Autosave the message in progress at a fixed interval.
     pub(crate) fn autosave_tick(&mut self) {
+        if self.autosave_seconds == 0 {
+            return;
+        }
         let composing = self
             .compose_state
             .as_ref()
@@ -52,7 +55,7 @@ impl App {
             return;
         }
         self.autosave_ticks += 1;
-        if self.autosave_ticks < AUTOSAVE_INTERVAL {
+        if self.autosave_ticks < self.autosave_seconds * TICKS_PER_SECOND {
             return;
         }
         self.autosave_ticks = 0;

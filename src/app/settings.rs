@@ -9,6 +9,17 @@ use super::model::App;
 const NOTIFICATIONS: &str = "notifications";
 /// Preference key for marking messages read when they are opened.
 const MARK_READ_ON_OPEN: &str = "mark_read_on_open";
+/// Preference keys for the page size and autosave interval.
+const PAGE_SIZE: &str = "page_size";
+const AUTOSAVE_SECONDS: &str = "autosave_seconds";
+
+/// Page sizes offered in the preferences overlay.
+const PAGE_SIZES: [usize; 4] = [25, 50, 100, 200];
+/// Autosave intervals offered in the preferences overlay (0 disables).
+const AUTOSAVE_CHOICES: [u64; 4] = [15, 30, 60, 0];
+
+/// Number of rows in the preferences overlay.
+pub(crate) const SETTINGS_ROWS: usize = 4;
 
 impl App {
     /// Load persisted preferences (called during startup).
@@ -20,6 +31,12 @@ impl App {
             if let Ok(enabled) = preferences::get(conn, MARK_READ_ON_OPEN, true) {
                 self.mark_read_on_open = enabled;
             }
+            self.page_size = stored_number(conn, PAGE_SIZE)
+                .unwrap_or(self.page_size)
+                .max(1);
+            self.autosave_seconds = stored_number(conn, AUTOSAVE_SECONDS)
+                .map(|value| value as u64)
+                .unwrap_or(self.autosave_seconds);
         }
     }
 
@@ -30,16 +47,47 @@ impl App {
 
     /// Move the settings highlight.
     pub(crate) fn settings_move(&mut self, delta: i32) {
-        let count = 2i32;
+        let count = SETTINGS_ROWS as i32;
         self.settings_index = ((self.settings_index as i32 + delta).rem_euclid(count)) as usize;
     }
 
-    /// Toggle the highlighted preference.
+    /// Change the highlighted preference.
     pub(crate) fn settings_toggle(&mut self) {
-        if self.settings_index == 0 {
-            self.toggle_notifications();
-        } else {
-            self.toggle_mark_read_on_open();
+        match self.settings_index {
+            0 => self.toggle_notifications(),
+            1 => self.toggle_mark_read_on_open(),
+            2 => {
+                let index = PAGE_SIZES
+                    .iter()
+                    .position(|size| *size == self.page_size)
+                    .map(|index| (index + 1) % PAGE_SIZES.len())
+                    .unwrap_or(0);
+                self.page_size = PAGE_SIZES[index];
+                self.persist_number(PAGE_SIZE, self.page_size);
+                self.set_status(&format!("Page size: {}.", self.page_size));
+            }
+            _ => {
+                let index = AUTOSAVE_CHOICES
+                    .iter()
+                    .position(|seconds| *seconds == self.autosave_seconds)
+                    .map(|index| (index + 1) % AUTOSAVE_CHOICES.len())
+                    .unwrap_or(0);
+                self.autosave_seconds = AUTOSAVE_CHOICES[index];
+                self.persist_number(AUTOSAVE_SECONDS, self.autosave_seconds as usize);
+                let message = if self.autosave_seconds == 0 {
+                    "Compose autosave off.".to_string()
+                } else {
+                    format!("Compose autosave every {}s.", self.autosave_seconds)
+                };
+                self.set_status(&message);
+            }
+        }
+    }
+
+    /// Store a numeric preference.
+    fn persist_number(&mut self, key: &str, value: usize) {
+        if let Some(conn) = self.db.as_ref() {
+            let _ = preferences::set_number(conn, key, value);
         }
     }
 
@@ -80,4 +128,9 @@ impl App {
             "Messages stay unread until you mark them."
         });
     }
+}
+
+/// Read a numeric preference, if one was stored.
+fn stored_number(conn: &rusqlite::Connection, key: &str) -> Option<usize> {
+    preferences::get_number(conn, key).ok().flatten()
 }

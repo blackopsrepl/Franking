@@ -2,7 +2,7 @@
 
 use crate::keys::View;
 
-use super::model::{App, PAGE_SIZE};
+use super::model::App;
 
 impl App {
     pub(crate) fn go_back(&mut self) {
@@ -135,7 +135,7 @@ impl App {
     }
 
     pub(crate) fn page_down(&mut self) {
-        if self.view == View::EnvelopeList && self.envelopes.len() >= PAGE_SIZE {
+        if self.view == View::EnvelopeList && self.envelopes.len() >= self.page_size {
             self.page += 1;
             self.load_envelopes();
         }

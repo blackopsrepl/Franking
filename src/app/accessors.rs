@@ -152,6 +152,8 @@ impl App {
             settings_index: 0,
             folder_jump: String::new(),
             sort_order: Default::default(),
+            page_size: super::model::DEFAULT_PAGE_SIZE,
+            autosave_seconds: 30,
             attachment_preview: None,
             preview_scroll: 0,
             schedule_input: String::new(),

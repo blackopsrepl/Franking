@@ -3,7 +3,7 @@
 use crate::keys::View;
 use crate::mail::types::FolderRole;
 
-use super::model::{App, PAGE_SIZE};
+use super::model::App;
 use super::undo::UndoOp;
 
 impl App {
@@ -36,7 +36,7 @@ impl App {
                 self.acct_owned(),
                 self.current_folder.clone(),
                 self.page,
-                PAGE_SIZE,
+                self.page_size,
                 self.active_query.clone(),
             );
         }
