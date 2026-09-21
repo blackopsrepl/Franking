@@ -1,0 +1,120 @@
+/*! Compose overlays: discard confirmation, autocomplete, and errors. */
+
+use ratatui::prelude::*;
+use ratatui::widgets::*;
+
+use crate::compose::FocusedField;
+use crate::theme::theme;
+
+pub(super) fn render_discard_confirm(frame: &mut Frame, area: Rect) {
+    let t = theme();
+    use crate::ui::util::centered_rect;
+
+    let popup = centered_rect(44, 5, area);
+    frame.render_widget(Clear, popup);
+    let block = Block::default()
+        .title(Span::styled(" Discard message? ", t.popup_title()))
+        .title_alignment(Alignment::Center)
+        .borders(Borders::ALL)
+        .border_style(t.error())
+        .style(t.popup());
+    frame.render_widget(block.clone(), popup);
+    let inner = block.inner(popup);
+    frame.render_widget(
+        Paragraph::new("y  discard  ·  n / Esc  keep editing")
+            .style(t.normal())
+            .alignment(Alignment::Center),
+        inner,
+    );
+}
+
+// ── Error overlay ─────────────────────────────────────────────────────────────
+
+pub(super) fn render_error(err: &str, frame: &mut Frame, area: Rect) {
+    let t = theme();
+    use crate::ui::util::centered_rect;
+
+    let popup = centered_rect(60, 5, area);
+    frame.render_widget(Clear, popup);
+    let block = Block::default()
+        .title(Span::styled(" Send failed ", t.popup_title()))
+        .title_alignment(Alignment::Center)
+        .borders(Borders::ALL)
+        .border_style(t.error())
+        .style(t.popup());
+    frame.render_widget(block.clone(), popup);
+    let inner = block.inner(popup);
+    frame.render_widget(
+        Paragraph::new(err)
+            .style(t.error())
+            .alignment(Alignment::Center),
+        inner,
+    );
+}
+
+// ── Autocomplete popup ────────────────────────────────────────────────────────
+
+pub(super) fn render_autocomplete(
+    ac: &crate::compose::AutocompleteState,
+    focused: FocusedField,
+    frame: &mut Frame,
+    fields_area: Rect,
+) {
+    if ac.suggestions.is_empty() {
+        return;
+    }
+
+    let t = theme();
+
+    // Determine Y position: below the relevant field (0-indexed inside border)
+    // Row 0 = From, Row 1 = To, Row 2 = Cc, Row 3 = Bcc, Row 4 = Subject
+    let field_row = match focused {
+        FocusedField::From
+        | FocusedField::Subject
+        | FocusedField::Body
+        | FocusedField::Send
+        | FocusedField::Draft
+        | FocusedField::Attach
+        | FocusedField::Discard => return,
+        FocusedField::To => 1u16,
+        FocusedField::Cc => 2,
+        FocusedField::Bcc => 3,
+    };
+
+    let label_width: u16 = 9; // "  To:   " etc.
+    let popup_width = fields_area.width.saturating_sub(label_width + 2);
+    let max_items = ac.suggestions.len().min(6) as u16;
+    let popup_rect = Rect {
+        x: fields_area.x + label_width,
+        y: fields_area.y + 1 + field_row, // below the field (inside the border)
+        width: popup_width,
+        height: max_items + 2,
+    };
+
+    frame.render_widget(Clear, popup_rect);
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .border_style(t.border_focused())
+        .style(t.popup());
+
+    let items: Vec<ListItem> = ac
+        .suggestions
+        .iter()
+        .enumerate()
+        .map(|(i, (name, email))| {
+            let text = match name {
+                Some(n) if !n.is_empty() => format!("{} <{}>", n, email),
+                _ => email.clone(),
+            };
+            let style = if i == ac.selected {
+                t.selected()
+            } else {
+                t.normal()
+            };
+            ListItem::new(text).style(style)
+        })
+        .collect();
+
+    let list = List::new(items).block(block);
+    frame.render_widget(list, popup_rect);
+}
