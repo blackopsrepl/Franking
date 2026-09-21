@@ -95,3 +95,40 @@ fn dovecot_append_list_read_and_flag() {
         .flag_add(None, "INBOX", &probe.id, "seen")
         .expect("flag");
 }
+
+#[test]
+fn dovecot_threads_messages() {
+    let Ok(address) = std::env::var("SOLVERFORGE_IMAP_TEST_ADDR") else {
+        return;
+    };
+    let (host, port) = address.rsplit_once(':').expect("host:port");
+    let port: u16 = port.parse().expect("port");
+    let account = account(host, port);
+
+    let pool = Arc::new(SessionPool::with_credentials(Arc::new(FixedCredentials)));
+    let service = ImapSmtpService::new(account.clone(), pool.clone());
+
+    let parent = b"From: alice@example.com\r\nTo: test@example.com\r\nSubject: Thread root\r\nMessage-ID: <root@example.com>\r\n\r\nroot";
+    let child = b"From: bob@example.com\r\nTo: test@example.com\r\nSubject: Re: Thread root\r\nMessage-ID: <child@example.com>\r\nReferences: <root@example.com>\r\nIn-Reply-To: <root@example.com>\r\n\r\nreply";
+    for raw in [parent.as_slice(), child.as_slice()] {
+        pool.with_connection(&account, |connection| match connection {
+            ConnectedImapSession::Plain(session) => {
+                session.append("INBOX", raw).map_err(map_imap_error)
+            }
+            ConnectedImapSession::Tls(session) => {
+                session.append("INBOX", raw).map_err(map_imap_error)
+            }
+        })
+        .expect("append");
+    }
+
+    let threaded = service
+        .list_envelopes_threaded(None, "INBOX", None)
+        .expect("threaded list");
+    assert!(threaded
+        .iter()
+        .any(|envelope| envelope.subject == "Thread root"));
+    assert!(threaded
+        .iter()
+        .any(|envelope| envelope.subject == "Re: Thread root"));
+}

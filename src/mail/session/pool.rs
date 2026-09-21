@@ -124,3 +124,45 @@ impl SessionPool {
         }
     }
 }
+
+impl SessionPool {
+    /// Run an operation against the pooled session, exposing capabilities.
+    pub fn with_session<T>(
+        &self,
+        account: &AccountRecord,
+        mut operation: impl FnMut(&mut ImapSession) -> MailResult<T>,
+    ) -> MailResult<T> {
+        let mut attempts = 0;
+        loop {
+            let mut sessions = self
+                .sessions
+                .lock()
+                .map_err(|_| MailError::other("session pool lock was poisoned"))?;
+
+            if !sessions.contains_key(&account.name) {
+                sessions.insert(
+                    account.name.clone(),
+                    ImapSession::connect(account, self.credentials.as_ref())?,
+                );
+            }
+
+            let session = sessions
+                .get_mut(&account.name)
+                .expect("session inserted immediately above");
+
+            match operation(session) {
+                Ok(value) => return Ok(value),
+                Err(error) if error.is_transport() => {
+                    sessions.remove(&account.name);
+                    drop(sessions);
+                    if attempts == 0 {
+                        attempts += 1;
+                        continue;
+                    }
+                    return Err(error);
+                }
+                Err(error) => return Err(error),
+            }
+        }
+    }
+}

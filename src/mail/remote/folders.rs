@@ -99,7 +99,57 @@ impl ImapSmtpService {
         folder: &str,
         query: Option<&str>,
     ) -> MailResult<Vec<Envelope>> {
-        self.list_envelopes(account, folder, 1, usize::MAX, query)
+        self.ensure_requested_account(account)?;
+        let criteria = search_criteria(query);
+
+        let threaded = self.pool.with_session(&self.account, |session| {
+            if !session.capabilities().thread {
+                return Ok(None);
+            }
+            match session.connection() {
+                ConnectedImapSession::Plain(session) => {
+                    session.select(folder).map_err(map_imap_error)?;
+                    Ok(Some(thread_uids(session, &criteria)?))
+                }
+                ConnectedImapSession::Tls(session) => {
+                    session.select(folder).map_err(map_imap_error)?;
+                    Ok(Some(thread_uids(session, &criteria)?))
+                }
+            }
+        })?;
+
+        let Some(uids) = threaded else {
+            return self.list_envelopes(account, folder, 1, usize::MAX, query);
+        };
+        if uids.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        let mut envelopes =
+            self.pool
+                .with_connection(&self.account, |connection| match connection {
+                    ConnectedImapSession::Plain(session) => {
+                        session.select(folder).map_err(map_imap_error)?;
+                        fetch_envelope_metadata(session, &uids)
+                    }
+                    ConnectedImapSession::Tls(session) => {
+                        session.select(folder).map_err(map_imap_error)?;
+                        fetch_envelope_metadata(session, &uids)
+                    }
+                })?;
+
+        let order: std::collections::HashMap<u32, usize> = uids
+            .iter()
+            .enumerate()
+            .map(|(index, uid)| (*uid, index))
+            .collect();
+        envelopes.sort_by_key(|envelope| {
+            order
+                .get(&envelope.id.parse::<u32>().unwrap_or_default())
+                .copied()
+                .unwrap_or(usize::MAX)
+        });
+        Ok(envelopes)
     }
 
     pub fn read_message_raw(
@@ -149,4 +199,30 @@ impl ImapSmtpService {
                 ConnectedImapSession::Tls(session) => exec(session, folder),
             })
     }
+}
+
+/// Run `UID THREAD REFERENCES` and flatten the thread groups into UID order.
+fn thread_uids<S: Read + Write>(
+    session: &mut imap::Session<S>,
+    criteria: &str,
+) -> MailResult<Vec<u32>> {
+    let response = session
+        .run_command_and_read_response(format!("UID THREAD REFERENCES UTF-8 {criteria}"))
+        .map_err(map_imap_error)?;
+    Ok(parse_thread_response(&String::from_utf8_lossy(&response)))
+}
+
+fn parse_thread_response(response: &str) -> Vec<u32> {
+    let mut uids = Vec::new();
+    for line in response.lines() {
+        let Some(rest) = line.strip_prefix("* THREAD") else {
+            continue;
+        };
+        for token in rest.split(|ch: char| !ch.is_ascii_digit()) {
+            if let Ok(uid) = token.parse() {
+                uids.push(uid);
+            }
+        }
+    }
+    uids
 }
