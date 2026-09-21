@@ -4,7 +4,7 @@ use crossterm::event::KeyCode;
 use pretty_assertions::assert_eq;
 use solverforge_mail::keys::{resolve, Action, View};
 
-use super::support::key;
+use super::support::{ctrl, key};
 
 // ── Account list ────────────────────────────────────────────────────
 
@@ -53,5 +53,9 @@ fn account_form_keys() {
     assert_eq!(
         resolve(View::AccountEdit, key(KeyCode::Char('x'))),
         Action::AccountEditInput('x')
+    );
+    assert_eq!(
+        resolve(View::AccountEdit, ctrl(KeyCode::Char('d'))),
+        Action::AccountEditDiscover
     );
 }

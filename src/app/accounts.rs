@@ -61,6 +61,50 @@ impl App {
         }
     }
 
+    /// Fill the account form from discovery results.
+    pub(crate) fn apply_discovered(
+        &mut self,
+        config: Option<crate::mail::autoconfig::DiscoveredConfig>,
+    ) {
+        let Some(config) = config else {
+            self.set_status("No automatic settings found; enter them by hand.");
+            return;
+        };
+        let Some(state) = self.account_edit_state.as_mut() else {
+            return;
+        };
+        state.imap_host = config.imap_host.clone();
+        state.imap_port = config.imap_port.to_string();
+        state.smtp_host = config.smtp_host.clone();
+        state.smtp_port = config.smtp_port.to_string();
+        if state.username.trim().is_empty() {
+            state.username = config.username.clone();
+        }
+        let source = match config.source {
+            crate::mail::autoconfig::DiscoverySource::Preset => "built-in provider settings",
+            crate::mail::autoconfig::DiscoverySource::MozillaAutoconfig => "Mozilla autoconfig",
+            crate::mail::autoconfig::DiscoverySource::Autodiscover => "Autodiscover",
+            crate::mail::autoconfig::DiscoverySource::Srv => "DNS SRV records",
+        };
+        self.set_status(&format!("Filled settings from {source}."));
+    }
+
+    /// Ask the worker to discover provider settings for the typed login.
+    pub(crate) fn discover_account_settings(&mut self) {
+        let Some(state) = self.account_edit_state.as_ref() else {
+            return;
+        };
+        let identifier = state.username.trim().to_string();
+        if identifier.is_empty() || !identifier.contains('@') {
+            if let Some(state) = self.account_edit_state.as_mut() {
+                state.error = Some("Enter an email address to auto-detect settings.".to_string());
+            }
+            return;
+        }
+        self.loading = true;
+        self.worker.discover_provider(identifier);
+    }
+
     /// Open the form for a new IMAP/SMTP account.
     pub(crate) fn open_account_new(&mut self) {
         self.account_edit_state = Some(AccountEditState::new());

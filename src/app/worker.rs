@@ -70,6 +70,7 @@ impl App {
                     self.pending_return_to_list = false;
                     self.pending_refresh_after_action = false;
                 }
+                WorkerResult::Discovered(config) => self.apply_discovered(config),
                 WorkerResult::SieveScripts(result) => self.handle_sieve_scripts(result),
                 WorkerResult::SieveBody(name, result) => self.handle_sieve_body(name, result),
                 WorkerResult::FolderUnread(folder_name, Ok(count)) => {

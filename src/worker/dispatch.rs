@@ -29,6 +29,8 @@ pub enum WorkerResult {
     SieveScripts(Result<Vec<crate::mail::sieve::SieveScript>, MailError>),
     /// A fetched Sieve script: (name, source).
     SieveBody(String, Result<String, MailError>),
+    /// Provider settings discovered for an email address.
+    Discovered(Option<crate::mail::account_store::DiscoveredConfig>),
 }
 
 /// Lightweight handle for dispatching work to background threads.
@@ -144,6 +146,15 @@ impl Worker {
         thread::spawn(move || {
             let result = service.read_message_content(account.as_deref(), &folder, &id);
             let _ = tx.send(WorkerResult::Message(Box::new(result)));
+        });
+    }
+
+    /// Resolve provider settings for an email address off the UI thread.
+    pub fn discover_provider(&self, identifier: String) {
+        let tx = self.tx.clone();
+        thread::spawn(move || {
+            let result = crate::mail::autoconfig::discover(&identifier);
+            let _ = tx.send(WorkerResult::Discovered(result));
         });
     }
 

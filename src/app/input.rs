@@ -102,6 +102,7 @@ impl App {
             Action::AccountEditToggleDefault => self.account_form_toggle_default(),
             Action::AccountEditSave => self.account_form_save(),
             Action::AccountEditCancel => self.cancel_account_form(),
+            Action::AccountEditDiscover => self.discover_account_settings(),
             Action::OpenLinks => self.open_links(),
             Action::LinkNext => self.link_next(),
             Action::LinkPrev => self.link_prev(),

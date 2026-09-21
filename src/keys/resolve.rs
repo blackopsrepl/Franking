@@ -19,6 +19,7 @@ pub fn resolve(view: View, key: KeyEvent) -> Action {
         View::IdentityList => return resolve_identity_list(key),
         View::IdentityEdit => return resolve_identity_edit(key),
         View::MessageSearch => return resolve_message_search(key),
+        View::AccountEdit => return resolve_account_edit(key),
         View::LinkList => return resolve_link_list(key),
         View::SieveScripts => return resolve_sieve_scripts(key),
         View::SieveName => return resolve_sieve_name(key),
@@ -42,7 +43,6 @@ pub fn resolve(view: View, key: KeyEvent) -> Action {
         View::MessageView => resolve_message_view(key),
         View::FolderList => resolve_folder_list(key),
         View::AccountList => resolve_account_list(key),
-        View::AccountEdit => resolve_account_edit(key),
         View::Search => resolve_search(key),
         View::Help => resolve_help(key),
         View::MovePrompt => resolve_move_prompt(key),
@@ -60,7 +60,8 @@ pub fn resolve(view: View, key: KeyEvent) -> Action {
         | View::IdentityEdit
         | View::SieveScripts
         | View::SieveName
-        | View::SieveEdit => Action::None,
+        | View::SieveEdit
+        | View::AccountEdit => Action::None,
     }
 }
 

@@ -7,6 +7,7 @@ mod store;
 #[cfg(test)]
 mod tests;
 
+pub use crate::mail::autoconfig::DiscoveredConfig;
 pub use model::{AccountConfig, AccountRecord, OauthState, OauthStateConfig, TEST_ACCOUNT_NAME};
 pub use oauth_store::{get_oauth_state, upsert_oauth_state};
 pub use store::{

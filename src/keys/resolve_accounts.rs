@@ -20,6 +20,13 @@ pub(super) fn resolve_account_list(key: KeyEvent) -> Action {
 }
 
 pub(super) fn resolve_account_edit(key: KeyEvent) -> Action {
+    if key
+        .modifiers
+        .contains(crossterm::event::KeyModifiers::CONTROL)
+        && key.code == KeyCode::Char('d')
+    {
+        return Action::AccountEditDiscover;
+    }
     match key.code {
         KeyCode::Tab => Action::AccountEditFieldNext,
         KeyCode::BackTab => Action::AccountEditFieldPrev,

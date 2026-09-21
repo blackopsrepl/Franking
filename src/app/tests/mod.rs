@@ -1,5 +1,6 @@
 /*! App unit test wiring. */
 
+mod accounts;
 mod archive;
 mod compose;
 mod copy_move;

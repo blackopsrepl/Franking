@@ -98,6 +98,20 @@ pub fn render(app: &App, frame: &mut Frame) {
         );
     }
 
+    let hint_height = 1u16;
+    frame.render_widget(
+        Paragraph::new(Span::styled(
+            "Ctrl+D detects settings from the login address · Tab moves · Enter saves",
+            t.dimmed(),
+        )),
+        Rect {
+            x: inner.x,
+            y: inner.y + inner.height.saturating_sub(3),
+            width: inner.width,
+            height: hint_height,
+        },
+    );
+
     let error_height = if state.error.is_some() { 1 } else { 0 };
     if let Some(ref error) = state.error {
         frame.render_widget(

@@ -138,6 +138,8 @@ pub enum Action {
     AccountEditToggleDefault,
     AccountEditSave,
     AccountEditCancel,
+    /// Auto-detect provider settings for the typed login.
+    AccountEditDiscover,
     // ── Folder management ─────────────────────────────────────────────
     FolderNew,
     FolderRename,
