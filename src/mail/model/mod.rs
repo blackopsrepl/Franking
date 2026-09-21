@@ -99,3 +99,10 @@ impl MessageDocument {
         )
     }
 }
+
+impl MessageDocument {
+    /// PGP/MIME or S/MIME structure detected on the message, if any.
+    pub fn protection(&self) -> Option<crate::mail::security::Protection> {
+        crate::mail::security::detect_protection(self)
+    }
+}

@@ -33,6 +33,9 @@ pub fn render(app: &App, frame: &mut Frame, area: Rect) {
     if let Some(summary) = message.authentication().summary() {
         lines.push(Line::from(Span::styled(summary, t.dimmed())));
     }
+    if let Some(protection) = message.protection() {
+        lines.push(Line::from(Span::styled(protection.label(), t.dimmed())));
+    }
 
     lines.push(Line::from(""));
     lines.push(Line::from(Span::styled(
