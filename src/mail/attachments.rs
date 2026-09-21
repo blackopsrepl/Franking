@@ -29,6 +29,8 @@ pub fn payloads(document: &MessageDocument) -> Vec<(String, Vec<u8>)> {
                 .unwrap_or_else(|| format!("attachment-{index}"));
             let bytes = match &part.body {
                 PartBody::Binary(bytes) => bytes.clone(),
+                // An attachment with no transfer encoding arrives as text.
+                PartBody::Text(text) | PartBody::Html(text) => text.clone().into_bytes(),
                 PartBody::Nested(nested) => nested.raw.clone().unwrap_or_default(),
                 _ => return,
             };
@@ -193,6 +195,18 @@ AAECAwQ=
         assert_eq!(payloads.len(), 1);
         assert_eq!(payloads[0].0, "report.pdf");
         assert_eq!(payloads[0].1, vec![0, 1, 2, 3, 4]);
+    }
+
+    #[test]
+    fn payloads_include_plain_text_attachments() {
+        let raw = b"MIME-Version: 1.0\r\nContent-Type: multipart/mixed; boundary=\"m\"\r\n\r\n--m\r\nContent-Type: text/plain\r\n\r\nbody\r\n--m\r\nContent-Type: text/plain; name=\"notes.txt\"\r\nContent-Disposition: attachment; filename=\"notes.txt\"\r\n\r\nline one\r\n--m--\r\n";
+        let document = crate::mail::mime::parse_message(raw).unwrap();
+        assert_eq!(document.attachments.len(), 1);
+
+        let payloads = super::payloads(&document);
+        assert_eq!(payloads.len(), 1, "text attachments are payloads too");
+        assert_eq!(payloads[0].0, "notes.txt");
+        assert_eq!(payloads[0].1, b"line one".to_vec());
     }
 
     #[test]

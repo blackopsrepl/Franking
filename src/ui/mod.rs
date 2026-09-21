@@ -114,6 +114,9 @@ pub fn render(app: &mut App, frame: &mut Frame) {
     if app.view == View::Outbox {
         outbox::render(app, frame);
     }
+    if app.view == View::AttachmentView {
+        attachment_list::render_preview(app, frame);
+    }
     if app.view == View::Settings {
         settings::render(app, frame);
     }

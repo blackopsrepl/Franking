@@ -4,8 +4,8 @@ use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
 use super::action::{Action, ComposeFocus, ComposeKeyContext};
 use super::resolve_accounts::{
-    resolve_account_edit, resolve_account_list, resolve_file_picker, resolve_invite,
-    resolve_outbox, resolve_schedule, resolve_settings,
+    resolve_account_edit, resolve_account_list, resolve_attachment_view, resolve_file_picker,
+    resolve_invite, resolve_outbox, resolve_schedule, resolve_settings,
 };
 use super::resolve_contacts::{
     resolve_compose, resolve_contact_edit, resolve_contact_search, resolve_contacts,
@@ -30,6 +30,7 @@ pub fn resolve(view: View, key: KeyEvent) -> Action {
         View::Settings => return resolve_settings(key),
         View::SchedulePrompt => return resolve_schedule(key),
         View::InviteReply => return resolve_invite(key),
+        View::AttachmentView => return resolve_attachment_view(key),
         View::LinkList => return resolve_link_list(key),
         View::SieveScripts => return resolve_sieve_scripts(key),
         View::SieveName => return resolve_sieve_name(key),
@@ -74,7 +75,8 @@ pub fn resolve(view: View, key: KeyEvent) -> Action {
         | View::Outbox
         | View::Settings
         | View::SchedulePrompt
-        | View::InviteReply => Action::None,
+        | View::InviteReply
+        | View::AttachmentView => Action::None,
     }
 }
 /// Resolve compose keys with compose-state context.
@@ -242,6 +244,7 @@ fn resolve_attachment_list(key: KeyEvent) -> Action {
         KeyCode::Char('j') | KeyCode::Down => Action::AttachmentNext,
         KeyCode::Char('k') | KeyCode::Up => Action::AttachmentPrev,
         KeyCode::Enter | KeyCode::Char('o') => Action::AttachmentOpen,
+        KeyCode::Char('v') => Action::AttachmentView,
         KeyCode::Char('s') => Action::AttachmentSave,
         KeyCode::Esc | KeyCode::Char('q') => Action::AttachmentClose,
         _ => Action::None,

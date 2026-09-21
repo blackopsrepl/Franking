@@ -173,6 +173,11 @@ pub enum Action {
     LinkPrev,
     LinkOpen,
     LinkClose,
+    /// Preview a text attachment in the attachment list.
+    AttachmentView,
+    PreviewScrollDown,
+    PreviewScrollUp,
+    PreviewClose,
     // ── In-message search ─────────────────────────────────────────────
     SearchMessage,
     MessageSearchInput(char),

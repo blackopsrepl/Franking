@@ -33,6 +33,8 @@ pub enum View {
     MessageSearch,
     /// Link list overlay for the current message.
     LinkList,
+    /// Text preview of one attachment.
+    AttachmentView,
     /// Server-side Sieve script browser.
     SieveScripts,
     /// New-script name prompt.

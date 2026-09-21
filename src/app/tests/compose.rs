@@ -224,3 +224,53 @@ fn an_invalid_delay_is_rejected() {
     assert!(app.compose_state.is_some(), "compose stays open");
     assert_eq!(app.view, crate::keys::View::SchedulePrompt);
 }
+
+#[test]
+fn previews_a_text_attachment_in_app() {
+    use crate::keys::View;
+
+    use super::super::App;
+
+    let raw = b"MIME-Version: 1.0\r\nContent-Type: multipart/mixed; boundary=\"m\"\r\n\r\n--m\r\nContent-Type: text/plain\r\n\r\nhello\r\n--m\r\nContent-Type: text/plain; name=\"notes.txt\"\r\nContent-Disposition: attachment; filename=\"notes.txt\"\r\n\r\nline one\r\nline two\r\n--m--\r\n";
+    let mut document = crate::mail::mime::parse_message(raw).unwrap();
+    document.raw = Some(raw.to_vec());
+
+    let mut app = App::new(None);
+    app.view = View::MessageView;
+    app.message_content = Some(document);
+    app.attachment_index = 0;
+
+    app.preview_attachment();
+    assert_eq!(app.view, View::AttachmentView);
+    let (name, text) = app.attachment_preview.as_ref().expect("preview");
+    assert_eq!(name, "notes.txt");
+    assert!(text.contains("line one"), "{text}");
+
+    app.preview_scroll(1);
+    assert_eq!(app.preview_scroll, 1);
+    app.preview_scroll(-1);
+    assert_eq!(app.preview_scroll, 0);
+
+    app.close_attachment_preview();
+    assert_eq!(app.view, View::AttachmentList);
+    assert!(app.attachment_preview.is_none());
+}
+
+#[test]
+fn refuses_to_preview_binary_attachments() {
+    use crate::keys::View;
+
+    use super::super::App;
+
+    let raw = b"MIME-Version: 1.0\r\nContent-Type: multipart/mixed; boundary=\"m\"\r\n\r\n--m\r\nContent-Type: text/plain\r\n\r\nhello\r\n--m\r\nContent-Type: application/pdf; name=\"doc.pdf\"\r\nContent-Disposition: attachment; filename=\"doc.pdf\"\r\nContent-Transfer-Encoding: base64\r\n\r\nAAECAwQ=\r\n--m--\r\n";
+    let mut document = crate::mail::mime::parse_message(raw).unwrap();
+    document.raw = Some(raw.to_vec());
+
+    let mut app = App::new(None);
+    app.view = View::MessageView;
+    app.message_content = Some(document);
+
+    app.preview_attachment();
+    assert_eq!(app.view, View::MessageView);
+    assert!(app.status_message.contains("not text"));
+}

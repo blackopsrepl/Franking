@@ -116,9 +116,11 @@ pub fn hints(view: View) -> Vec<(&'static str, &'static str)> {
         View::Help => vec![("j/k", "scroll"), ("q/?/Esc", "close")],
         View::MovePrompt => vec![("Enter", "move"), ("Esc", "cancel")],
         View::PassphrasePrompt => vec![("Enter", "unlock"), ("Esc", "cancel")],
+        View::AttachmentView => vec![("j/k", "scroll"), ("Esc", "close")],
         View::AttachmentList => vec![
             ("j/k", "nav"),
             ("Enter", "open"),
+            ("v", "view"),
             ("s", "save"),
             ("Esc", "close"),
         ],

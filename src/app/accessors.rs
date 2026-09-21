@@ -152,6 +152,8 @@ impl App {
             settings_index: 0,
             folder_jump: String::new(),
             sort_order: Default::default(),
+            attachment_preview: None,
+            preview_scroll: 0,
             schedule_input: String::new(),
             invite_pending: None,
             move_target: String::new(),

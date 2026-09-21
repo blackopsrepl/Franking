@@ -88,6 +88,10 @@ pub struct App {
     pub(crate) folder_jump: String,
     /// Ordering applied to the listed page.
     pub(crate) sort_order: crate::mail::sort::SortOrder,
+    /// Text attachment being previewed: (name, text).
+    pub(crate) attachment_preview: Option<(String, String)>,
+    /// Scroll offset inside the attachment preview.
+    pub(crate) preview_scroll: u16,
     /// Buffered send-later delay input.
     pub(crate) schedule_input: String,
     /// Invitation awaiting a response choice.

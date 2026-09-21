@@ -36,7 +36,9 @@ pub(super) fn parse_message_object(message: &ParsedMessage<'_>) -> MessageDocume
     for part in &parts {
         part.walk(&mut |part| {
             if part.is_attachment() {
-                if matches!(part.body, PartBody::Binary(_) | PartBody::Nested(_)) {
+                // Text and HTML attachments carry their payload inline, so they
+                // count as attachments exactly like binary parts.
+                if !matches!(part.body, PartBody::Multipart) {
                     attachments.push(Attachment::from_part(part));
                 }
                 return;

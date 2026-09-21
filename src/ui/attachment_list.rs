@@ -1,5 +1,5 @@
 use ratatui::prelude::*;
-use ratatui::widgets::{Block, Borders, Clear, List, ListItem, ListState};
+use ratatui::widgets::{Block, Borders, Clear, List, ListItem, ListState, Paragraph, Wrap};
 
 use crate::app::App;
 use crate::theme::theme;
@@ -66,3 +66,31 @@ pub fn render(app: &App, frame: &mut Frame) {
 
 #[cfg(test)]
 mod tests;
+
+/// Render the text attachment preview overlay.
+pub fn render_preview(app: &App, frame: &mut Frame) {
+    let t = theme();
+    let popup = centered_rect(90, 80, frame.area());
+    frame.render_widget(Clear, popup);
+
+    let (name, text) = match app.attachment_preview.as_ref() {
+        Some(preview) => preview,
+        None => return,
+    };
+    let block = Block::default()
+        .title(Span::styled(
+            format!(" {name} · Esc closes "),
+            t.popup_title(),
+        ))
+        .borders(Borders::ALL)
+        .border_style(t.border_focused())
+        .style(t.popup());
+    let inner = block.inner(popup);
+    frame.render_widget(block, popup);
+
+    let paragraph = Paragraph::new(text.as_str())
+        .style(t.normal())
+        .wrap(Wrap { trim: false })
+        .scroll((app.preview_scroll, 0));
+    frame.render_widget(paragraph, inner);
+}

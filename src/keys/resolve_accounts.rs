@@ -19,6 +19,16 @@ pub(super) fn resolve_account_list(key: KeyEvent) -> Action {
     }
 }
 
+pub(super) fn resolve_attachment_view(key: KeyEvent) -> Action {
+    match key.code {
+        KeyCode::Char('j') | KeyCode::Down => Action::PreviewScrollDown,
+        KeyCode::Char('k') | KeyCode::Up => Action::PreviewScrollUp,
+        KeyCode::Char(' ') | KeyCode::PageDown => Action::PreviewScrollDown,
+        KeyCode::Esc | KeyCode::Char('q') => Action::PreviewClose,
+        _ => Action::None,
+    }
+}
+
 pub(super) fn resolve_invite(key: KeyEvent) -> Action {
     match key.code {
         KeyCode::Char('a') => {

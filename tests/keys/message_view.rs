@@ -151,6 +151,22 @@ fn message_view_opens_the_attachment_list() {
 }
 
 #[test]
+fn attachment_view_keys() {
+    assert_eq!(
+        resolve(View::AttachmentList, key(KeyCode::Char('v'))),
+        Action::AttachmentView
+    );
+    assert_eq!(
+        resolve(View::AttachmentView, key(KeyCode::Char('j'))),
+        Action::PreviewScrollDown
+    );
+    assert_eq!(
+        resolve(View::AttachmentView, key(KeyCode::Esc)),
+        Action::PreviewClose
+    );
+}
+
+#[test]
 fn attachment_list_keys() {
     assert_eq!(
         resolve(View::AttachmentList, key(KeyCode::Char('j'))),
