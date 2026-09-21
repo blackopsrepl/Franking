@@ -51,6 +51,8 @@ pub enum AccountField {
     ImapPort,
     SmtpHost,
     SmtpPort,
+    SieveHost,
+    SievePort,
     Auth,
     ClientId,
     ClientSecret,
@@ -68,7 +70,9 @@ impl AccountField {
             AccountField::ImapHost => AccountField::ImapPort,
             AccountField::ImapPort => AccountField::SmtpHost,
             AccountField::SmtpHost => AccountField::SmtpPort,
-            AccountField::SmtpPort => AccountField::Auth,
+            AccountField::SmtpPort => AccountField::SieveHost,
+            AccountField::SieveHost => AccountField::SievePort,
+            AccountField::SievePort => AccountField::Auth,
             AccountField::Auth => AccountField::ClientId,
             AccountField::ClientId => AccountField::ClientSecret,
             AccountField::ClientSecret => AccountField::Password,
@@ -91,7 +95,9 @@ impl AccountField {
                 AccountField::ImapPort => AccountField::ImapHost,
                 AccountField::SmtpHost => AccountField::ImapPort,
                 AccountField::SmtpPort => AccountField::SmtpHost,
-                AccountField::Auth => AccountField::SmtpPort,
+                AccountField::SieveHost => AccountField::SmtpPort,
+                AccountField::SievePort => AccountField::SieveHost,
+                AccountField::Auth => AccountField::SievePort,
                 AccountField::ClientId => AccountField::Auth,
                 AccountField::ClientSecret => AccountField::ClientId,
                 AccountField::Password => AccountField::ClientSecret,
@@ -110,6 +116,8 @@ impl AccountField {
             AccountField::ImapPort => "IMAP pt ",
             AccountField::SmtpHost => "SMTP    ",
             AccountField::SmtpPort => "SMTP pt ",
+            AccountField::SieveHost => "Sieve   ",
+            AccountField::SievePort => "Sieve pt",
             AccountField::Auth => "Auth    ",
             AccountField::ClientId => "Client  ",
             AccountField::ClientSecret => "Secret  ",
@@ -136,6 +144,9 @@ pub struct AccountEditState {
     pub imap_port: String,
     pub smtp_host: String,
     pub smtp_port: String,
+    /// Optional ManageSieve host and port (blank uses the IMAP host).
+    pub sieve_host: String,
+    pub sieve_port: String,
     /// Authentication method.
     pub auth_mode: AuthMode,
     pub client_id: String,
@@ -162,6 +173,8 @@ impl AccountEditState {
             imap_port: "993".to_string(),
             smtp_host: String::new(),
             smtp_port: "465".to_string(),
+            sieve_host: String::new(),
+            sieve_port: String::new(),
             auth_mode: AuthMode::default(),
             client_id: String::new(),
             client_secret: String::new(),
@@ -185,6 +198,11 @@ impl AccountEditState {
             smtp_host: record.smtp_host.clone().unwrap_or_default(),
             smtp_port: record
                 .smtp_port
+                .map(|port| port.to_string())
+                .unwrap_or_default(),
+            sieve_host: record.sieve_host.clone().unwrap_or_default(),
+            sieve_port: record
+                .sieve_port
                 .map(|port| port.to_string())
                 .unwrap_or_default(),
             auth_mode: match record.auth_mode.as_deref() {
@@ -212,6 +230,8 @@ impl AccountEditState {
             AccountField::ImapPort => Some(&mut self.imap_port),
             AccountField::SmtpHost => Some(&mut self.smtp_host),
             AccountField::SmtpPort => Some(&mut self.smtp_port),
+            AccountField::SieveHost => Some(&mut self.sieve_host),
+            AccountField::SievePort => Some(&mut self.sieve_port),
             AccountField::ClientId => Some(&mut self.client_id),
             AccountField::ClientSecret => Some(&mut self.client_secret),
             AccountField::Password => Some(&mut self.password),
@@ -251,6 +271,18 @@ impl AccountEditState {
         let smtp_port = parse_port(&self.smtp_port, 465)?;
         Ok((name, username, imap_host, imap_port, smtp_host, smtp_port))
     }
+}
+
+/// Parse an optional port, rejecting non-numeric values.
+pub fn parse_optional_port(value: &str) -> Result<Option<u16>, String> {
+    let trimmed = value.trim();
+    if trimmed.is_empty() {
+        return Ok(None);
+    }
+    trimmed
+        .parse::<u16>()
+        .map(Some)
+        .map_err(|_| format!("Port '{trimmed}' is not a number."))
 }
 
 fn parse_port(value: &str, default: u16) -> Result<u16, String> {

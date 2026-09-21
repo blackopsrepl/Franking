@@ -26,6 +26,9 @@ pub fn list_accounts(conn: &Connection) -> Result<Vec<AccountRecord>> {
              e.smtp_host,
              e.smtp_port,
              e.smtp_security,
+             e.sieve_host,
+             e.sieve_port,
+             e.sieve_security,
              b.auth_mode,
              b.username,
              b.keyring_imap_secret_id,
@@ -56,6 +59,9 @@ pub fn get_account(conn: &Connection, name: &str) -> Result<Option<AccountRecord
              e.smtp_host,
              e.smtp_port,
              e.smtp_security,
+             e.sieve_host,
+             e.sieve_port,
+             e.sieve_security,
              b.auth_mode,
              b.username,
              b.keyring_imap_secret_id,
@@ -125,15 +131,19 @@ pub fn upsert_account(conn: &Connection, config: &AccountConfig) -> Result<()> {
 
     tx.execute(
         "INSERT INTO account_endpoints (
-             account_id, imap_host, imap_port, imap_security, smtp_host, smtp_port, smtp_security
-         ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+             account_id, imap_host, imap_port, imap_security, smtp_host, smtp_port, smtp_security,
+             sieve_host, sieve_port, sieve_security
+         ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)
          ON CONFLICT(account_id) DO UPDATE SET
              imap_host = excluded.imap_host,
              imap_port = excluded.imap_port,
              imap_security = excluded.imap_security,
              smtp_host = excluded.smtp_host,
              smtp_port = excluded.smtp_port,
-             smtp_security = excluded.smtp_security",
+             smtp_security = excluded.smtp_security,
+             sieve_host = excluded.sieve_host,
+             sieve_port = excluded.sieve_port,
+             sieve_security = excluded.sieve_security",
         params![
             account_id,
             config.imap_host,
@@ -141,7 +151,10 @@ pub fn upsert_account(conn: &Connection, config: &AccountConfig) -> Result<()> {
             config.imap_security,
             config.smtp_host,
             config.smtp_port.map(i64::from),
-            config.smtp_security
+            config.smtp_security,
+            config.sieve_host,
+            config.sieve_port.map(i64::from),
+            config.sieve_security
         ],
     )?;
 
@@ -183,10 +196,13 @@ fn row_to_account_record(row: &rusqlite::Row<'_>) -> rusqlite::Result<AccountRec
         smtp_host: row.get(9)?,
         smtp_port: row.get::<_, Option<i64>>(10)?.map(|value| value as u16),
         smtp_security: row.get(11)?,
-        auth_mode: row.get(12)?,
-        username: row.get(13)?,
-        keyring_imap_secret_id: row.get(14)?,
-        keyring_smtp_secret_id: row.get(15)?,
+        sieve_host: row.get(12)?,
+        sieve_port: row.get::<_, Option<i64>>(13)?.map(|value| value as u16),
+        sieve_security: row.get(14)?,
+        auth_mode: row.get(15)?,
+        username: row.get(16)?,
+        keyring_imap_secret_id: row.get(17)?,
+        keyring_smtp_secret_id: row.get(18)?,
     })
 }
 

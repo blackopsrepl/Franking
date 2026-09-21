@@ -92,6 +92,17 @@ impl App {
         let is_default = state.is_default;
         let editing = state.editing;
         let auth_mode = state.auth_mode;
+        let sieve_host =
+            (!state.sieve_host.trim().is_empty()).then(|| state.sieve_host.trim().to_string());
+        let sieve_port = match crate::account_edit::parse_optional_port(&state.sieve_port) {
+            Ok(port) => port,
+            Err(message) => {
+                if let Some(state) = self.account_edit_state.as_mut() {
+                    state.error = Some(message);
+                }
+                return;
+            }
+        };
         let client_id = state.client_id.clone();
         let client_secret = state.client_secret.clone();
 
@@ -142,6 +153,9 @@ impl App {
             smtp_host: Some(smtp_host),
             smtp_port: Some(smtp_port),
             smtp_security: Some("tls".to_string()),
+            sieve_host,
+            sieve_port,
+            sieve_security: None,
             auth_mode: Some("password".to_string()),
             username: Some(username),
             keyring_imap_secret_id: Some(imap_secret_id),

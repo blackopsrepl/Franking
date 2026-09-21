@@ -23,6 +23,9 @@ fn upsert_account_persists_endpoint_and_auth_details() {
         smtp_host: Some("smtp.example.com".to_string()),
         smtp_port: Some(465),
         smtp_security: Some("tls".to_string()),
+        sieve_host: None,
+        sieve_port: None,
+        sieve_security: None,
         auth_mode: Some("password".to_string()),
         username: Some("alice@example.com".to_string()),
         keyring_imap_secret_id: Some("solverforge-mail/work/imap".to_string()),
@@ -61,6 +64,9 @@ fn upsert_oauth_state_persists_refresh_metadata() {
         smtp_host: Some("smtp.gmail.com".to_string()),
         smtp_port: Some(587),
         smtp_security: Some("starttls".to_string()),
+        sieve_host: None,
+        sieve_port: None,
+        sieve_security: None,
         auth_mode: Some("oauth2".to_string()),
         username: Some("alice@gmail.com".to_string()),
         keyring_imap_secret_id: None,
@@ -114,6 +120,9 @@ mod account_lifecycle {
             smtp_host: Some("smtp.example.com".to_string()),
             smtp_port: Some(465),
             smtp_security: Some("tls".to_string()),
+            sieve_host: None,
+            sieve_port: None,
+            sieve_security: None,
             auth_mode: Some("password".to_string()),
             username: Some("alice@example.com".to_string()),
             keyring_imap_secret_id: Some("work-imap".to_string()),
@@ -159,5 +168,44 @@ mod account_lifecycle {
             .map(|record| record.name.as_str())
             .collect();
         assert_eq!(defaults, vec!["work"]);
+    }
+}
+
+#[cfg(test)]
+mod sieve_endpoints {
+    use crate::mail::account_store::{get_account, upsert_account, AccountConfig};
+
+    #[test]
+    fn persists_explicit_sieve_settings() {
+        let conn = rusqlite::Connection::open_in_memory().unwrap();
+        crate::db::init_for_test(&conn).unwrap();
+
+        let config = AccountConfig {
+            name: "work".to_string(),
+            backend_kind: "imap".to_string(),
+            provider_kind: "generic".to_string(),
+            enabled: true,
+            is_default: false,
+            maildir_path: None,
+            imap_host: Some("imap.example.com".to_string()),
+            imap_port: Some(993),
+            imap_security: Some("tls".to_string()),
+            smtp_host: Some("smtp.example.com".to_string()),
+            smtp_port: Some(465),
+            smtp_security: Some("tls".to_string()),
+            sieve_host: Some("sieve.example.com".to_string()),
+            sieve_port: Some(14190),
+            sieve_security: Some("tls".to_string()),
+            auth_mode: Some("password".to_string()),
+            username: Some("alice@example.com".to_string()),
+            keyring_imap_secret_id: Some("work-imap".to_string()),
+            keyring_smtp_secret_id: Some("work-smtp".to_string()),
+        };
+        upsert_account(&conn, &config).unwrap();
+
+        let loaded = get_account(&conn, "work").unwrap().expect("account");
+        assert_eq!(loaded.sieve_host.as_deref(), Some("sieve.example.com"));
+        assert_eq!(loaded.sieve_port, Some(14190));
+        assert_eq!(loaded.sieve_security.as_deref(), Some("tls"));
     }
 }

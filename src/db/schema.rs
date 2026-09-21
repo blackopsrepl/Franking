@@ -88,6 +88,9 @@ pub(super) fn create_schema(conn: &Connection) -> Result<()> {
 
          CREATE TABLE account_endpoints (
              account_id     INTEGER PRIMARY KEY REFERENCES accounts(id) ON DELETE CASCADE,
+             sieve_host     TEXT,
+             sieve_port     INTEGER,
+             sieve_security TEXT,
              imap_host      TEXT,
              imap_port      INTEGER,
              imap_security  TEXT,
@@ -234,6 +237,23 @@ pub(super) fn migrate_schema(conn: &Connection) -> Result<()> {
         .exists([])?;
     if !has_send_after {
         conn.execute_batch("ALTER TABLE outbox ADD COLUMN send_after TEXT;")?;
+    }
+    for column in [
+        "ALTER TABLE account_endpoints ADD COLUMN sieve_host TEXT;",
+        "ALTER TABLE account_endpoints ADD COLUMN sieve_port INTEGER;",
+        "ALTER TABLE account_endpoints ADD COLUMN sieve_security TEXT;",
+    ] {
+        let name = column
+            .split("ADD COLUMN ")
+            .nth(1)
+            .and_then(|rest| rest.split_whitespace().next())
+            .unwrap_or_default();
+        let exists: bool = conn
+            .prepare("SELECT 1 FROM pragma_table_info('account_endpoints') WHERE name = ?1")?
+            .exists([name])?;
+        if !exists {
+            conn.execute_batch(column)?;
+        }
     }
     Ok(())
 }

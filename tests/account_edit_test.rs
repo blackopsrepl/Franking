@@ -7,7 +7,7 @@ use solverforge_mail::mail::account_store::AccountRecord;
 fn tab_cycles_through_every_field_and_wraps() {
     let mut state = AccountEditState::new();
     assert_eq!(state.focused, AccountField::Name);
-    for _ in 0..12 {
+    for _ in 0..14 {
         state.focused = state.focused.step(1);
     }
     assert_eq!(state.focused, AccountField::Cancel);
@@ -60,6 +60,9 @@ fn editing_prefills_from_a_record_and_masks_the_password() {
         smtp_host: Some("smtp.example.com".to_string()),
         smtp_port: Some(1465),
         smtp_security: Some("tls".to_string()),
+        sieve_host: None,
+        sieve_port: None,
+        sieve_security: None,
         auth_mode: Some("password".to_string()),
         username: Some("alice@example.com".to_string()),
         keyring_imap_secret_id: Some("work-imap".to_string()),

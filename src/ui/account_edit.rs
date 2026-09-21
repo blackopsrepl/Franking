@@ -19,7 +19,7 @@ pub fn render(app: &App, frame: &mut Frame) {
     frame.render_widget(Clear, area);
 
     let popup_w = area.width.min(60);
-    let popup_h = 30u16;
+    let popup_h = 34u16;
     let popup = Rect {
         x: area.x + area.width.saturating_sub(popup_w) / 2,
         y: area.y + area.height.saturating_sub(popup_h) / 2,
@@ -44,13 +44,23 @@ pub fn render(app: &App, frame: &mut Frame) {
 
     let masked = "*".repeat(state.password.chars().count());
     let client_secret_masked = "*".repeat(state.client_secret.chars().count());
-    let fields: [(AccountField, &str, &str); 11] = [
+    let fields: [(AccountField, &str, &str); 13] = [
         (AccountField::Name, "Name    ", state.name.as_str()),
         (AccountField::Username, "Login   ", state.username.as_str()),
         (AccountField::ImapHost, "IMAP    ", state.imap_host.as_str()),
         (AccountField::ImapPort, "IMAP pt ", state.imap_port.as_str()),
         (AccountField::SmtpHost, "SMTP    ", state.smtp_host.as_str()),
         (AccountField::SmtpPort, "SMTP pt ", state.smtp_port.as_str()),
+        (
+            AccountField::SieveHost,
+            "Sieve   ",
+            state.sieve_host.as_str(),
+        ),
+        (
+            AccountField::SievePort,
+            "Sieve pt",
+            state.sieve_port.as_str(),
+        ),
         (AccountField::Auth, "Auth    ", state.auth_mode.label()),
         (AccountField::ClientId, "Client  ", state.client_id.as_str()),
         (
