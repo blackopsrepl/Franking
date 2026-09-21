@@ -5,8 +5,8 @@ use crate::keys::View;
 
 use super::model::App;
 
-/// Preference key for desktop notifications.
-const NOTIFICATIONS: &str = "notifications";
+/// Preference key for the desktop-notification rule.
+const NOTIFICATION_RULE: &str = "notification_rule";
 /// Preference key for marking messages read when they are opened.
 const MARK_READ_ON_OPEN: &str = "mark_read_on_open";
 /// Preference keys for the page size and autosave interval.
@@ -25,8 +25,11 @@ impl App {
     /// Load persisted preferences (called during startup).
     pub(crate) fn load_preferences(&mut self) {
         if let Some(conn) = self.db.as_ref() {
-            if let Ok(enabled) = preferences::get(conn, NOTIFICATIONS, true) {
-                self.notifications_enabled = enabled;
+            if let Ok(Some(rule)) = preferences::get_text(conn, NOTIFICATION_RULE) {
+                self.notification_rule = super::notification_rules::NotificationRule::parse(&rule);
+            } else if let Ok(false) = preferences::get(conn, "notifications", true) {
+                // Older installs stored a boolean; off means off.
+                self.notification_rule = super::notification_rules::NotificationRule::Off;
             }
             if let Ok(enabled) = preferences::get(conn, MARK_READ_ON_OPEN, true) {
                 self.mark_read_on_open = enabled;
@@ -54,7 +57,7 @@ impl App {
     /// Change the highlighted preference.
     pub(crate) fn settings_toggle(&mut self) {
         match self.settings_index {
-            0 => self.toggle_notifications(),
+            0 => self.cycle_notification_rule(),
             1 => self.toggle_mark_read_on_open(),
             2 => {
                 let index = PAGE_SIZES
@@ -93,22 +96,6 @@ impl App {
 
     pub(crate) fn close_settings(&mut self) {
         self.view = View::EnvelopeList;
-    }
-
-    /// Toggle desktop notifications and remember the choice.
-    pub(crate) fn toggle_notifications(&mut self) {
-        self.notifications_enabled = !self.notifications_enabled;
-        if let Some(conn) = self.db.as_ref() {
-            if let Err(error) = preferences::set(conn, NOTIFICATIONS, self.notifications_enabled) {
-                self.set_error(&format!("Could not save the preference: {error}"));
-                return;
-            }
-        }
-        self.set_status(if self.notifications_enabled {
-            "Desktop notifications on."
-        } else {
-            "Desktop notifications off."
-        });
     }
 }
 

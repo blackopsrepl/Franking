@@ -27,6 +27,7 @@ mod model;
 mod mouse;
 mod move_prompt;
 mod navigation;
+mod notification_rules;
 mod outbox;
 mod pgp;
 pub(crate) mod pgp_keys;

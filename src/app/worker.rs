@@ -115,9 +115,9 @@ impl App {
                         .and_then(|cs| cs.account.clone());
                     self.queue_failed_send(account);
                 }
-                WorkerResult::MailboxChanged(_account, folder) => {
-                    if self.notifications_enabled {
-                        notify_new_mail(&folder);
+                WorkerResult::MailboxChanged(account, folder) => {
+                    if self.notify_for_new_mail(account.as_deref(), &folder) {
+                        super::notification_rules::notify_new_mail(&folder);
                     }
                     if folder == self.current_folder && !self.loading {
                         self.set_status("New mail arrived.");
@@ -262,15 +262,4 @@ impl App {
     }
 
     // ── Data loading (dispatches to worker) ─────────────────────────
-}
-
-/// Best-effort desktop notification for new mail (no-op when unavailable).
-fn notify_new_mail(folder: &str) {
-    use std::process::{Command, Stdio};
-
-    let _ = Command::new("notify-send")
-        .args(["SolverForge Mail", &format!("New mail in {folder}")])
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .spawn();
 }

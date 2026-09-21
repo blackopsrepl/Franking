@@ -53,6 +53,14 @@ impl Default for Worker {
 }
 
 impl Worker {
+    /// The mail service this worker dispatches to.
+    ///
+    /// Exposed so a caller can ask one quick question (such as who sent the
+    /// newest message) without dispatching a job and waiting for the reply.
+    pub fn service(&self) -> Arc<dyn MailService> {
+        self.service.clone()
+    }
+
     pub fn new() -> Self {
         let (tx, rx) = mpsc::channel();
         Self {

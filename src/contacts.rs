@@ -162,6 +162,23 @@ pub fn search(conn: &Connection, query: &str, limit: usize) -> Result<Vec<Contac
     Ok(contacts)
 }
 
+/// The contact with this email address, if the address book has one.
+pub fn find_by_email(conn: &Connection, email: &str) -> Result<Option<Contact>> {
+    let mut statement = conn.prepare(
+        "SELECT id, name, email, phone, org, notes, harvested
+         FROM contacts WHERE lower(email) = lower(?1) LIMIT 1",
+    )?;
+    let mut rows = statement.query_map([email.trim()], row_to_contact)?;
+    let mut found = match rows.next() {
+        Some(row) => Some(row.context("cannot read the contact")?),
+        None => None,
+    };
+    if let Some(contact) = &mut found {
+        contact.tags = get_tags(conn, contact.id)?;
+    }
+    Ok(found)
+}
+
 /// List all contacts ordered by name, with optional tag filter.
 pub fn list(conn: &Connection, tag_filter: Option<&str>) -> Result<Vec<Contact>> {
     let mut contacts: Vec<Contact> = if let Some(tag) = tag_filter {

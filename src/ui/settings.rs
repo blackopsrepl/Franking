@@ -27,7 +27,7 @@ pub fn render(app: &App, frame: &mut Frame) {
     let rows = [
         (
             "Desktop notifications".to_string(),
-            toggle_label(app.notifications_enabled),
+            app.notification_rule.label().to_string(),
         ),
         (
             "Mark read on open".to_string(),

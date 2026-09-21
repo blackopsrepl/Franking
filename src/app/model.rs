@@ -83,8 +83,8 @@ pub struct App {
     pub search_query: String,
     pub active_query: Option<String>,
     pub(crate) search_scope: crate::mail::search_scope::SearchScope,
-    /// Whether new-mail desktop notifications are sent.
-    pub(crate) notifications_enabled: bool,
+    /// When new mail deserves a desktop notification.
+    pub(crate) notification_rule: super::notification_rules::NotificationRule,
     /// Whether opening a message marks it read on the server.
     pub(crate) mark_read_on_open: bool,
     /// Highlighted preference row.

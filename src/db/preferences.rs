@@ -17,6 +17,26 @@ pub fn get(conn: &Connection, key: &str, default: bool) -> Result<bool> {
     })
 }
 
+/// Read a text preference.
+pub fn get_text(conn: &Connection, key: &str) -> Result<Option<String>> {
+    let value: Option<String> = conn
+        .query_row("SELECT value FROM meta WHERE key = ?1", [key], |row| {
+            row.get(0)
+        })
+        .ok();
+    Ok(value)
+}
+
+/// Store a text preference.
+pub fn set_text(conn: &Connection, key: &str, value: &str) -> Result<()> {
+    conn.execute(
+        "INSERT OR REPLACE INTO meta (key, value) VALUES (?1, ?2)",
+        rusqlite::params![key, value],
+    )
+    .with_context(|| format!("cannot store preference {key}"))?;
+    Ok(())
+}
+
 /// Read a numeric preference.
 pub fn get_number(conn: &Connection, key: &str) -> Result<Option<usize>> {
     let value: Option<String> = conn

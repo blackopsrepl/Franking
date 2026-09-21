@@ -149,7 +149,7 @@ impl App {
             search_query: String::new(),
             active_query: None,
             search_scope: Default::default(),
-            notifications_enabled: true,
+            notification_rule: Default::default(),
             mark_read_on_open: true,
             settings_index: 0,
             folder_jump: String::new(),
