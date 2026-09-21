@@ -26,6 +26,7 @@ mod navigation;
 mod outbox;
 mod pgp;
 mod selection;
+mod settings;
 mod sieve;
 mod smime;
 mod threads;

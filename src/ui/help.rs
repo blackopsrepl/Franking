@@ -55,6 +55,7 @@ pub fn render(app: &App, frame: &mut Frame) {
         binding("[ / ]", "Collapse / expand a thread"),
         binding("E", "Empty the current folder (twice to confirm)"),
         binding("O", "Open the outbox"),
+        binding("P", "Open preferences"),
         binding("t", "Toggle threaded view"),
         binding("n / p", "Next / previous page"),
         binding("Tab", "Focus folder sidebar"),

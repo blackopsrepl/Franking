@@ -100,3 +100,40 @@ fn discovery_requires_an_email_address() {
     assert!(error.unwrap_or_default().contains("email address"));
     assert!(!app.loading, "invalid input must not start a lookup");
 }
+
+#[test]
+fn notifications_preference_round_trips() {
+    use crate::keys::View;
+
+    use super::super::App;
+
+    let conn = rusqlite::Connection::open_in_memory().unwrap();
+    crate::db::init_for_test(&conn).unwrap();
+
+    let mut app = App::new(None);
+    app.db = Some(conn);
+    assert!(app.notifications_enabled);
+
+    app.open_settings();
+    assert_eq!(app.view, View::Settings);
+
+    app.toggle_notifications();
+    assert!(!app.notifications_enabled);
+    assert!(app.status_message.contains("off"));
+    assert!(!crate::db::preferences::get(app.db.as_ref().unwrap(), "notifications", true).unwrap());
+
+    app.toggle_notifications();
+    assert!(app.notifications_enabled);
+    assert!(crate::db::preferences::get(app.db.as_ref().unwrap(), "notifications", false).unwrap());
+
+    // A fresh app picks the stored preference back up.
+    let mut reloaded = App::new(None);
+    let conn = app.db.take().unwrap();
+    crate::db::preferences::set(&conn, "notifications", false).unwrap();
+    reloaded.db = Some(conn);
+    reloaded.load_preferences();
+    assert!(!reloaded.notifications_enabled);
+
+    app.close_settings();
+    assert_eq!(app.view, View::EnvelopeList);
+}

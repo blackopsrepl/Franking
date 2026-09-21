@@ -18,6 +18,7 @@ mod move_prompt;
 mod outbox;
 mod passphrase_prompt;
 mod search;
+mod settings;
 mod sieve;
 mod status_bar;
 pub mod util;
@@ -109,6 +110,9 @@ pub fn render(app: &mut App, frame: &mut Frame) {
     }
     if app.view == View::Outbox {
         outbox::render(app, frame);
+    }
+    if app.view == View::Settings {
+        settings::render(app, frame);
     }
     if app.view == View::ContactEdit {
         contact_edit::render(app, frame);

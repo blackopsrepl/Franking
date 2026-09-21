@@ -76,6 +76,8 @@ pub struct App {
     pub search_query: String,
     pub active_query: Option<String>,
     pub(crate) search_all_folders: bool,
+    /// Whether new-mail desktop notifications are sent.
+    pub(crate) notifications_enabled: bool,
 
     // ── Move prompt state ───────────────────────────────────────────
     pub move_target: String,

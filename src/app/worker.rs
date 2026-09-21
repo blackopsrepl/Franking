@@ -116,7 +116,9 @@ impl App {
                     self.queue_failed_send(account);
                 }
                 WorkerResult::MailboxChanged(_account, folder) => {
-                    notify_new_mail(&folder);
+                    if self.notifications_enabled {
+                        notify_new_mail(&folder);
+                    }
                     if folder == self.current_folder && !self.loading {
                         self.set_status("New mail arrived.");
                         self.load_envelopes();

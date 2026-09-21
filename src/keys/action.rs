@@ -12,6 +12,8 @@ pub enum View {
     FilePicker,
     /// Outbox of messages waiting to be sent.
     Outbox,
+    /// Preferences overlay.
+    Settings,
     Search,
     Help,
     MovePrompt,
@@ -162,6 +164,10 @@ pub enum Action {
     OutboxSend,
     OutboxDiscard,
     OutboxClose,
+    // ── Settings ──────────────────────────────────────────────────────
+    OpenSettings,
+    SettingsToggleNotifications,
+    SettingsClose,
     // ── Folder management ─────────────────────────────────────────────
     FolderNew,
     FolderRename,

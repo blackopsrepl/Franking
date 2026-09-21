@@ -146,6 +146,7 @@ impl App {
             search_query: String::new(),
             active_query: None,
             search_all_folders: false,
+            notifications_enabled: true,
             move_target: String::new(),
             move_index: 0,
             move_is_copy: false,
@@ -207,6 +208,7 @@ impl App {
             }
         }
         self.recover_autosave();
+        self.load_preferences();
         self.loading = true;
         self.worker.fetch_accounts();
     }

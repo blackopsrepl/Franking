@@ -19,6 +19,14 @@ pub(super) fn resolve_account_list(key: KeyEvent) -> Action {
     }
 }
 
+pub(super) fn resolve_settings(key: KeyEvent) -> Action {
+    match key.code {
+        KeyCode::Char(' ') | KeyCode::Enter => Action::SettingsToggleNotifications,
+        KeyCode::Esc | KeyCode::Char('q') => Action::SettingsClose,
+        _ => Action::None,
+    }
+}
+
 pub(super) fn resolve_outbox(key: KeyEvent) -> Action {
     match key.code {
         KeyCode::Char('j') | KeyCode::Down => Action::OutboxNext,

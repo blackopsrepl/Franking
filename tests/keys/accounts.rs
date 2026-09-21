@@ -105,3 +105,19 @@ fn outbox_keys() {
         Action::OutboxClose
     );
 }
+
+#[test]
+fn settings_keys() {
+    assert_eq!(
+        resolve(View::EnvelopeList, key(KeyCode::Char('P'))),
+        Action::OpenSettings
+    );
+    assert_eq!(
+        resolve(View::Settings, key(KeyCode::Char(' '))),
+        Action::SettingsToggleNotifications
+    );
+    assert_eq!(
+        resolve(View::Settings, key(KeyCode::Esc)),
+        Action::SettingsClose
+    );
+}

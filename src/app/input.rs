@@ -115,6 +115,9 @@ impl App {
             Action::OutboxSend => self.send_outbox_item(),
             Action::OutboxDiscard => self.discard_outbox_item(),
             Action::OutboxClose => self.close_outbox(),
+            Action::OpenSettings => self.open_settings(),
+            Action::SettingsToggleNotifications => self.toggle_notifications(),
+            Action::SettingsClose => self.close_settings(),
             Action::OpenLinks => self.open_links(),
             Action::LinkNext => self.link_next(),
             Action::LinkPrev => self.link_prev(),
@@ -178,7 +181,6 @@ impl App {
             Action::SieveNameSubmit => self.sieve_name_submit(),
             Action::SieveNameCancel => self.sieve_name_cancel(),
             Action::SieveEditorKey(key) => self.sieve_editor_key(key),
-
             // ── Compose editor ───────────────────────────────────────
             Action::ComposeFieldNext => {
                 if let Some(ref mut cs) = self.compose_state {
@@ -249,12 +251,10 @@ impl App {
             Action::ComposeExitToNav => {
                 self.compose_exit_to_nav();
             }
-
             // ── EditorKey: forwarded to the focused compose field ────
             Action::EditorKey(key_event) => {
                 self.handle_editor_key(key_event);
             }
-
             // ── Contacts ─────────────────────────────────────────────
             Action::OpenContacts => self.open_contacts(),
             Action::ContactNew => self.contact_new(),
@@ -272,7 +272,6 @@ impl App {
             Action::ContactEditSave => self.contact_edit_save(),
             Action::ContactEditCancel => self.contact_edit_cancel(),
             Action::ContactEditActivate => self.contact_edit_activate(),
-
             // ── Identity list ─────────────────────────────────────────
             Action::OpenIdentities => self.open_identities(),
             Action::IdentityNew => self.identity_new(),

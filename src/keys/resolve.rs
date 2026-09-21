@@ -5,6 +5,7 @@ use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use super::action::{Action, ComposeFocus, ComposeKeyContext, View};
 use super::resolve_accounts::{
     resolve_account_edit, resolve_account_list, resolve_file_picker, resolve_outbox,
+    resolve_settings,
 };
 use super::resolve_contacts::{
     resolve_compose, resolve_contact_edit, resolve_contact_search, resolve_contacts,
@@ -24,13 +25,13 @@ pub fn resolve(view: View, key: KeyEvent) -> Action {
         View::AccountEdit => return resolve_account_edit(key),
         View::FilePicker => return resolve_file_picker(key),
         View::Outbox => return resolve_outbox(key),
+        View::Settings => return resolve_settings(key),
         View::LinkList => return resolve_link_list(key),
         View::SieveScripts => return resolve_sieve_scripts(key),
         View::SieveName => return resolve_sieve_name(key),
         View::SieveEdit => return resolve_sieve_edit(key),
         _ => {}
     }
-
     // Global keybindings (handled first)
     if key.modifiers.contains(KeyModifiers::CONTROL) {
         return match key.code {
@@ -41,7 +42,6 @@ pub fn resolve(view: View, key: KeyEvent) -> Action {
             _ => Action::None,
         };
     }
-
     match view {
         View::EnvelopeList => resolve_envelope_list(key),
         View::MessageView => resolve_message_view(key),
@@ -67,7 +67,8 @@ pub fn resolve(view: View, key: KeyEvent) -> Action {
         | View::SieveEdit
         | View::AccountEdit
         | View::FilePicker
-        | View::Outbox => Action::None,
+        | View::Outbox
+        | View::Settings => Action::None,
     }
 }
 
@@ -154,6 +155,7 @@ fn resolve_envelope_list(key: KeyEvent) -> Action {
         KeyCode::Char('e') => Action::Archive,
         KeyCode::Char('E') => Action::EmptyFolder,
         KeyCode::Char('O') => Action::OpenOutbox,
+        KeyCode::Char('P') => Action::OpenSettings,
         KeyCode::Char('[') | KeyCode::Left => Action::CollapseThread,
         KeyCode::Char(']') | KeyCode::Right => Action::ExpandThread,
         KeyCode::Char('?') => Action::ToggleHelp,
