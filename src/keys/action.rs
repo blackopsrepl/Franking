@@ -147,6 +147,10 @@ pub enum Action {
     NextUnread,
     /// Jump to the previous unread message.
     PrevUnread,
+    // ── Folder incremental search ─────────────────────────────────────
+    FolderJumpInput(char),
+    FolderJumpBackspace,
+    FolderJumpClear,
     /// Move the selection to the archive folder.
     Archive,
     /// Make the highlighted account the default.

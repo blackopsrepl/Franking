@@ -82,6 +82,8 @@ pub struct App {
     pub(crate) mark_read_on_open: bool,
     /// Highlighted preference row.
     pub(crate) settings_index: usize,
+    /// Incremental folder-search query.
+    pub(crate) folder_jump: String,
     /// Buffered send-later delay input.
     pub(crate) schedule_input: String,
     /// Invitation awaiting a response choice.

@@ -30,8 +30,13 @@ pub fn render(app: &App, frame: &mut Frame, area: Rect) {
         t.border()
     };
 
+    let title = if app.folder_jump.is_empty() {
+        " Folders ".to_string()
+    } else {
+        format!(" Folders · /{} ", app.folder_jump)
+    };
     let block = Block::default()
-        .title(" Folders ")
+        .title(title)
         .title_style(if focused {
             t.accent_style().add_modifier(Modifier::BOLD)
         } else {

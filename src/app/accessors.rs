@@ -149,6 +149,7 @@ impl App {
             notifications_enabled: true,
             mark_read_on_open: true,
             settings_index: 0,
+            folder_jump: String::new(),
             schedule_input: String::new(),
             invite_pending: None,
             move_target: String::new(),

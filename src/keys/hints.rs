@@ -55,6 +55,7 @@ pub fn hints(view: View) -> Vec<(&'static str, &'static str)> {
             ("Tab", "emails"),
             ("n", "new"),
             ("r", "rename"),
+            ("a-z", "jump"),
             ("d", "delete"),
             ("F", "filters"),
             ("?", "help"),

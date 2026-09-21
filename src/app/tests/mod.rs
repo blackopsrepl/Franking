@@ -6,6 +6,7 @@ mod compose;
 mod copy_move;
 mod core;
 mod crypto;
+mod folder_jump;
 mod invite;
 mod mail_ui;
 mod message_search;

@@ -14,6 +14,7 @@ mod crypto;
 mod editor;
 mod empty_folder;
 mod file_picker;
+mod folder_jump;
 mod folders;
 mod identities;
 mod input;

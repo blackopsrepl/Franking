@@ -170,7 +170,8 @@ fn resolve_envelope_list(key: KeyEvent) -> Action {
 }
 fn resolve_folder_list(key: KeyEvent) -> Action {
     match key.code {
-        KeyCode::Char('q') | KeyCode::Esc => Action::FocusEnvelopes,
+        KeyCode::Char('q') => Action::FocusEnvelopes,
+        KeyCode::Esc => Action::FolderJumpClear,
         KeyCode::Char('j') | KeyCode::Down => Action::MoveDown,
         KeyCode::Char('k') | KeyCode::Up => Action::MoveUp,
         KeyCode::Enter => Action::Select,
