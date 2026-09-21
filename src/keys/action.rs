@@ -15,6 +15,8 @@ pub enum View {
     AttachmentList,
     /// Folder management prompt (create, rename, delete).
     FolderPrompt,
+    /// In-message search prompt.
+    MessageSearch,
     /// Server-side Sieve script browser.
     SieveScripts,
     /// New-script name prompt.
@@ -139,6 +141,14 @@ pub enum Action {
     ExpandThread,
     /// Permanently remove every message in the current folder.
     EmptyFolder,
+    // ── In-message search ─────────────────────────────────────────────
+    SearchMessage,
+    MessageSearchInput(char),
+    MessageSearchBackspace,
+    MessageSearchSubmit,
+    MessageSearchCancel,
+    NextMatch,
+    PrevMatch,
     ClearSelection,
     // ── Sieve filters ─────────────────────────────────────────────────
     OpenSieve,

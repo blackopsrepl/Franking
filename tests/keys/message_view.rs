@@ -23,6 +23,34 @@ fn message_view_toggles_all_headers() {
 }
 
 #[test]
+fn message_view_searches_within_the_message() {
+    assert_eq!(
+        resolve(View::MessageView, key(KeyCode::Char('/'))),
+        Action::SearchMessage
+    );
+    assert_eq!(
+        resolve(View::MessageView, key(KeyCode::Char('n'))),
+        Action::NextMatch
+    );
+    assert_eq!(
+        resolve(View::MessageView, key(KeyCode::Char('p'))),
+        Action::PrevMatch
+    );
+    assert_eq!(
+        resolve(View::MessageSearch, key(KeyCode::Enter)),
+        Action::MessageSearchSubmit
+    );
+    assert_eq!(
+        resolve(View::MessageSearch, key(KeyCode::Esc)),
+        Action::MessageSearchCancel
+    );
+    assert_eq!(
+        resolve(View::MessageSearch, key(KeyCode::Char('x'))),
+        Action::MessageSearchInput('x')
+    );
+}
+
+#[test]
 fn message_view_undoes_the_last_action() {
     assert_eq!(
         resolve(View::MessageView, key(KeyCode::Char('z'))),

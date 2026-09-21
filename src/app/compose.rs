@@ -1,7 +1,7 @@
 /*! Compose lifecycle: new, reply, forward, send, draft, discard. */
 
 use crate::compose::{ComposeMode, ComposeState, FocusedField};
-use crate::keys::View;
+use crate::keys::{EditMode, View};
 use crate::mail::service::SendOptions;
 
 use crossterm::event::{KeyCode, KeyEvent};
@@ -260,6 +260,35 @@ impl App {
                 self.pending_draft = None;
                 self.view = View::EnvelopeList;
             }
+        }
+    }
+
+    /// Type into the focused compose field, entering insert mode if needed.
+    pub(crate) fn compose_input(&mut self, c: char) {
+        let Some(cs) = self.compose_state.as_mut() else {
+            return;
+        };
+        if cs.edit_mode == EditMode::Nav
+            && matches!(
+                cs.focused,
+                FocusedField::To | FocusedField::Cc | FocusedField::Bcc | FocusedField::Subject
+            )
+        {
+            cs.edit_mode = EditMode::Insert;
+        }
+        if cs.edit_mode != EditMode::Insert {
+            return;
+        }
+        if let Some(field) = cs.focused_line_field_mut() {
+            field.push(c);
+            cs.dirty = true;
+        }
+        let is_address = matches!(
+            cs.focused,
+            FocusedField::To | FocusedField::Cc | FocusedField::Bcc
+        );
+        if is_address {
+            self.update_autocomplete();
         }
     }
 }

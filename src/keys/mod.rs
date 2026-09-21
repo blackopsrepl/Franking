@@ -4,6 +4,7 @@ mod action;
 mod hints;
 mod resolve;
 mod resolve_contacts;
+mod resolve_sieve;
 
 pub use action::{Action, ComposeFocus, ComposeKeyContext, EditMode, View};
 pub use hints::hints;

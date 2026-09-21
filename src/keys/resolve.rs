@@ -7,6 +7,7 @@ use super::resolve_contacts::{
     resolve_compose, resolve_contact_edit, resolve_contact_search, resolve_contacts,
     resolve_identity_edit, resolve_identity_list,
 };
+use super::resolve_sieve::{resolve_sieve_edit, resolve_sieve_name, resolve_sieve_scripts};
 
 pub fn resolve(view: View, key: KeyEvent) -> Action {
     match view {
@@ -16,6 +17,7 @@ pub fn resolve(view: View, key: KeyEvent) -> Action {
         View::ContactEdit => return resolve_contact_edit(key),
         View::IdentityList => return resolve_identity_list(key),
         View::IdentityEdit => return resolve_identity_edit(key),
+        View::MessageSearch => return resolve_message_search(key),
         View::SieveScripts => return resolve_sieve_scripts(key),
         View::SieveName => return resolve_sieve_name(key),
         View::SieveEdit => return resolve_sieve_edit(key),
@@ -43,6 +45,7 @@ pub fn resolve(view: View, key: KeyEvent) -> Action {
         View::MovePrompt => resolve_move_prompt(key),
         View::PassphrasePrompt => resolve_unlock_prompt(key),
         View::AttachmentList => resolve_attachment_list(key),
+        View::MessageSearch => resolve_message_search(key),
         View::FolderPrompt => resolve_folder_prompt(key),
         View::ContactSearch => resolve_contact_search(key),
         View::ContactEdit => resolve_contact_edit(key),
@@ -165,6 +168,9 @@ fn resolve_message_view(key: KeyEvent) -> Action {
         KeyCode::Char('h') => Action::ToggleHeaders,
         KeyCode::Char('s') => Action::SaveMessage,
         KeyCode::Char('z') => Action::Undo,
+        KeyCode::Char('/') => Action::SearchMessage,
+        KeyCode::Char('n') => Action::NextMatch,
+        KeyCode::Char('p') => Action::PrevMatch,
         KeyCode::Char('?') => Action::ToggleHelp,
         KeyCode::Char('g') => Action::JumpTop,
         KeyCode::Char('G') => Action::JumpBottom,
@@ -219,39 +225,14 @@ fn resolve_help(key: KeyEvent) -> Action {
     }
 }
 
-fn resolve_sieve_scripts(key: KeyEvent) -> Action {
+fn resolve_message_search(key: KeyEvent) -> Action {
     match key.code {
-        KeyCode::Char('j') | KeyCode::Down => Action::SieveNext,
-        KeyCode::Char('k') | KeyCode::Up => Action::SievePrev,
-        KeyCode::Enter => Action::SieveActivate,
-        KeyCode::Char('e') => Action::SieveEdit,
-        KeyCode::Char('n') => Action::SieveNew,
-        KeyCode::Char('d') => Action::SieveDelete,
-        KeyCode::Char('x') => Action::SieveDeactivate,
-        KeyCode::Char('r') => Action::OpenSieve,
-        KeyCode::Esc | KeyCode::Char('q') => Action::SieveClose,
+        KeyCode::Enter => Action::MessageSearchSubmit,
+        KeyCode::Esc => Action::MessageSearchCancel,
+        KeyCode::Backspace => Action::MessageSearchBackspace,
+        KeyCode::Char(c) => Action::MessageSearchInput(c),
         _ => Action::None,
     }
-}
-
-fn resolve_sieve_name(key: KeyEvent) -> Action {
-    match key.code {
-        KeyCode::Enter => Action::SieveNameSubmit,
-        KeyCode::Esc => Action::SieveNameCancel,
-        KeyCode::Backspace => Action::SieveNameBackspace,
-        KeyCode::Char(c) => Action::SieveNameInput(c),
-        _ => Action::None,
-    }
-}
-
-fn resolve_sieve_edit(key: KeyEvent) -> Action {
-    if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('s') {
-        return Action::SieveSave;
-    }
-    if key.code == KeyCode::Esc {
-        return Action::SieveEscape;
-    }
-    Action::SieveEditorKey(key)
 }
 
 fn resolve_folder_prompt(key: KeyEvent) -> Action {

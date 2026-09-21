@@ -117,3 +117,25 @@ pub fn render(app: &App, frame: &mut Frame, area: Rect) {
 
     frame.render_widget(paragraph, area);
 }
+
+/// Render the in-message search prompt in the status bar.
+pub fn render_search_prompt(app: &App, frame: &mut Frame, area: Rect) {
+    let t = theme();
+    let cursor_char = if app.tick_count % 4 < 2 {
+        "\u{2588}"
+    } else {
+        " "
+    };
+    let spans = vec![
+        Span::styled(" Find in message: ", t.status_key()),
+        Span::styled(
+            format!("{}{cursor_char}", app.message_search),
+            t.search_input(),
+        ),
+        Span::styled("  (Enter to find, Esc to cancel)", t.dimmed()),
+    ];
+    frame.render_widget(
+        Paragraph::new(Line::from(spans)).style(t.status_bar()),
+        area,
+    );
+}

@@ -193,6 +193,11 @@ impl App {
         self.view = View::Search;
     }
 
+    /// Delete the last character of the current search query.
+    pub(crate) fn search_backspace(&mut self) {
+        self.search_query.pop();
+    }
+
     pub(crate) fn submit_search(&mut self) {
         let query = self.search_query.clone();
         self.active_query = if query.is_empty() { None } else { Some(query) };

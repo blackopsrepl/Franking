@@ -12,6 +12,7 @@ mod folders;
 mod identities;
 mod input;
 mod loading;
+mod message_search;
 mod model;
 mod mouse;
 mod move_prompt;

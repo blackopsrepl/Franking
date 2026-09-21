@@ -110,6 +110,16 @@ pub struct App {
 
     // ── Layout areas for mouse hit-testing ──────────────────────────
     pub last_terminal_height: u16,
+    /// Width of the last rendered frame, used to render the message body.
+    pub(crate) last_terminal_width: u16,
+    /// Active in-message search query.
+    pub(crate) message_search: String,
+    /// Whether the in-message search prompt is open.
+    pub(crate) message_search_active: bool,
+    /// Line offsets of the current matches within the rendered message.
+    pub(crate) message_matches: Vec<u16>,
+    /// Highlighted match index.
+    pub(crate) message_match_index: usize,
 
     // ── Shell-out command ───────────────────────────────────────────
     pub pending_open_command: Option<PendingOpenCommand>,
@@ -200,6 +210,11 @@ impl App {
             new_mail_count: 0,
             folder_unread: HashMap::new(),
             last_terminal_height: 24,
+            last_terminal_width: 80,
+            message_search: String::new(),
+            message_search_active: false,
+            message_matches: Vec::new(),
+            message_match_index: 0,
             help_scroll: 0,
             status_message: String::new(),
             status_is_error: false,

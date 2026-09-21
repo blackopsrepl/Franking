@@ -83,9 +83,7 @@ impl App {
             Action::SearchSubmit => self.submit_search(),
             Action::SearchCancel => self.cancel_search(),
             Action::SearchInput(c) => self.search_query.push(c),
-            Action::SearchBackspace => {
-                self.search_query.pop();
-            }
+            Action::SearchBackspace => self.search_backspace(),
             Action::Refresh => self.refresh(),
             Action::SwitchAccount => self.enter_account_picker(),
             Action::ToggleHelp => self.toggle_help(),
@@ -95,6 +93,14 @@ impl App {
             Action::CollapseThread => self.collapse_thread(),
             Action::ExpandThread => self.expand_thread(),
             Action::EmptyFolder => self.empty_folder(),
+            Action::SearchMessage => self.enter_message_search(),
+            Action::MessageSearchInput(c) => self.message_search_input(c),
+            Action::MessageSearchBackspace => self.message_search_backspace(),
+            Action::MessageSearchSubmit => self.submit_message_search(),
+            Action::MessageSearchCancel => self.cancel_message_search(),
+            Action::NextMatch | Action::PrevMatch => {
+                self.step_match(matches!(action, Action::NextMatch))
+            }
             Action::FocusFolders => self.view = View::FolderList,
             Action::FocusEnvelopes => self.view = View::EnvelopeList,
             Action::ScrollUp => self.scroll(-1),
@@ -182,43 +188,7 @@ impl App {
                     cs.confirm_discard = false;
                 }
             }
-            Action::ComposeInput(c) => {
-                if let Some(ref mut cs) = self.compose_state {
-                    // Auto-enter Insert on header text fields when typing.
-                    if cs.edit_mode == EditMode::Nav
-                        && matches!(
-                            cs.focused,
-                            FocusedField::To
-                                | FocusedField::Cc
-                                | FocusedField::Bcc
-                                | FocusedField::Subject
-                        )
-                    {
-                        cs.edit_mode = EditMode::Insert;
-                    }
-
-                    if cs.edit_mode == EditMode::Insert {
-                        if let Some(field) = cs.focused_line_field_mut() {
-                            field.push(c);
-                            cs.dirty = true;
-                        }
-                    }
-                }
-                let is_address = {
-                    let cs = self.compose_state.as_ref();
-                    cs.map(|cs| {
-                        cs.edit_mode == EditMode::Insert
-                            && matches!(
-                                cs.focused,
-                                FocusedField::To | FocusedField::Cc | FocusedField::Bcc
-                            )
-                    })
-                    .unwrap_or(false)
-                };
-                if is_address {
-                    self.update_autocomplete();
-                }
-            }
+            Action::ComposeInput(c) => self.compose_input(c),
             Action::ComposeBackspace => {
                 let is_address = {
                     let cs = self.compose_state.as_ref();
