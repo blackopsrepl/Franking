@@ -16,22 +16,22 @@ pub(super) fn mail_service() -> Arc<dyn MailService> {
     default_mail_service()
 }
 
-pub(super) fn load_account_record(name: &str) -> Result<Option<AccountRecord>> {
+pub fn load_account_record(name: &str) -> Result<Option<AccountRecord>> {
     let conn = db::open()?;
     account_store::get_account(&conn, name)
 }
 
-pub(super) fn save_account_config(config: &AccountConfig) -> Result<()> {
+pub fn save_account_config(config: &AccountConfig) -> Result<()> {
     let conn = db::open()?;
     account_store::upsert_account(&conn, config)
 }
 
-pub(super) fn load_oauth_state(name: &str) -> Result<Option<account_store::OauthState>> {
+pub fn load_oauth_state(name: &str) -> Result<Option<account_store::OauthState>> {
     let conn = db::open()?;
     account_store::get_oauth_state(&conn, name)
 }
 
-pub(super) fn save_oauth_state(account_name: &str, config: &OauthStateConfig) -> Result<()> {
+pub fn save_oauth_state(account_name: &str, config: &OauthStateConfig) -> Result<()> {
     let conn = db::open()?;
     account_store::upsert_oauth_state(&conn, account_name, config)
 }
@@ -80,7 +80,7 @@ pub fn store_secret(label: &str, service: &str, username: &str, password: &str) 
     Ok(())
 }
 
-pub(super) fn lookup_secret(service: &str, username: &str) -> Result<String> {
+pub fn lookup_secret(service: &str, username: &str) -> Result<String> {
     let output = Command::new("secret-tool")
         .args([
             "lookup",

@@ -1,6 +1,7 @@
 /*! Application module wiring. */
 
 mod accessors;
+mod account_form;
 mod accounts;
 mod archive;
 mod attachments;

@@ -72,6 +72,10 @@ impl App {
                 }
                 WorkerResult::Discovered(config) => self.apply_discovered(config),
                 WorkerResult::Outbox(result) => self.handle_outbox(result),
+                WorkerResult::OAuthAuthorized(account, result) => {
+                    let _ = account;
+                    self.handle_oauth_authorized(result);
+                }
                 WorkerResult::SieveScripts(result) => self.handle_sieve_scripts(result),
                 WorkerResult::SieveBody(name, result) => self.handle_sieve_body(name, result),
                 WorkerResult::FolderUnread(folder_name, Ok(count)) => {

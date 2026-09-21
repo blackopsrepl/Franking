@@ -7,7 +7,7 @@ use solverforge_mail::mail::account_store::AccountRecord;
 fn tab_cycles_through_every_field_and_wraps() {
     let mut state = AccountEditState::new();
     assert_eq!(state.focused, AccountField::Name);
-    for _ in 0..9 {
+    for _ in 0..12 {
         state.focused = state.focused.step(1);
     }
     assert_eq!(state.focused, AccountField::Cancel);

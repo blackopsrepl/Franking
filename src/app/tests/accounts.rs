@@ -36,6 +36,59 @@ fn discovered_settings_fill_the_account_form() {
 }
 
 #[test]
+fn oauth_mode_requires_a_client_id_and_an_email() {
+    use crate::account_edit::{AccountEditState, AccountField, AuthMode};
+
+    let mut app = App::new(None);
+    let mut state = AccountEditState::new();
+    state.name = "work".to_string();
+    state.username = "alice@gmail.com".to_string();
+    state.imap_host = "imap.gmail.com".to_string();
+    state.smtp_host = "smtp.gmail.com".to_string();
+    state.auth_mode = AuthMode::GmailOAuth;
+    app.account_edit_state = Some(state);
+
+    app.account_form_save();
+    let error = app.account_edit_state.as_ref().unwrap().error.clone();
+    assert!(error.unwrap_or_default().contains("client ID"));
+
+    // A client id without an email address is still rejected.
+    let state = app.account_edit_state.as_mut().unwrap();
+    state.client_id = "client-123".to_string();
+    state.username = "not-an-email".to_string();
+    state.focused = AccountField::Save;
+    app.account_form_save();
+    let error = app.account_edit_state.as_ref().unwrap().error.clone();
+    assert!(error.unwrap_or_default().contains("email address"));
+}
+
+#[test]
+fn space_cycles_the_auth_mode_when_focused() {
+    use crate::account_edit::{AccountEditState, AccountField, AuthMode};
+
+    let mut app = App::new(None);
+    let mut state = AccountEditState::new();
+    state.focused = AccountField::Auth;
+    app.account_edit_state = Some(state);
+
+    app.account_form_toggle_default();
+    assert_eq!(
+        app.account_edit_state.as_ref().unwrap().auth_mode,
+        AuthMode::GmailOAuth
+    );
+    app.account_form_toggle_default();
+    assert_eq!(
+        app.account_edit_state.as_ref().unwrap().auth_mode,
+        AuthMode::OutlookOAuth
+    );
+    app.account_form_toggle_default();
+    assert_eq!(
+        app.account_edit_state.as_ref().unwrap().auth_mode,
+        AuthMode::Password
+    );
+}
+
+#[test]
 fn discovery_requires_an_email_address() {
     use crate::account_edit::AccountEditState;
 

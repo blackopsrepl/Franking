@@ -33,6 +33,8 @@ pub enum WorkerResult {
     Discovered(Option<crate::mail::account_store::DiscoveredConfig>),
     /// Queued outgoing messages.
     Outbox(Result<Vec<crate::mail::outbox::OutboxItem>, MailError>),
+    /// Result of an OAuth authorization attempt.
+    OAuthAuthorized(String, Result<String, MailError>),
 }
 
 /// Lightweight handle for dispatching work to background threads.

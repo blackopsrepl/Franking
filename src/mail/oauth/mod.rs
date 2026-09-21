@@ -1,5 +1,6 @@
 /*! OAuth module wiring. */
 
+pub mod account;
 mod authorize;
 mod providers;
 mod refresh;
