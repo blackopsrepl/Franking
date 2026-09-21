@@ -26,8 +26,6 @@ pub trait MailService: Send + Sync {
         folder: &str,
         query: Option<&str>,
     ) -> MailResult<Vec<Envelope>>;
-    /// Raw RFC 5322 bytes for a message. Backends preserve the raw-bytes
-    /// boundary; parsing and caching happen one layer up.
     fn read_message_raw(
         &self,
         account: Option<&str>,
@@ -93,7 +91,6 @@ pub trait MailService: Send + Sync {
         options: &SendOptions,
     ) -> MailResult<String>;
 
-    /// Fetch every envelope in a folder so it can be cached for offline use.
     fn sync_folder(&self, account: Option<&str>, folder: &str) -> MailResult<Vec<Envelope>> {
         let _ = (account, folder);
         Ok(Vec::new())
@@ -119,9 +116,6 @@ pub trait MailService: Send + Sync {
         Ok(envelopes)
     }
 
-    /// Report folder changes since an anchor, when the backend can.
-    ///
-    /// Backends that cannot report deltas return `full_resync`.
     fn sync_folder_delta(
         &self,
         account: Option<&str>,
@@ -208,7 +202,6 @@ pub trait MailService: Send + Sync {
         ))
     }
 
-    /// List server-side Sieve filter scripts.
     fn sieve_scripts(&self, account: Option<&str>) -> MailResult<Vec<SieveScript>> {
         let _ = account;
         Err(MailError::unsupported_feature(
@@ -216,7 +209,6 @@ pub trait MailService: Send + Sync {
         ))
     }
 
-    /// Fetch one Sieve script's source.
     fn sieve_script(&self, account: Option<&str>, name: &str) -> MailResult<String> {
         let _ = (account, name);
         Err(MailError::unsupported_feature(
@@ -224,7 +216,6 @@ pub trait MailService: Send + Sync {
         ))
     }
 
-    /// Create or replace a Sieve script.
     fn sieve_save_script(&self, account: Option<&str>, name: &str, body: &str) -> MailResult<()> {
         let _ = (account, name, body);
         Err(MailError::unsupported_feature(
@@ -232,9 +223,16 @@ pub trait MailService: Send + Sync {
         ))
     }
 
-    /// Activate a Sieve script, or deactivate all when `name` is `None`.
     fn sieve_set_active(&self, account: Option<&str>, name: Option<&str>) -> MailResult<()> {
         let _ = (account, name);
+        Err(MailError::unsupported_feature(
+            "Sieve scripts are not supported by this backend",
+        ))
+    }
+
+    /// Rename a Sieve script.
+    fn sieve_rename_script(&self, account: Option<&str>, from: &str, to: &str) -> MailResult<()> {
+        let _ = (account, from, to);
         Err(MailError::unsupported_feature(
             "Sieve scripts are not supported by this backend",
         ))
@@ -272,7 +270,6 @@ pub trait MailService: Send + Sync {
         ))
     }
 
-    /// UIDVALIDITY and UIDNEXT for a folder, when the backend can report them.
     fn folder_sync_cursor(
         &self,
         account: Option<&str>,
@@ -282,8 +279,6 @@ pub trait MailService: Send + Sync {
         Ok((None, None))
     }
 
-    /// Block until a folder changes or the timeout elapses. Backends without
-    /// push support report it as unsupported so callers can stop watching.
     fn idle_watch(
         &self,
         account: Option<&str>,

@@ -109,6 +109,13 @@ fn serve(
                 .expect("literals")
                 .push(String::from_utf8_lossy(&body).to_string());
             let _ = writer.write_all(b"OK \"stored\"\r\n");
+        } else if upper.starts_with("RENAMESCRIPT") {
+            // Scripted refusal for one name, so the error path is exercised.
+            if line.contains("missing") {
+                let _ = writer.write_all(b"NO \"no such script\"\r\n");
+            } else {
+                let _ = writer.write_all(b"OK \"renamed\"\r\n");
+            }
         } else if upper.starts_with("SETACTIVE") || upper.starts_with("DELETESCRIPT") {
             let _ = writer.write_all(b"OK \"done\"\r\n");
         } else if upper.starts_with("LOGOUT") {
@@ -237,4 +244,28 @@ fn quotes_and_parses_wire_values() {
             active: true
         }
     );
+}
+
+#[test]
+fn renames_a_script_and_reports_server_refusals() {
+    let server = MockServer::start();
+    let mut client = SieveClient::connect(&server.config(SieveSecurity::Plain)).expect("connect");
+
+    client
+        .rename_script("old-name", "new-name")
+        .expect("rename");
+    assert!(
+        server
+            .commands()
+            .iter()
+            .any(|command| command == "RENAMESCRIPT \"old-name\" \"new-name\""),
+        "the client sends RENAMESCRIPT: {:?}",
+        server.commands()
+    );
+
+    // A refusal from the server surfaces as an error.
+    let error = client
+        .rename_script("missing", "other")
+        .expect_err("refused");
+    assert!(error.to_string().contains("no such script"), "{error}");
 }

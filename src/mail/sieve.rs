@@ -150,6 +150,12 @@ impl SieveClient {
         Ok(())
     }
 
+    /// Rename a script.
+    pub fn rename_script(&mut self, from: &str, to: &str) -> Result<()> {
+        self.command("RENAMESCRIPT", &[quote(from), quote(to)])?;
+        Ok(())
+    }
+
     /// Check that a script compiles.
     pub fn check_script(&mut self, body: &str) -> Result<()> {
         self.literal_command("CHECKSCRIPT", &[], body.as_bytes())?;

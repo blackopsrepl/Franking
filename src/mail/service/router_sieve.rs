@@ -92,6 +92,17 @@ pub(super) fn set_active(
     })
 }
 
+pub(super) fn rename_script(
+    router: &RouterMailService,
+    account: Option<&str>,
+    from: &str,
+    to: &str,
+) -> MailResult<()> {
+    with_client(router, account, |client| {
+        client.rename_script(from, to).map_err(sieve_error)
+    })
+}
+
 pub(super) fn delete_script(
     router: &RouterMailService,
     account: Option<&str>,

@@ -24,6 +24,8 @@ pub struct SieveState {
     pub pending_delete: Option<String>,
     /// Whether to reload the script list after the next action completes.
     pub pending_refresh: bool,
+    /// Whether the name prompt is renaming the selected script.
+    pub renaming: bool,
 }
 
 /// Starter body for a newly created script.
@@ -94,6 +96,17 @@ impl App {
     /// Prompt for a name for a new script.
     pub(crate) fn sieve_new(&mut self) {
         self.sieve.name = "solverforge".to_string();
+        self.sieve.renaming = false;
+        self.view = View::SieveName;
+    }
+
+    /// Prompt for a new name for the selected script.
+    pub(crate) fn sieve_rename(&mut self) {
+        let Some(script) = self.selected_script() else {
+            return;
+        };
+        self.sieve.name = script.name.clone();
+        self.sieve.renaming = true;
         self.view = View::SieveName;
     }
 
@@ -109,11 +122,29 @@ impl App {
         self.view = View::SieveScripts;
     }
 
-    /// Open the editor for the requested new script.
+    /// Open the editor for the requested new script, or rename the selected one.
     pub(crate) fn sieve_name_submit(&mut self) {
         let name = self.sieve.name.trim().to_string();
         if name.is_empty() {
             self.set_error("A script name is required.");
+            return;
+        }
+        if self.sieve.renaming {
+            self.sieve.renaming = false;
+            let Some(script) = self.selected_script().map(|s| s.name.clone()) else {
+                self.view = View::SieveScripts;
+                return;
+            };
+            if name == script {
+                self.view = View::SieveScripts;
+                self.set_status("Script name unchanged.");
+                return;
+            }
+            self.loading = true;
+            self.sieve.pending_refresh = true;
+            self.view = View::SieveScripts;
+            let account = self.acct_owned();
+            self.worker.sieve_rename_script(account, script, name);
             return;
         }
         self.sieve.editor_name = name;

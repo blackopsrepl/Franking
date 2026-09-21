@@ -15,6 +15,7 @@ impl App {
             Action::SieveDeactivate => self.sieve_deactivate(),
             Action::SieveEdit => self.sieve_edit(),
             Action::SieveNew => self.sieve_new(),
+            Action::SieveRename => self.sieve_rename(),
             Action::SieveDelete => self.sieve_delete(),
             Action::SieveSave => self.sieve_save(),
             Action::SieveClose => self.close_sieve(),

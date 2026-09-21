@@ -39,6 +39,17 @@ impl Worker {
         });
     }
 
+    /// Rename a Sieve script.
+    pub fn sieve_rename_script(&self, account: Option<String>, from: String, to: String) {
+        self.spawn(
+            move |service| {
+                service.sieve_rename_script(account.as_deref(), &from, &to)?;
+                Ok(format!("Renamed {from} to {to}."))
+            },
+            WorkerResult::ActionDone,
+        );
+    }
+
     pub fn sieve_delete_script(&self, account: Option<String>, name: String) {
         self.spawn_action(move |service| {
             service

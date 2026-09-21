@@ -12,8 +12,8 @@ pub(super) fn resolve_sieve_scripts(key: KeyEvent) -> Action {
         KeyCode::Char('e') => Action::SieveEdit,
         KeyCode::Char('n') => Action::SieveNew,
         KeyCode::Char('d') => Action::SieveDelete,
+        KeyCode::Char('r') => Action::SieveRename,
         KeyCode::Char('x') => Action::SieveDeactivate,
-        KeyCode::Char('r') => Action::OpenSieve,
         KeyCode::Esc | KeyCode::Char('q') => Action::SieveClose,
         _ => Action::None,
     }

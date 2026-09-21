@@ -223,6 +223,7 @@ pub enum Action {
     SieveDeactivate,
     SieveEdit,
     SieveNew,
+    SieveRename,
     SieveDelete,
     SieveSave,
     SieveClose,

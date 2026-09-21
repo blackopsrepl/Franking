@@ -200,6 +200,7 @@ impl App {
             | Action::SieveDeactivate
             | Action::SieveEdit
             | Action::SieveNew
+            | Action::SieveRename
             | Action::SieveDelete
             | Action::SieveSave
             | Action::SieveClose

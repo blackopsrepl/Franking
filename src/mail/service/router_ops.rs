@@ -240,6 +240,10 @@ impl MailService for RouterMailService {
         super::router_sieve::delete_script(self, account, name)
     }
 
+    fn sieve_rename_script(&self, account: Option<&str>, from: &str, to: &str) -> MailResult<()> {
+        super::router_sieve::rename_script(self, account, from, to)
+    }
+
     fn empty_folder(&self, account: Option<&str>, folder: &str) -> MailResult<String> {
         route!(self, account, service => service.empty_folder(account, folder))
     }

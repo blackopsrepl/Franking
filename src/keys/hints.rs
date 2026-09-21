@@ -72,6 +72,7 @@ pub fn hints(view: View) -> Vec<(&'static str, &'static str)> {
             ("Enter", "activate"),
             ("e", "edit"),
             ("n", "new"),
+            ("r", "rename"),
             ("d", "delete"),
             ("x", "none active"),
             ("Esc", "close"),
