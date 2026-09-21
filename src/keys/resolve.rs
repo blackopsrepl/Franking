@@ -115,6 +115,8 @@ fn resolve_envelope_list(key: KeyEvent) -> Action {
         KeyCode::Char('m') => Action::MoveMessage,
         KeyCode::Char('!') => Action::ToggleFlag,
         KeyCode::Char('N') => Action::ToggleRead,
+        KeyCode::Char('S') => Action::SyncFolder,
+        KeyCode::Char('A') => Action::MarkFolderRead,
         KeyCode::Char('/') => Action::Search,
         KeyCode::Char('n') => Action::PageDown,
         KeyCode::Char('p') => Action::PageUp,

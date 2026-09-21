@@ -43,6 +43,8 @@ impl App {
                 WorkerResult::ActionDone(Ok(msg)) => {
                     self.loading = false;
                     self.set_status(&msg);
+                    self.worker
+                        .fetch_folder_unread(self.acct_owned(), self.current_folder.clone());
                     if self.pending_return_to_list {
                         self.view = View::EnvelopeList;
                         self.pending_return_to_list = false;

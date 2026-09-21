@@ -116,6 +116,18 @@ fn toggle_read_is_bound_in_mail_views() {
 }
 
 #[test]
+fn folder_actions_are_bound_in_the_envelope_list() {
+    assert_eq!(
+        resolve(View::EnvelopeList, key(KeyCode::Char('S'))),
+        Action::SyncFolder
+    );
+    assert_eq!(
+        resolve(View::EnvelopeList, key(KeyCode::Char('A'))),
+        Action::MarkFolderRead
+    );
+}
+
+#[test]
 fn message_view_actions() {
     assert_eq!(
         resolve(View::MessageView, key(KeyCode::Char('r'))),
