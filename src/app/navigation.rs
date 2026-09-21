@@ -212,6 +212,11 @@ impl App {
         // load_envelopes will be chained after folders complete
     }
 
+    /// Toggle the message view between the header summary and every header.
+    pub(crate) fn toggle_headers(&mut self) {
+        self.show_all_headers = !self.show_all_headers;
+    }
+
     pub(crate) fn enter_account_picker(&mut self) {
         self.load_accounts();
         self.view = View::AccountList;

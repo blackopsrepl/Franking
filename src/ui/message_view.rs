@@ -23,11 +23,17 @@ pub fn render(app: &App, frame: &mut Frame, area: Rect) {
 
     let mut lines: Vec<Line> = Vec::new();
 
-    for header in message.header_fields() {
-        lines.push(Line::from(vec![
-            Span::styled(format!("{}: ", header.name), t.header_label()),
-            Span::styled(header.value.clone(), t.header_value()),
-        ]));
+    if app.show_all_headers {
+        for header in app.all_headers() {
+            lines.push(Line::from(Span::styled(header, t.header_value())));
+        }
+    } else {
+        for header in message.header_fields() {
+            lines.push(Line::from(vec![
+                Span::styled(format!("{}: ", header.name), t.header_label()),
+                Span::styled(header.value.clone(), t.header_value()),
+            ]));
+        }
     }
 
     if let Some(summary) = message.authentication().summary() {

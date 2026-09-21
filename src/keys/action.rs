@@ -100,6 +100,8 @@ pub enum Action {
     Refresh,
     SwitchAccount,
     ToggleHelp,
+    /// Show every raw header in the message view.
+    ToggleHeaders,
     FocusFolders,
     FocusEnvelopes,
     MoveMessage,

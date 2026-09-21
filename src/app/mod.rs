@@ -1,5 +1,6 @@
 /*! Application module wiring. */
 
+mod accessors;
 mod attachments;
 mod compose;
 mod contacts;

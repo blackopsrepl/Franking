@@ -15,6 +15,14 @@ fn message_view_opens_unlock_prompt() {
 }
 
 #[test]
+fn message_view_toggles_all_headers() {
+    assert_eq!(
+        resolve(View::MessageView, key(KeyCode::Char('h'))),
+        Action::ToggleHeaders
+    );
+}
+
+#[test]
 fn message_view_trusts_the_smime_signer() {
     assert_eq!(
         resolve(View::MessageView, key(KeyCode::Char('T'))),

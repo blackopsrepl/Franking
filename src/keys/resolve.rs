@@ -158,6 +158,7 @@ fn resolve_message_view(key: KeyEvent) -> Action {
         KeyCode::Char('P') => Action::UnlockPrompt,
         KeyCode::Char('T') => Action::TrustSigner,
         KeyCode::Char('o') => Action::OpenAttachments,
+        KeyCode::Char('h') => Action::ToggleHeaders,
         KeyCode::Char('?') => Action::ToggleHelp,
         KeyCode::Char('g') => Action::JumpTop,
         KeyCode::Char('G') => Action::JumpBottom,

@@ -187,3 +187,23 @@ fn space_key_selects_the_cursor_row() {
     app.handle_key(KeyEvent::new(KeyCode::Char('u'), KeyModifiers::NONE));
     assert!(app.selected.is_empty());
 }
+
+#[test]
+fn header_toggle_switches_between_summary_and_raw_headers() {
+    use super::super::App;
+
+    let raw = b"From: alice@example.com\r\nTo: bob@example.com\r\nSubject: Raw\r\nX-Custom: value\r\n\r\nbody\r\n";
+    let mut document = crate::mail::mime::parse_message(raw).unwrap();
+    document.raw = Some(raw.to_vec());
+
+    let mut app = App::new(None);
+    app.message_content = Some(document);
+
+    assert!(!app.show_all_headers);
+    app.toggle_headers();
+    assert!(app.show_all_headers);
+
+    let headers = app.all_headers();
+    assert!(headers.iter().any(|h| h == "X-Custom: value"));
+    assert!(!headers.iter().any(|h| h.contains("body")));
+}

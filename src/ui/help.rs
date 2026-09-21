@@ -67,6 +67,7 @@ pub fn render(app: &App, frame: &mut Frame) {
         binding("P", "Unlock PGP with passphrase"),
         binding("T", "Trust the S/MIME signer certificate"),
         binding("o", "Open the attachment list"),
+        binding("h", "Toggle all headers"),
         binding("q / Esc", "Back to list"),
         Line::from(""),
         Line::from(Span::styled(
