@@ -15,6 +15,8 @@ pub struct SendOptions {
     pub passphrase: String,
     /// Directory holding key material; defaults to the app keyring.
     pub keys_dir: Option<std::path::PathBuf>,
+    /// Mailbox for the sent copy, overriding the account's Sent mailbox.
+    pub sent_folder: Option<String>,
 }
 
 impl SendOptions {

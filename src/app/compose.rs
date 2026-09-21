@@ -181,14 +181,26 @@ impl App {
     }
 
     pub(crate) fn compose_send(&mut self) {
-        if let Some(ref cs) = self.compose_state {
-            let template = crate::compose::reassemble_template(cs);
-            let options = self.send_options(cs);
-            self.loading = true;
-            self.remember_pending_send(template.clone(), (&options).into());
-            self.worker
-                .send_template(self.acct_owned(), template, options);
+        // The signature is checked again here: the outgoing message must carry
+        // it even if the body was edited after it was added.
+        if let Some(ref mut cs) = self.compose_state {
+            if let Some(body) = crate::compose::signed_body(cs) {
+                cs.body = crate::compose_editor::ComposeEditor::from_text(&body);
+            }
         }
+        let Some(cs) = self.compose_state.as_ref() else {
+            return;
+        };
+        let template = crate::compose::reassemble_template(cs);
+        let options = self.send_options(cs);
+        self.loading = true;
+        self.remember_pending_send(
+            template.clone(),
+            (&options).into(),
+            options.sent_folder.clone(),
+        );
+        self.worker
+            .send_template(self.acct_owned(), template, options);
     }
 
     /// Build the protection options for the message being composed.
@@ -200,6 +212,9 @@ impl App {
             smime_encrypt: cs.smime_encrypt,
             passphrase: self.crypto_passphrase.clone(),
             keys_dir: Some(super::pgp::keys_dir()),
+            sent_folder: cs
+                .selected_identity()
+                .and_then(|identity| identity.sent_folder.clone()),
         }
     }
 

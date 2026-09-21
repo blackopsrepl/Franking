@@ -43,6 +43,8 @@ pub struct OutboxItem {
     pub subject: String,
     /// How the message should be protected when it is sent.
     pub protection: Protection,
+    /// Mailbox for the sent copy, when the identity named one.
+    pub sent_folder: Option<String>,
     /// RFC 3339 time before which the message should not be sent.
     pub send_after: Option<String>,
     pub created_at: String,
@@ -58,6 +60,7 @@ pub fn enqueue(
     account: Option<&str>,
     template: &str,
     protection: Protection,
+    sent_folder: Option<&str>,
     send_after: Option<&str>,
 ) -> Result<Option<i64>> {
     let existing: Option<i64> = conn
@@ -72,8 +75,9 @@ pub fn enqueue(
         return Ok(existing);
     }
     conn.execute(
-        "INSERT INTO outbox (account, template, sign, encrypt, smime_sign, smime_encrypt, send_after)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+        "INSERT INTO outbox
+             (account, template, sign, encrypt, smime_sign, smime_encrypt, sent_folder, send_after)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
         rusqlite::params![
             account,
             template,
@@ -81,6 +85,7 @@ pub fn enqueue(
             protection.encrypt as i32,
             protection.smime_sign as i32,
             protection.smime_encrypt as i32,
+            sent_folder,
             send_after
         ],
     )
@@ -92,7 +97,7 @@ pub fn enqueue(
 pub fn list(conn: &Connection) -> Result<Vec<OutboxItem>> {
     let mut statement = conn.prepare(
         "SELECT id, account, template, sign, encrypt, created_at, send_after,
-                smime_sign, smime_encrypt
+                smime_sign, smime_encrypt, sent_folder
          FROM outbox ORDER BY id",
     )?;
     let rows = statement.query_map([], |row| {
@@ -107,6 +112,7 @@ pub fn list(conn: &Connection) -> Result<Vec<OutboxItem>> {
                 smime_sign: row.get::<_, i32>(7)? != 0,
                 smime_encrypt: row.get::<_, i32>(8)? != 0,
             },
+            sent_folder: row.get(9)?,
             created_at: row.get(5)?,
             send_after: row.get(6)?,
             template,
@@ -169,6 +175,7 @@ mod tests {
                 ..Protection::default()
             },
             None,
+            None,
         )
         .unwrap()
         .expect("queued");
@@ -180,6 +187,7 @@ mod tests {
                 encrypt: true,
                 ..Protection::default()
             },
+            None,
             None,
         )
         .unwrap()
@@ -194,6 +202,7 @@ mod tests {
                 sign: true,
                 ..Protection::default()
             },
+            None,
             None,
         )
         .unwrap();
@@ -223,6 +232,7 @@ mod tests {
             "To: a@example.com\nSubject: Now\n\nbody",
             Protection::default(),
             None,
+            None,
         )
         .unwrap();
         enqueue(
@@ -230,6 +240,7 @@ mod tests {
             None,
             "To: b@example.com\nSubject: Past\n\nbody",
             Protection::default(),
+            None,
             Some("2026-01-01T00:00:00Z"),
         )
         .unwrap();
@@ -238,6 +249,7 @@ mod tests {
             None,
             "To: c@example.com\nSubject: Future\n\nbody",
             Protection::default(),
+            None,
             Some("2030-01-01T00:00:00Z"),
         )
         .unwrap();
@@ -256,6 +268,7 @@ mod tests {
             None,
             "To: a@example.com\n\nbody",
             Protection::default(),
+            None,
             None,
         )
         .unwrap();

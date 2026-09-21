@@ -89,7 +89,11 @@ impl ImapSmtpService {
             .map_err(map_smtp_error)?;
 
         let mut status = "Message sent.".to_string();
-        if let Err(error) = self.save_message_to_sent(&raw) {
+        let sent_folder = match options.sent_folder.as_deref() {
+            Some(folder) => Some(folder.to_string()),
+            None => self.sent_folder_name()?,
+        };
+        if let Err(error) = self.save_message_to_folder(sent_folder.as_deref(), &raw) {
             status = format!("Message sent, but saving to Sent failed: {error}");
         }
         Ok(status)
@@ -216,12 +220,19 @@ impl ImapSmtpService {
 
     /// Append a sent message to the account's Sent mailbox, discovered via the
     /// RFC 6154 `\Sent` attribute with a name fallback.
+    /// Append a sent message to the account's Sent mailbox.
     pub fn save_message_to_sent(&self, raw: &[u8]) -> MailResult<()> {
-        let Some(folder) = self.sent_folder_name()? else {
+        let folder = self.sent_folder_name()?;
+        self.save_message_to_folder(folder.as_deref(), raw)
+    }
+
+    /// Append a sent message to `folder`, appending nothing when it is `None`.
+    fn save_message_to_folder(&self, folder: Option<&str>, raw: &[u8]) -> MailResult<()> {
+        let Some(folder) = folder else {
             return Ok(());
         };
         self.pool.with_client(&self.account, |client| {
-            next::append(client, &folder, vec![], raw).map(|_| ())
+            next::append(client, folder, vec![], raw).map(|_| ())
         })
     }
 

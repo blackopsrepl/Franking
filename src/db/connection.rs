@@ -7,7 +7,8 @@ use std::path::PathBuf;
 use anyhow::{Context, Result};
 use rusqlite::Connection;
 
-use super::schema::{create_schema, migrate_schema, reset_schema};
+use super::schema::{create_schema, reset_schema};
+use super::schema_migrations::migrate_schema;
 
 /// Current schema version. Changing this resets local DB state.
 const SCHEMA_VERSION: u32 = 3;

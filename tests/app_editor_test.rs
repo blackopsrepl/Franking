@@ -25,14 +25,14 @@ fn tab_to_save_saves_identity_edit_form() {
     app.identity_edit_state = Some(state);
 
     // Tab through fields to reach the Save button:
-    // Name → SenderName → Email → Signature → IsDefault → Save  (5 Tabs)
+    // Name → SenderName → Email → Signature → SentFolder → IsDefault → Save
     let tab = KeyEvent {
         code: KeyCode::Tab,
         modifiers: KeyModifiers::NONE,
         kind: KeyEventKind::Press,
         state: KeyEventState::NONE,
     };
-    for _ in 0..5 {
+    for _ in 0..6 {
         app.handle_key(tab);
     }
 
@@ -40,7 +40,7 @@ fn tab_to_save_saves_identity_edit_form() {
     assert_eq!(
         app.identity_edit_state.as_ref().unwrap().focused,
         IdentityField::Save,
-        "focus should be on Save after 5 Tabs"
+        "focus should be on Save after the fields and toggles"
     );
 
     // Press Enter to activate Save.
@@ -125,6 +125,7 @@ fn compose_confirm_discard_blocks_ctrl_passthrough_on_from_field() {
             display_name: Some("Work".to_string()),
             email: "work@example.com".to_string(),
             signature: None,
+            sent_folder: None,
             is_default: true,
         },
         Identity {
@@ -134,6 +135,7 @@ fn compose_confirm_discard_blocks_ctrl_passthrough_on_from_field() {
             display_name: Some("Alt".to_string()),
             email: "alt@example.com".to_string(),
             signature: None,
+            sent_folder: None,
             is_default: false,
         },
     ];

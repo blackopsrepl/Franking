@@ -120,6 +120,7 @@ fn a_failed_send_is_queued_in_the_outbox() {
             sign: true,
             ..outbox::Protection::default()
         },
+        None,
     );
     app.queue_failed_send(Some("acct".to_string()));
 
@@ -138,6 +139,7 @@ fn a_failed_send_is_queued_in_the_outbox() {
             sign: true,
             ..outbox::Protection::default()
         },
+        None,
     );
     app.queue_failed_send(Some("acct".to_string()));
     assert_eq!(outbox::count(app.db.as_ref().unwrap()).unwrap(), 1);
@@ -155,6 +157,7 @@ fn outbox_discard_requires_two_presses() {
         account: None,
         subject: "Queued".to_string(),
         protection: crate::mail::outbox::Protection::default(),
+        sent_folder: None,
         send_after: None,
         created_at: "2026-01-01 00:00:00".to_string(),
         template: "To: a@example.com\n\nbody".to_string(),

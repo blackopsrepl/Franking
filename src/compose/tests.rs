@@ -69,6 +69,7 @@ fn new_messages_get_the_identity_signature() {
         display_name: Some("Alice".to_string()),
         email: "alice@example.com".to_string(),
         signature: Some("-- \nAlice Example".to_string()),
+        sent_folder: None,
         is_default: true,
     }];
     state.from_idx = Some(0);
@@ -95,6 +96,7 @@ fn replies_do_not_get_a_signature_appended() {
         display_name: None,
         email: "alice@example.com".to_string(),
         signature: Some("-- \nAlice".to_string()),
+        sent_folder: None,
         is_default: true,
     }];
 
@@ -103,4 +105,47 @@ fn replies_do_not_get_a_signature_appended() {
         "To: bob@example.com\nSubject: Re: Hi\n\n> quoted",
     );
     assert!(!state.body.text().contains("-- \nAlice"));
+}
+
+#[test]
+fn sending_restores_a_signature_the_body_lost() {
+    use crate::compose::{signed_body, ComposeMode, ComposeState};
+    use crate::identities::Identity;
+
+    let mut state = ComposeState::new(ComposeMode::New, Some("acct".to_string()));
+    state.from_identities = vec![Identity {
+        id: 1,
+        account: "acct".to_string(),
+        name: Some("Work".to_string()),
+        display_name: Some("Alice".to_string()),
+        email: "alice@example.com".to_string(),
+        signature: Some("-- \nAlice Example".to_string()),
+        sent_folder: None,
+        is_default: true,
+    }];
+    state.from_idx = Some(0);
+
+    // A body the user edited after the signature was added.
+    state.body = crate::compose_editor::ComposeEditor::from_text("hello there");
+    let with_signature = signed_body(&state).expect("the signature is restored");
+    assert!(
+        with_signature.ends_with("-- \nAlice Example"),
+        "{with_signature}"
+    );
+
+    // Applying the result is idempotent.
+    state.body = crate::compose_editor::ComposeEditor::from_text(&with_signature);
+    assert!(
+        signed_body(&state).is_none(),
+        "a body that already ends with the signature is left alone"
+    );
+}
+
+#[test]
+fn sending_without_a_signature_changes_nothing() {
+    use crate::compose::{signed_body, ComposeMode, ComposeState};
+
+    let mut state = ComposeState::new(ComposeMode::New, Some("acct".to_string()));
+    state.body = crate::compose_editor::ComposeEditor::from_text("hello");
+    assert!(signed_body(&state).is_none());
 }

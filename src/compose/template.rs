@@ -125,6 +125,22 @@ pub fn populate_from_template(state: &mut ComposeState, raw: &str) {
 
 /// Append the selected (or default) identity's signature to a new message.
 fn append_signature(state: &mut ComposeState) {
+    if let Some(body) = body_with_signature(state) {
+        state.body = ComposeEditor::from_text(&body);
+    }
+}
+
+/// The composed body with the identity's signature, when it is missing.
+///
+/// The signature is added while composing, but a body the user edited can lose
+/// it; sending checks again so the message that leaves always carries the
+/// signature of the identity it is sent from. A body that already ends with the
+/// signature is left alone, so nothing is appended twice.
+pub fn signed_body(state: &ComposeState) -> Option<String> {
+    body_with_signature(state)
+}
+
+fn body_with_signature(state: &ComposeState) -> Option<String> {
     let signature = state
         .selected_identity()
         .or_else(|| {
@@ -133,16 +149,18 @@ fn append_signature(state: &mut ComposeState) {
                 .iter()
                 .find(|identity| identity.is_default)
         })
-        .and_then(|identity| identity.signature.clone());
-    let Some(signature) = signature else {
-        return;
-    };
+        .and_then(|identity| identity.signature.clone())?;
     if signature.trim().is_empty() {
-        return;
+        return None;
     }
+
     let body = state.body.text();
-    let text = format!("{}\n\n-- \n{}", body.trim_end(), signature.trim_end());
-    state.body = ComposeEditor::from_text(&text);
+    let trimmed = body.trim_end();
+    let signature = signature.trim_end();
+    if trimmed.ends_with(signature) {
+        return None;
+    }
+    Some(format!("{trimmed}\n\n-- \n{signature}"))
 }
 
 // ── Template reassembly ──────────────────────────────────────────────────────

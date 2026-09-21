@@ -244,7 +244,8 @@ impl MailService for MaildirService {
         ensure_no_pgp(options)?;
         self.ensure_ready()?;
         let raw = render_outgoing(&parse_template_message(template))?;
-        let sent_dir = self.folder_path("Sent")?;
+        let folder = options.sent_folder.as_deref().unwrap_or("Sent");
+        let sent_dir = self.folder_path(folder)?;
         let destination = next_message_path(&sent_dir, &['S']);
         fs::write(&destination, raw)
             .map_err(|err| MailError::local_maildir_failure(err.to_string()))?;

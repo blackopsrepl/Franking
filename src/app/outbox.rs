@@ -16,10 +16,19 @@ pub struct OutboxState {
     pub index: usize,
     /// Queued message awaiting a second discard press.
     pub pending_discard: Option<i64>,
-    /// Template and protection of the message currently being sent.
-    pub pending_send: Option<(String, outbox::Protection)>,
+    /// The message currently being sent, kept so a failure can queue it.
+    pub pending_send: Option<PendingSend>,
     /// Ticks since the last due-message check.
     pub ticks_since_flush: u64,
+}
+
+/// A send that failed, kept so a retry sends the same message the same way.
+#[derive(Debug, Clone)]
+pub struct PendingSend {
+    pub template: String,
+    pub protection: outbox::Protection,
+    /// Mailbox for the sent copy, when the identity named one.
+    pub sent_folder: Option<String>,
 }
 
 impl App {
@@ -77,7 +86,7 @@ impl App {
 
     /// Queue the message in progress for a scheduled send.
     pub(crate) fn schedule_send(&mut self, send_after: String) {
-        let (template, protection, account) = {
+        let (template, protection, sent_folder, account) = {
             let Some(cs) = self.compose_state.as_ref() else {
                 return;
             };
@@ -86,6 +95,7 @@ impl App {
             (
                 template,
                 outbox::Protection::from(&options),
+                options.sent_folder.clone(),
                 cs.account.clone(),
             )
         };
@@ -98,6 +108,7 @@ impl App {
             account.as_deref(),
             &template,
             protection,
+            sent_folder.as_deref(),
             Some(&send_after),
         ) {
             Ok(Some(_)) => {
@@ -117,22 +128,34 @@ impl App {
         &mut self,
         template: String,
         protection: outbox::Protection,
+        sent_folder: Option<String>,
     ) {
-        self.outbox.pending_send = Some((template, protection));
+        self.outbox.pending_send = Some(PendingSend {
+            template,
+            protection,
+            sent_folder,
+        });
     }
 
     /// Queue the last send attempt when it failed.
     pub(crate) fn queue_failed_send(&mut self, account: Option<String>) {
-        let Some((template, protection)) = self.outbox.pending_send.take() else {
+        let Some(pending) = self.outbox.pending_send.take() else {
             return;
         };
         let Some(ref conn) = self.db else {
             return;
         };
-        let queued = outbox::enqueue(conn, account.as_deref(), &template, protection, None)
-            .ok()
-            .flatten()
-            .is_some();
+        let queued = outbox::enqueue(
+            conn,
+            account.as_deref(),
+            &pending.template,
+            pending.protection,
+            pending.sent_folder.as_deref(),
+            None,
+        )
+        .ok()
+        .flatten()
+        .is_some();
         if queued {
             if let Ok(count) = outbox::count(conn) {
                 self.set_status(&format!(

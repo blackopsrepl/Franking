@@ -60,7 +60,7 @@ pub fn render(app: &App, frame: &mut Frame) {
     );
 
     // Rows 1–10: five fields (label + input each)
-    let fields: [(IdentityField, &str, &str); 5] = [
+    let fields: [(IdentityField, &str, &str); 6] = [
         (IdentityField::Name, "Name   ", state.name.as_str()),
         (
             IdentityField::SenderName,
@@ -68,6 +68,11 @@ pub fn render(app: &App, frame: &mut Frame) {
             state.display_name.as_str(),
         ),
         (IdentityField::Email, "Email  ", state.email.as_str()),
+        (
+            IdentityField::SentFolder,
+            "Sent   ",
+            state.sent_folder.as_str(),
+        ),
         (
             IdentityField::Signature,
             "Signat.",

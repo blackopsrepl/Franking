@@ -36,6 +36,7 @@ impl Worker {
                     smime_encrypt: item.protection.smime_encrypt,
                     passphrase,
                     keys_dir: Some(crate::mail::pgp::default_keys_dir()),
+                    sent_folder: item.sent_folder.clone(),
                 };
                 let status =
                     service.template_send(item.account.as_deref(), &item.template, &options)?;
@@ -66,6 +67,7 @@ impl Worker {
                         smime_encrypt: item.protection.smime_encrypt,
                         passphrase: passphrase.clone(),
                         keys_dir: Some(crate::mail::pgp::default_keys_dir()),
+                        sent_folder: item.sent_folder.clone(),
                     };
                     if service
                         .template_send(item.account.as_deref(), &item.template, &options)

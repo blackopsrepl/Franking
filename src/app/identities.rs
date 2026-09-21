@@ -166,32 +166,14 @@ impl App {
         };
 
         match validation_result {
-            Ok((name, display_name, email, signature, is_default)) => {
+            Ok(values) => {
                 if let Some(ref conn) = self.db {
                     let result = if let Some(id) = identity_id {
                         crate::identities::delete(conn, id).and_then(|_| {
-                            crate::identities::add(
-                                conn,
-                                &account,
-                                name.as_deref(),
-                                display_name.as_deref(),
-                                &email,
-                                signature.as_deref(),
-                                is_default,
-                            )
-                            .map(|_| ())
+                            crate::identities::add(conn, &account, &values).map(|_| ())
                         })
                     } else {
-                        crate::identities::add(
-                            conn,
-                            &account,
-                            name.as_deref(),
-                            display_name.as_deref(),
-                            &email,
-                            signature.as_deref(),
-                            is_default,
-                        )
-                        .map(|_| ())
+                        crate::identities::add(conn, &account, &values).map(|_| ())
                     };
                     match result {
                         Ok(()) => {
