@@ -103,16 +103,18 @@ impl Worker {
         page: usize,
         page_size: usize,
         query: Option<String>,
+        order: crate::mail::sort::SortOrder,
     ) {
         let tx = self.tx.clone();
         let service = self.service.clone();
         thread::spawn(move || {
-            let result = service.list_envelopes(
+            let result = service.list_envelopes_sorted(
                 account.as_deref(),
                 &folder,
                 page,
                 page_size,
                 query.as_deref(),
+                order,
             );
             let _ = tx.send(WorkerResult::Envelopes(result));
         });

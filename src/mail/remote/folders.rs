@@ -42,6 +42,47 @@ impl ImapSmtpService {
         Ok(envelopes)
     }
 
+    /// List a page in a requested order, using server-side SORT.
+    ///
+    /// SORT orders the whole folder on the server before paging; servers that
+    /// do not implement it fall back to arrival order, and the caller's local
+    /// ordering still applies to the page.
+    pub fn list_envelopes_sorted(
+        &self,
+        account: Option<&str>,
+        folder: &str,
+        page: usize,
+        page_size: usize,
+        query: Option<&str>,
+        order: crate::mail::sort::SortOrder,
+    ) -> MailResult<Vec<Envelope>> {
+        self.ensure_requested_account(account)?;
+
+        let mut envelopes = self.pool.with_client(&self.account, |client| {
+            next::select(client, folder)?;
+            let criteria = next::search::criteria(query);
+            let uids = match next::sort_uids(client, order.criteria(), criteria.clone()) {
+                Ok(uids) => uids,
+                Err(error) if error.is_transport() => return Err(error),
+                Err(_) => {
+                    // No SORT support: arrival order, newest first.
+                    let mut uids = next::search_uids(client, criteria)?;
+                    uids.sort_unstable_by(|left, right| right.cmp(left));
+                    uids
+                }
+            };
+            let start = page.saturating_sub(1) * page_size;
+            let page_uids = uids
+                .into_iter()
+                .skip(start)
+                .take(page_size)
+                .collect::<Vec<_>>();
+            next::fetch_envelopes(client, &page_uids)
+        })?;
+        self.tag(&mut envelopes, folder);
+        Ok(envelopes)
+    }
+
     pub fn list_envelopes_threaded(
         &self,
         account: Option<&str>,

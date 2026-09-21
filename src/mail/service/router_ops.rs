@@ -5,7 +5,6 @@ use crate::mail::session::IdleOutcome;
 use crate::mail::store;
 use crate::mail::types::{Account, Envelope, Folder};
 
-use super::cache::{cached_envelopes, is_offline, record_listing};
 use super::router::{route, RouterMailService};
 use super::service_trait::{MailService, SendOptions};
 
@@ -30,27 +29,19 @@ impl MailService for RouterMailService {
         page_size: usize,
         query: Option<&str>,
     ) -> MailResult<Vec<Envelope>> {
-        let record = self.choose_account(account)?;
-        let result = route!(self, Some(&record.name), service => {
-            service.list_envelopes(account, folder, page, page_size, query)
-        });
+        self.list_envelopes_page(account, folder, page, page_size, query, None)
+    }
 
-        match result {
-            Ok(envelopes) => {
-                let cursor = self
-                    .folder_sync_cursor(Some(&record.name), folder)
-                    .unwrap_or((None, None));
-                let _ = self.with_db(|conn| {
-                    record_listing(conn, &record.name, folder, &envelopes, cursor)
-                        .map_err(|err| MailError::config_invalid(err.to_string()))
-                });
-                Ok(envelopes)
-            }
-            Err(error) if is_offline(&error) => self.with_db(|conn| {
-                cached_envelopes(conn, &record.name, folder, page, page_size, query)
-            }),
-            Err(error) => Err(error),
-        }
+    fn list_envelopes_sorted(
+        &self,
+        account: Option<&str>,
+        folder: &str,
+        page: usize,
+        page_size: usize,
+        query: Option<&str>,
+        order: crate::mail::sort::SortOrder,
+    ) -> MailResult<Vec<Envelope>> {
+        self.list_envelopes_page(account, folder, page, page_size, query, Some(order))
     }
 
     fn list_envelopes_threaded(

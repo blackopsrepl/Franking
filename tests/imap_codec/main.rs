@@ -6,4 +6,5 @@
 
 mod codec_tests;
 mod delta_tests;
+mod sort_tests;
 mod support;

@@ -1,6 +1,10 @@
 /*! Client-side ordering of a listed page of envelopes. */
 
+use imap_types::extensions::sort::SortCriterion;
+
 use super::types::Envelope;
+
+use imap_types::extensions::sort as imap_sort;
 
 /// Field the message list is ordered by.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -71,6 +75,21 @@ impl SortOrder {
             self.key.label(),
             if self.descending { "↓" } else { "↑" }
         )
+    }
+
+    /// The server-side SORT criteria for this ordering.
+    ///
+    /// A server-side sort is what makes ordering meaningful beyond the fetched
+    /// page; the local `apply` remains for backends and servers without SORT.
+    pub fn criteria(self) -> imap_types::core::Vec1<SortCriterion> {
+        imap_types::core::Vec1::from(SortCriterion {
+            key: match self.key {
+                SortKey::Date => imap_sort::SortKey::Date,
+                SortKey::Sender => imap_sort::SortKey::From,
+                SortKey::Subject => imap_sort::SortKey::Subject,
+            },
+            reverse: self.descending,
+        })
     }
 
     /// Order `envelopes` in place, keeping equal keys in their listed order.

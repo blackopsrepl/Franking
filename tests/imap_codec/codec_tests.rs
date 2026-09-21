@@ -13,7 +13,9 @@ use imap_types::sequence::SequenceSet;
 use solverforge_mail::mail::remote::next;
 use solverforge_mail::mail::session::{open_imap_client, SessionPool};
 
-use super::support::{account, mailbox_lock, seed, test_address, FixedCredentials};
+use super::support::{
+    account, ensure_mailbox, mailbox_lock, seed, test_address, FixedCredentials, FOLDER,
+};
 
 #[test]
 fn sorts_threads_and_tracks_modseq_over_the_codec_layer() {
@@ -22,6 +24,7 @@ fn sorts_threads_and_tracks_modseq_over_the_codec_layer() {
     };
     let _guard = mailbox_lock();
     let account = account(&host, port);
+    ensure_mailbox(&account);
     seed(&account);
 
     let credentials = FixedCredentials;
@@ -133,6 +136,7 @@ fn codec_layer_matches_the_legacy_client() {
     let Some((host, port)) = test_address() else {
         return;
     };
+    let _guard = mailbox_lock();
     let account = account(&host, port);
     seed(&account);
 
@@ -157,18 +161,19 @@ fn codec_layer_matches_the_legacy_client() {
     assert_eq!(new_names, old_names, "folder names and roles agree");
 
     // Envelopes for every message in INBOX.
-    next::select(&mut client, "INBOX").expect("select");
+    next::select(&mut client, FOLDER).expect("select");
     let uids = next::search_uids(&mut client, next::search::criteria(None)).expect("search");
     let new_envelopes = next::fetch_envelopes(&mut client, &uids).expect("new FETCH");
     let old_envelopes = legacy
-        .list_envelopes(None, "INBOX", 1, 1000, None)
+        .list_envelopes(None, FOLDER, 1, 1000, None)
         .expect("legacy listing");
 
     let summarize = |envelopes: &[solverforge_mail::mail::types::Envelope]| {
-        let mut rows: Vec<(String, String, String, bool, bool)> = envelopes
+        envelopes
             .iter()
             .map(|envelope| {
                 (
+                    envelope.id.clone(),
                     envelope.subject.clone(),
                     envelope.sender_display(),
                     envelope.date.clone(),
@@ -176,14 +181,46 @@ fn codec_layer_matches_the_legacy_client() {
                     envelope.is_flagged(),
                 )
             })
-            .collect();
-        rows.sort();
-        rows
+            .collect::<Vec<_>>()
     };
+    // Order matters: the listing is newest first, so the legacy client's order
+    // (UID ascending) differs, but the *set* and the mapping must agree.
+    let mut new_rows = summarize(&new_envelopes);
+    let mut old_rows = summarize(&old_envelopes);
+    new_rows.sort();
+    old_rows.sort();
+    assert_eq!(new_rows, old_rows, "envelope metadata agrees");
+    let mut new_uids: Vec<u32> = new_envelopes
+        .iter()
+        .map(|envelope| envelope.id.parse().expect("uid"))
+        .collect();
+    new_uids.sort_unstable();
+    let mut old_uids: Vec<u32> = old_envelopes
+        .iter()
+        .map(|envelope| envelope.id.parse().expect("uid"))
+        .collect();
+    old_uids.sort_unstable();
+    assert_eq!(new_uids, old_uids, "the same messages are listed");
+
+    // The page must follow the requested UID order, which is what gives
+    // server-side SORT and newest-first paging their meaning.
+    let newest_first = next::sort_uids(
+        &mut client,
+        Vec1::from(SortCriterion {
+            key: SortKey::Date,
+            reverse: true,
+        }),
+        Vec1::from(SearchKey::All),
+    )
+    .expect("SORT");
+    let ordered = next::fetch_envelopes(&mut client, &newest_first).expect("ordered fetch");
+    let ordered_uids: Vec<u32> = ordered
+        .iter()
+        .map(|envelope| envelope.id.parse().expect("uid"))
+        .collect();
     assert_eq!(
-        summarize(&new_envelopes),
-        summarize(&old_envelopes),
-        "envelope metadata agrees"
+        ordered_uids, newest_first,
+        "FETCH results follow the request order"
     );
     assert!(
         !new_envelopes.is_empty(),
@@ -206,7 +243,7 @@ fn codec_layer_matches_the_legacy_client() {
     let uid = uids.iter().copied().max().expect("a uid");
     let new_raw = next::read_message_raw(&mut client, uid).expect("new raw read");
     let old_raw = legacy
-        .read_message_raw(None, "INBOX", &uid.to_string())
+        .read_message_raw(None, FOLDER, &uid.to_string())
         .expect("legacy raw read");
     assert_eq!(new_raw, old_raw, "raw message bytes agree");
 

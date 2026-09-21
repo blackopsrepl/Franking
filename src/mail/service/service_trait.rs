@@ -117,6 +117,26 @@ pub trait MailService: Send + Sync {
         Ok(Vec::new())
     }
 
+    /// List a folder page in a requested order.
+    ///
+    /// Backends with server-side SORT order the whole folder before paging, so
+    /// the ordering is meaningful beyond the page. The default orders the
+    /// fetched page locally, which is all a backend or server without SORT can
+    /// offer.
+    fn list_envelopes_sorted(
+        &self,
+        account: Option<&str>,
+        folder: &str,
+        page: usize,
+        page_size: usize,
+        query: Option<&str>,
+        order: crate::mail::sort::SortOrder,
+    ) -> MailResult<Vec<Envelope>> {
+        let mut envelopes = self.list_envelopes(account, folder, page, page_size, query)?;
+        order.apply(&mut envelopes);
+        Ok(envelopes)
+    }
+
     /// Report folder changes since an anchor, when the backend can.
     ///
     /// Backends that cannot report deltas return `full_resync`.

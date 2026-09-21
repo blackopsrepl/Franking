@@ -134,7 +134,27 @@ pub fn fetch_envelopes(client: &mut Connection, uids: &[u32]) -> MailResult<Vec<
         })
         .map_err(imap_error)?
         .require_ok("UID FETCH")?;
-    Ok(envelopes_from_fetch(&output))
+    Ok(in_requested_order(envelopes_from_fetch(&output), uids))
+}
+
+/// Servers answer FETCH in mailbox order, so restore the caller's order.
+///
+/// The order carries meaning: it is the server's SORT order, or newest-first
+/// for a plain listing.
+fn in_requested_order(envelopes: Vec<Envelope>, uids: &[u32]) -> Vec<Envelope> {
+    let position: std::collections::HashMap<u32, usize> = uids
+        .iter()
+        .enumerate()
+        .map(|(index, uid)| (*uid, index))
+        .collect();
+    let mut envelopes = envelopes;
+    envelopes.sort_by_key(|envelope| {
+        position
+            .get(&envelope.id.parse::<u32>().unwrap_or_default())
+            .copied()
+            .unwrap_or(usize::MAX)
+    });
+    envelopes
 }
 
 /// Read a whole message, without setting the Seen flag.

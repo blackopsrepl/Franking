@@ -54,13 +54,31 @@ pub(crate) fn test_address() -> Option<(String, u16)> {
     Some((host.to_string(), port.parse().ok()?))
 }
 
+/// The live tests use their own mailbox: `cargo test` runs each file in a
+/// separate process, so a shared INBOX would let them mutate each other.
+pub(crate) const FOLDER: &str = "codec-tests";
+
+/// Create the test mailbox when it does not exist yet.
+pub(crate) fn ensure_mailbox(account: &AccountRecord) {
+    let pool = SessionPool::with_credentials(std::sync::Arc::new(FixedCredentials));
+    pool.with_client(account, |client| {
+        match next::create_folder(client, FOLDER) {
+            Ok(()) => Ok(()),
+            Err(error) if error.is_transport() => Err(error),
+            // The mailbox already exists, which is the common case.
+            Err(_) => Ok(()),
+        }
+    })
+    .expect("test mailbox");
+}
+
 /// Seed two messages so a listing has something to compare.
 pub(crate) fn seed(account: &AccountRecord) {
     let pool = SessionPool::with_credentials(std::sync::Arc::new(FixedCredentials));
     let raw = b"From: alice@example.com\r\nTo: test@example.com\r\nSubject: Codec probe\r\nMessage-ID: <codec-probe@example.com>\r\nDate: 2026-04-13 09:00:00+00:00\r\n\r\nhello from the codec test";
     for _ in 0..2 {
         pool.with_client(account, |client| {
-            next::append(client, "INBOX", vec![], raw).map(|_| ())
+            next::append(client, FOLDER, vec![], raw).map(|_| ())
         })
         .expect("seed append");
     }

@@ -4,6 +4,7 @@ mod cache;
 mod read;
 mod router;
 mod router_ops;
+mod router_pages;
 mod router_sieve;
 mod router_sync;
 mod service_trait;

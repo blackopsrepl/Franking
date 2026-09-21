@@ -5,7 +5,9 @@ use std::sync::Arc;
 use solverforge_mail::mail::remote::next;
 use solverforge_mail::mail::session::{open_imap_client, SessionPool};
 
-use super::support::{account, mailbox_lock, seed, test_address, FixedCredentials};
+use super::support::{
+    account, ensure_mailbox, mailbox_lock, seed, test_address, FixedCredentials, FOLDER,
+};
 
 /// Delta sync must report removed messages and flag changes, and must never
 /// silently claim "nothing changed" when the anchor cannot be used.
@@ -16,6 +18,7 @@ fn qresync_reports_vanished_and_changed_flags() {
     };
     let _guard = mailbox_lock();
     let account = account(&host, port);
+    ensure_mailbox(&account);
     seed(&account);
 
     let pool = Arc::new(SessionPool::with_credentials(Arc::new(FixedCredentials)));
@@ -23,7 +26,7 @@ fn qresync_reports_vanished_and_changed_flags() {
 
     // First sync: no anchor, so a full listing and an anchor come back.
     let first = service
-        .sync_folder_delta(None, "INBOX", None)
+        .sync_folder_delta(None, FOLDER, None)
         .expect("initial sync");
     assert!(
         first.full_resync,
@@ -45,10 +48,10 @@ fn qresync_reports_vanished_and_changed_flags() {
         "From: bob@example.com\r\nTo: test@example.com\r\nSubject: After the anchor\r\nMessage-ID: <after-{uid_next}@example.com>\r\nDate: 2026-04-13 10:00:00+00:00\r\n\r\nnew mail"
     );
     let mut client = open_imap_client(&account, &FixedCredentials).expect("client");
-    let appended = next::append(&mut client, "INBOX", vec![], fresh.as_bytes())
+    let appended = next::append(&mut client, FOLDER, vec![], fresh.as_bytes())
         .expect("append")
         .expect("APPENDUID");
-    next::select(&mut client, "INBOX").expect("select");
+    next::select(&mut client, FOLDER).expect("select");
     let seen = next::flag_of("seen").expect("flag");
     next::store_flags(
         &mut client,
@@ -61,7 +64,7 @@ fn qresync_reports_vanished_and_changed_flags() {
     client.logout();
 
     let delta = service
-        .sync_folder_delta(None, "INBOX", Some(anchor))
+        .sync_folder_delta(None, FOLDER, Some(anchor))
         .expect("delta sync");
     assert!(!delta.full_resync, "the anchor was usable");
     assert!(
@@ -80,7 +83,7 @@ fn qresync_reports_vanished_and_changed_flags() {
 
     // A vanished message must be reported as removed.
     let mut client = open_imap_client(&account, &FixedCredentials).expect("client");
-    next::select(&mut client, "INBOX").expect("select");
+    next::select(&mut client, FOLDER).expect("select");
     let doomed = next::search_uids(&mut client, next::search::criteria(None))
         .expect("search")
         .into_iter()
@@ -100,7 +103,7 @@ fn qresync_reports_vanished_and_changed_flags() {
     client.logout();
 
     let delta = service
-        .sync_folder_delta(None, "INBOX", Some(anchor))
+        .sync_folder_delta(None, FOLDER, Some(anchor))
         .expect("delta sync after expunge");
     assert!(!delta.full_resync, "the anchor is still usable");
     assert!(
