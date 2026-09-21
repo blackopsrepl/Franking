@@ -101,6 +101,16 @@ pub trait MailService: Send + Sync {
         ))
     }
 
+    /// UIDVALIDITY and UIDNEXT for a folder, when the backend can report them.
+    fn folder_sync_cursor(
+        &self,
+        account: Option<&str>,
+        folder: &str,
+    ) -> MailResult<(Option<u32>, Option<u32>)> {
+        let _ = (account, folder);
+        Ok((None, None))
+    }
+
     /// Block until a folder changes or the timeout elapses. Backends without
     /// push support report it as unsupported so callers can stop watching.
     fn idle_watch(

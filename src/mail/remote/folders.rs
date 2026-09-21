@@ -184,20 +184,38 @@ impl ImapSmtpService {
     pub fn folder_unread(&self, account: Option<&str>, folder: &str) -> MailResult<usize> {
         self.ensure_requested_account(account)?;
 
-        fn exec<S: Read + Write>(
-            session: &mut imap::Session<S>,
-            folder: &str,
-        ) -> MailResult<usize> {
-            session.select(folder).map_err(map_imap_error)?;
-            let unseen = session.uid_search("UNSEEN").map_err(map_imap_error)?;
-            Ok(unseen.len())
-        }
-
-        self.pool
+        let mailbox = self
+            .pool
             .with_connection(&self.account, |connection| match connection {
-                ConnectedImapSession::Plain(session) => exec(session, folder),
-                ConnectedImapSession::Tls(session) => exec(session, folder),
-            })
+                ConnectedImapSession::Plain(session) => {
+                    session.status(folder, "(UNSEEN)").map_err(map_imap_error)
+                }
+                ConnectedImapSession::Tls(session) => {
+                    session.status(folder, "(UNSEEN)").map_err(map_imap_error)
+                }
+            })?;
+        Ok(mailbox.unseen.unwrap_or(0) as usize)
+    }
+
+    /// UIDVALIDITY and UIDNEXT for a folder, used to seed sync cursors.
+    pub fn folder_sync_cursor(
+        &self,
+        account: Option<&str>,
+        folder: &str,
+    ) -> MailResult<(Option<u32>, Option<u32>)> {
+        self.ensure_requested_account(account)?;
+
+        let mailbox = self
+            .pool
+            .with_connection(&self.account, |connection| match connection {
+                ConnectedImapSession::Plain(session) => {
+                    session.examine(folder).map_err(map_imap_error)
+                }
+                ConnectedImapSession::Tls(session) => {
+                    session.examine(folder).map_err(map_imap_error)
+                }
+            })?;
+        Ok((mailbox.uid_validity, mailbox.uid_next))
     }
 }
 

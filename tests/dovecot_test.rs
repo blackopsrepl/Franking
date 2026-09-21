@@ -85,6 +85,12 @@ fn dovecot_append_list_read_and_flag() {
         .find(|envelope| envelope.subject == "Dovecot probe")
         .expect("appended message should be listed");
 
+    let (uid_validity, uid_next) = service
+        .folder_sync_cursor(None, "INBOX")
+        .expect("sync cursor");
+    assert!(uid_validity.is_some(), "UIDVALIDITY should be reported");
+    assert!(uid_next.is_some(), "UIDNEXT should be reported");
+
     let bytes = service
         .read_message_raw(None, "INBOX", &probe.id)
         .expect("read");

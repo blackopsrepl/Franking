@@ -2,10 +2,12 @@
 
 use crate::mail::errors::{MailError, MailResult};
 use crate::mail::session::IdleOutcome;
-use crate::mail::store::{self, StoredMessage};
+use crate::mail::store;
 use crate::mail::types::{Account, Envelope, Folder};
 
-use super::cache::{cached_envelopes, is_offline};
+use super::cache::{
+    cache_envelopes, cache_message, cached_envelopes, is_offline, record_sync_cursor,
+};
 use super::router::{Route, RouterMailService};
 use super::service_trait::MailService;
 
@@ -49,15 +51,17 @@ impl MailService for RouterMailService {
         match result {
             Ok(envelopes) => {
                 let _ = self.with_db(|conn| {
-                    for envelope in &envelopes {
-                        store::upsert_envelope(
-                            conn,
-                            &StoredMessage::from_envelope(&record.name, folder, envelope),
-                        )
-                        .map_err(|err| MailError::config_invalid(err.to_string()))?;
-                    }
-                    Ok(())
+                    cache_envelopes(conn, &record.name, folder, &envelopes)
+                        .map_err(|err| MailError::config_invalid(err.to_string()))
                 });
+                if let Ok((uid_validity, uid_next)) =
+                    self.folder_sync_cursor(Some(&record.name), folder)
+                {
+                    let _ = self.with_db(|conn| {
+                        record_sync_cursor(conn, &record.name, folder, uid_validity, uid_next)
+                            .map_err(|err| MailError::config_invalid(err.to_string()))
+                    });
+                }
                 Ok(envelopes)
             }
             Err(error) if is_offline(&error) => self.with_db(|conn| {
@@ -95,23 +99,7 @@ impl MailService for RouterMailService {
             Ok(raw) => {
                 if let Ok(document) = crate::mail::mime::parse_message(&raw) {
                     let _ = self.with_db(|conn| {
-                        let mut flags = store::get_message(conn, &record.name, folder, id)
-                            .map_err(|err| MailError::config_invalid(err.to_string()))?
-                            .map(|message| message.flags)
-                            .unwrap_or_default();
-                        if !flags.iter().any(|flag| flag.eq_ignore_ascii_case("seen")) {
-                            flags.push("Seen".to_string());
-                        }
-                        let stored = StoredMessage::from_document(
-                            &record.name,
-                            folder,
-                            id,
-                            None,
-                            &flags,
-                            &document,
-                            Some(raw.clone()),
-                        );
-                        store::upsert_message(conn, &stored)
+                        cache_message(conn, &record.name, folder, id, &raw, &document)
                             .map_err(|err| MailError::config_invalid(err.to_string()))
                     });
                 }
@@ -272,6 +260,17 @@ impl MailService for RouterMailService {
         match self.route_account(account)? {
             Route::Maildir(service) => service.folder_unread(account, folder),
             Route::Remote(service) => service.folder_unread(account, folder),
+        }
+    }
+
+    fn folder_sync_cursor(
+        &self,
+        account: Option<&str>,
+        folder: &str,
+    ) -> MailResult<(Option<u32>, Option<u32>)> {
+        match self.route_account(account)? {
+            Route::Maildir(service) => service.folder_sync_cursor(account, folder),
+            Route::Remote(service) => service.folder_sync_cursor(account, folder),
         }
     }
 
