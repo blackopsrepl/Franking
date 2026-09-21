@@ -1,3 +1,5 @@
+//! A minimal in-process IMAP server for exercising session behavior.
+
 use std::io::{BufRead, BufReader, Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
@@ -5,37 +7,22 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 
-use solverforge_mail::mail::account_store::AccountRecord;
-use solverforge_mail::mail::session::{
-    map_imap_error, ConnectedImapSession, CredentialProvider, IdleOutcome, SessionPool,
-};
-use solverforge_mail::mail::MailResult;
-
-#[derive(Debug)]
-struct FixedCredentials;
-
-impl CredentialProvider for FixedCredentials {
-    fn lookup(&self, _service: &str, _username: &str) -> MailResult<String> {
-        Ok("secret".to_string())
-    }
-}
-
 #[derive(Clone, Copy, PartialEq)]
-enum Behavior {
+pub(crate) enum Behavior {
     Normal,
     DropOnSelect,
 }
 
-struct FakeImap {
-    port: u16,
-    connections: Arc<AtomicUsize>,
-    logins: Arc<AtomicUsize>,
-    appended: Arc<Mutex<Vec<u8>>>,
+pub(crate) struct FakeImap {
+    pub(crate) port: u16,
+    pub(crate) connections: Arc<AtomicUsize>,
+    pub(crate) logins: Arc<AtomicUsize>,
+    pub(crate) appended: Arc<Mutex<Vec<u8>>>,
     stop: Arc<AtomicBool>,
 }
 
 impl FakeImap {
-    fn start(behavior: Behavior) -> Self {
+    pub(crate) fn start(behavior: Behavior) -> Self {
         let listener = TcpListener::bind("127.0.0.1:0").expect("bind fake IMAP");
         let port = listener.local_addr().unwrap().port();
         listener.set_nonblocking(true).unwrap();
@@ -176,125 +163,4 @@ fn write_all(writer: &mut TcpStream, data: &str) {
 
 fn reply(writer: &mut TcpStream, tag: &str, message: &str) {
     write_all(writer, &format!("{tag} {message}\r\n"));
-}
-
-fn account(port: u16) -> AccountRecord {
-    AccountRecord {
-        name: "work".to_string(),
-        backend_kind: "imap".to_string(),
-        provider_kind: "generic".to_string(),
-        enabled: true,
-        is_default: false,
-        maildir_path: None,
-        imap_host: Some("127.0.0.1".to_string()),
-        imap_port: Some(port),
-        imap_security: Some("plain".to_string()),
-        smtp_host: None,
-        smtp_port: None,
-        smtp_security: None,
-        auth_mode: Some("password".to_string()),
-        username: Some("alice".to_string()),
-        keyring_imap_secret_id: Some("service".to_string()),
-        keyring_smtp_secret_id: None,
-    }
-}
-
-fn select_inbox(connection: &mut ConnectedImapSession) -> MailResult<()> {
-    match connection {
-        ConnectedImapSession::Plain(session) => {
-            session.select("INBOX").map_err(map_imap_error)?;
-        }
-        ConnectedImapSession::Tls(session) => {
-            session.select("INBOX").map_err(map_imap_error)?;
-        }
-    }
-    Ok(())
-}
-
-#[test]
-fn append_delivers_the_message_to_the_sent_mailbox() {
-    let server = FakeImap::start(Behavior::Normal);
-    let pool = SessionPool::with_credentials(Arc::new(FixedCredentials));
-    let account = account(server.port);
-
-    let payload: &[u8] = b"From: alice@example.com\r\nSubject: Hi\r\n\r\nhello";
-
-    pool.with_connection(&account, |connection| match connection {
-        ConnectedImapSession::Plain(session) => {
-            session.append("Sent", payload).map_err(map_imap_error)
-        }
-        ConnectedImapSession::Tls(session) => {
-            session.append("Sent", payload).map_err(map_imap_error)
-        }
-    })
-    .unwrap();
-
-    assert_eq!(server.appended.lock().unwrap().as_slice(), payload);
-}
-
-#[test]
-fn session_pool_reuses_one_connection_across_operations() {
-    let server = FakeImap::start(Behavior::Normal);
-    let pool = SessionPool::with_credentials(Arc::new(FixedCredentials));
-    let account = account(server.port);
-
-    for _ in 0..2 {
-        pool.with_connection(&account, select_inbox).unwrap();
-    }
-
-    assert_eq!(server.connections.load(Ordering::SeqCst), 1);
-    assert_eq!(server.logins.load(Ordering::SeqCst), 1);
-}
-
-#[test]
-fn capabilities_are_probed_on_connect() {
-    let server = FakeImap::start(Behavior::Normal);
-    let pool = SessionPool::with_credentials(Arc::new(FixedCredentials));
-    let account = account(server.port);
-
-    let capabilities = pool
-        .with_connection(&account, |connection| {
-            Ok(match connection {
-                ConnectedImapSession::Plain(session) => {
-                    let caps = session.capabilities().map_err(map_imap_error)?;
-                    solverforge_mail::mail::session::Capabilities::from_imap(&caps)
-                }
-                ConnectedImapSession::Tls(session) => {
-                    let caps = session.capabilities().map_err(map_imap_error)?;
-                    solverforge_mail::mail::session::Capabilities::from_imap(&caps)
-                }
-            })
-        })
-        .unwrap();
-
-    assert!(capabilities.idle);
-    assert!(capabilities.move_);
-    assert!(capabilities.uidplus);
-    assert!(capabilities.imap4rev1);
-}
-
-#[test]
-fn idle_watch_reports_mailbox_change() {
-    let server = FakeImap::start(Behavior::Normal);
-    let pool = SessionPool::with_credentials(Arc::new(FixedCredentials));
-    let account = account(server.port);
-
-    let outcome = pool
-        .idle_wait(&account, "INBOX", Duration::from_secs(2))
-        .unwrap();
-
-    assert_eq!(outcome, IdleOutcome::MailboxChanged);
-}
-
-#[test]
-fn transport_failure_is_retried_on_a_fresh_connection() {
-    let server = FakeImap::start(Behavior::DropOnSelect);
-    let pool = SessionPool::with_credentials(Arc::new(FixedCredentials));
-    let account = account(server.port);
-
-    // The first SELECT drops the connection; the pool must reconnect and retry.
-    pool.with_connection(&account, select_inbox).unwrap();
-
-    assert_eq!(server.connections.load(Ordering::SeqCst), 2);
-    assert_eq!(server.logins.load(Ordering::SeqCst), 2);
 }
