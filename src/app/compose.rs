@@ -182,7 +182,7 @@ impl App {
     }
 
     /// Build the protection options for the message being composed.
-    fn send_options(&self, cs: &ComposeState) -> SendOptions {
+    pub(crate) fn send_options(&self, cs: &ComposeState) -> SendOptions {
         SendOptions {
             sign: cs.sign,
             encrypt: cs.encrypt,

@@ -78,6 +78,8 @@ pub struct App {
     pub(crate) search_all_folders: bool,
     /// Whether new-mail desktop notifications are sent.
     pub(crate) notifications_enabled: bool,
+    /// Buffered send-later delay input.
+    pub(crate) schedule_input: String,
 
     // ── Move prompt state ───────────────────────────────────────────
     pub move_target: String,

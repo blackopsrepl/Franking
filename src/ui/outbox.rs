@@ -5,6 +5,28 @@ use crate::app::App;
 use crate::theme::theme;
 use crate::ui::util::centered_rect;
 
+/// Render the send-later prompt in the status bar.
+pub fn render_schedule_prompt(app: &App, frame: &mut Frame, area: Rect) {
+    let t = theme();
+    let cursor = if app.tick_count % 4 < 2 {
+        "\u{2588}"
+    } else {
+        " "
+    };
+    let spans = vec![
+        Span::styled(" Send in: ", t.status_key()),
+        Span::styled(format!("{}{cursor}", app.schedule_input), t.search_input()),
+        Span::styled(
+            "  (e.g. 30m, 2h, 1d; Enter schedules, Esc cancels)",
+            t.dimmed(),
+        ),
+    ];
+    frame.render_widget(
+        ratatui::widgets::Paragraph::new(Line::from(spans)).style(t.status_bar()),
+        area,
+    );
+}
+
 /// Render the outbox overlay.
 pub fn render(app: &App, frame: &mut Frame) {
     let t = theme();
@@ -37,7 +59,11 @@ pub fn render(app: &App, frame: &mut Frame) {
             ListItem::new(Line::from(Span::styled(
                 format!(
                     " {marker} {}{protection}  ·  {}{suffix} ",
-                    item.subject, item.created_at
+                    item.subject,
+                    crate::compose::describe_send_after(
+                        item.send_after.as_deref(),
+                        &chrono::Local::now().to_rfc3339(),
+                    )
                 ),
                 if pending { t.error() } else { t.normal() },
             )))

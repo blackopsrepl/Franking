@@ -19,6 +19,16 @@ pub(super) fn resolve_account_list(key: KeyEvent) -> Action {
     }
 }
 
+pub(super) fn resolve_schedule(key: KeyEvent) -> Action {
+    match key.code {
+        KeyCode::Enter => Action::ScheduleSubmit,
+        KeyCode::Esc => Action::ScheduleCancel,
+        KeyCode::Backspace => Action::ScheduleBackspace,
+        KeyCode::Char(c) => Action::ScheduleInput(c),
+        _ => Action::None,
+    }
+}
+
 pub(super) fn resolve_settings(key: KeyEvent) -> Action {
     match key.code {
         KeyCode::Char(' ') | KeyCode::Enter => Action::SettingsToggleNotifications,

@@ -163,3 +163,23 @@ fn ctrl_c_still_cancels_contact_edit() {
         Action::ContactEditCancel
     );
 }
+
+#[test]
+fn schedule_prompt_keys() {
+    assert_eq!(
+        resolve(View::SchedulePrompt, key(KeyCode::Char('2'))),
+        Action::ScheduleInput('2')
+    );
+    assert_eq!(
+        resolve(View::SchedulePrompt, key(KeyCode::Backspace)),
+        Action::ScheduleBackspace
+    );
+    assert_eq!(
+        resolve(View::SchedulePrompt, key(KeyCode::Enter)),
+        Action::ScheduleSubmit
+    );
+    assert_eq!(
+        resolve(View::SchedulePrompt, key(KeyCode::Esc)),
+        Action::ScheduleCancel
+    );
+}

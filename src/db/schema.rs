@@ -193,6 +193,7 @@ pub(super) fn create_schema(conn: &Connection) -> Result<()> {
              template   TEXT    NOT NULL,
              sign       INTEGER NOT NULL DEFAULT 0,
              encrypt    INTEGER NOT NULL DEFAULT 0,
+             send_after TEXT,
              created_at TEXT    NOT NULL DEFAULT (datetime('now'))
          );
 
@@ -224,8 +225,15 @@ pub(super) fn migrate_schema(conn: &Connection) -> Result<()> {
              template   TEXT    NOT NULL,
              sign       INTEGER NOT NULL DEFAULT 0,
              encrypt    INTEGER NOT NULL DEFAULT 0,
+             send_after TEXT,
              created_at TEXT    NOT NULL DEFAULT (datetime('now'))
          );",
     )?;
+    let has_send_after: bool = conn
+        .prepare("SELECT 1 FROM pragma_table_info('outbox') WHERE name = 'send_after'")?
+        .exists([])?;
+    if !has_send_after {
+        conn.execute_batch("ALTER TABLE outbox ADD COLUMN send_after TEXT;")?;
+    }
     Ok(())
 }

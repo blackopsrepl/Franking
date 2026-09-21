@@ -119,6 +119,11 @@ impl App {
             Action::SettingsToggleNotifications => self.toggle_notifications(),
             Action::SettingsClose => self.close_settings(),
             Action::CycleContactTag => self.cycle_contact_tag(),
+            Action::OpenSchedule => self.open_schedule_prompt(),
+            Action::ScheduleInput(c) => self.schedule_input(c),
+            Action::ScheduleBackspace => self.schedule_backspace(),
+            Action::ScheduleSubmit => self.submit_schedule(),
+            Action::ScheduleCancel => self.cancel_schedule(),
             Action::OpenLinks => self.open_links(),
             Action::LinkNext => self.link_next(),
             Action::LinkPrev => self.link_prev(),
@@ -166,93 +171,34 @@ impl App {
             Action::FolderPromptBackspace => self.folder_prompt_backspace(),
             Action::FolderPromptSubmit => self.submit_folder_prompt(),
             Action::FolderPromptCancel => self.cancel_folder_prompt(),
-            Action::OpenSieve => self.open_sieve(),
-            Action::SieveNext => self.sieve_next(),
-            Action::SievePrev => self.sieve_prev(),
-            Action::SieveActivate => self.sieve_activate(),
-            Action::SieveDeactivate => self.sieve_deactivate(),
-            Action::SieveEdit => self.sieve_edit(),
-            Action::SieveNew => self.sieve_new(),
-            Action::SieveDelete => self.sieve_delete(),
-            Action::SieveSave => self.sieve_save(),
-            Action::SieveClose => self.close_sieve(),
-            Action::SieveEscape => self.sieve_escape(),
-            Action::SieveNameInput(c) => self.sieve_name_input(c),
-            Action::SieveNameBackspace => self.sieve_name_backspace(),
-            Action::SieveNameSubmit => self.sieve_name_submit(),
-            Action::SieveNameCancel => self.sieve_name_cancel(),
-            Action::SieveEditorKey(key) => self.sieve_editor_key(key),
-            // ── Compose editor ───────────────────────────────────────
-            Action::ComposeFieldNext => {
-                if let Some(ref mut cs) = self.compose_state {
-                    cs.autocomplete = None;
-                    cs.focused = cs.focused.next();
-                }
-            }
-            Action::ComposeFieldPrev => {
-                if let Some(ref mut cs) = self.compose_state {
-                    cs.autocomplete = None;
-                    cs.focused = cs.focused.prev();
-                }
-            }
-            Action::ComposeLeaveBodyNext => {
-                if let Some(ref mut cs) = self.compose_state {
-                    cs.body.clear_search();
-                    cs.autocomplete = None;
-                    cs.focused = cs.focused.next();
-                }
-            }
-            Action::ComposeLeaveBodyPrev => {
-                if let Some(ref mut cs) = self.compose_state {
-                    cs.body.clear_search();
-                    cs.autocomplete = None;
-                    cs.focused = cs.focused.prev();
-                }
-            }
-            Action::ComposeSend => self.compose_send(),
-            Action::ComposeDiscard => self.compose_discard(),
-            Action::ComposeConfirmDiscard => {
-                self.clear_autosave();
-                self.compose_state = None;
-                self.pending_draft = None;
-                self.view = View::EnvelopeList;
-            }
-            Action::ComposeCancelDiscard => {
-                if let Some(ref mut cs) = self.compose_state {
-                    cs.confirm_discard = false;
-                }
-            }
-            Action::ComposeInput(c) => self.compose_input(c),
-            Action::ComposeBackspace => {
-                let is_address = {
-                    let cs = self.compose_state.as_ref();
-                    cs.map(|cs| {
-                        cs.edit_mode == EditMode::Insert
-                            && matches!(
-                                cs.focused,
-                                FocusedField::To | FocusedField::Cc | FocusedField::Bcc
-                            )
-                    })
-                    .unwrap_or(false)
-                };
-                if let Some(ref mut cs) = self.compose_state {
-                    if cs.edit_mode == EditMode::Insert {
-                        if let Some(field) = cs.focused_line_field_mut() {
-                            field.pop();
-                        }
-                    }
-                }
-                if is_address {
-                    self.update_autocomplete();
-                }
-            }
-            Action::ComposeEnterInsert => {
-                self.compose_enter_insert();
-            }
-            Action::ComposeExitToNav => {
-                self.compose_exit_to_nav();
-            }
-            // ── EditorKey: forwarded to the focused compose field ────
+            Action::OpenSieve
+            | Action::SieveNext
+            | Action::SievePrev
+            | Action::SieveActivate
+            | Action::SieveDeactivate
+            | Action::SieveEdit
+            | Action::SieveNew
+            | Action::SieveDelete
+            | Action::SieveSave
+            | Action::SieveClose
+            | Action::SieveEscape
+            | Action::SieveNameInput(_)
+            | Action::SieveNameBackspace
+            | Action::SieveNameSubmit
+            | Action::SieveNameCancel
+            | Action::SieveEditorKey(_) => self.handle_sieve_action(action),
+            Action::ComposeFieldNext
+            | Action::ComposeFieldPrev
+            | Action::ComposeLeaveBodyNext
+            | Action::ComposeLeaveBodyPrev
+            | Action::ComposeSend
+            | Action::ComposeDiscard
+            | Action::ComposeConfirmDiscard
+            | Action::ComposeCancelDiscard
+            | Action::ComposeInput(_)
+            | Action::ComposeBackspace
+            | Action::ComposeEnterInsert
+            | Action::ComposeExitToNav => self.handle_compose_action(action),
             Action::EditorKey(key_event) => {
                 self.handle_editor_key(key_event);
             }

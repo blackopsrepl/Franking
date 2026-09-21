@@ -5,7 +5,7 @@ use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use super::action::{Action, ComposeFocus, ComposeKeyContext, View};
 use super::resolve_accounts::{
     resolve_account_edit, resolve_account_list, resolve_file_picker, resolve_outbox,
-    resolve_settings,
+    resolve_schedule, resolve_settings,
 };
 use super::resolve_contacts::{
     resolve_compose, resolve_contact_edit, resolve_contact_search, resolve_contacts,
@@ -26,6 +26,7 @@ pub fn resolve(view: View, key: KeyEvent) -> Action {
         View::FilePicker => return resolve_file_picker(key),
         View::Outbox => return resolve_outbox(key),
         View::Settings => return resolve_settings(key),
+        View::SchedulePrompt => return resolve_schedule(key),
         View::LinkList => return resolve_link_list(key),
         View::SieveScripts => return resolve_sieve_scripts(key),
         View::SieveName => return resolve_sieve_name(key),
@@ -68,10 +69,10 @@ pub fn resolve(view: View, key: KeyEvent) -> Action {
         | View::AccountEdit
         | View::FilePicker
         | View::Outbox
-        | View::Settings => Action::None,
+        | View::Settings
+        | View::SchedulePrompt => Action::None,
     }
 }
-
 /// Resolve compose keys with compose-state context.
 ///
 /// Compose is focus-driven: the shell owns modal overlays, field cycling, and
@@ -92,7 +93,6 @@ pub fn resolve_compose_with_context(key: KeyEvent, ctx: ComposeKeyContext) -> Ac
             _ => Action::None,
         };
     }
-
     // Allow Ctrl+C / Ctrl+Q globally in compose as quit-discard
     if key.modifiers.contains(KeyModifiers::CONTROL) {
         return match key.code {
@@ -100,7 +100,6 @@ pub fn resolve_compose_with_context(key: KeyEvent, ctx: ComposeKeyContext) -> Ac
             _ => Action::EditorKey(key),
         };
     }
-
     // If autocomplete popup is open, let app-level popup handler own navigation
     // and acceptance keys.
     if ctx.autocomplete_visible {

@@ -6,6 +6,9 @@ use crate::mail::outbox::OutboxItem;
 
 use super::model::App;
 
+/// Ticks between outbox flushes (250ms each): 240 ticks ≈ 60 seconds.
+const FLUSH_INTERVAL: u64 = 240;
+
 /// Outbox browser and pending-send state.
 #[derive(Default)]
 pub struct OutboxState {
@@ -15,6 +18,8 @@ pub struct OutboxState {
     pub pending_discard: Option<i64>,
     /// Template and protection of the message currently being sent.
     pub pending_send: Option<(String, bool, bool)>,
+    /// Ticks since the last due-message check.
+    pub ticks_since_flush: u64,
 }
 
 impl App {
@@ -70,6 +75,40 @@ impl App {
         self.worker.discard_outbox_item(id);
     }
 
+    /// Queue the message in progress for a scheduled send.
+    pub(crate) fn schedule_send(&mut self, send_after: String) {
+        let (template, sign, encrypt, account) = {
+            let Some(cs) = self.compose_state.as_ref() else {
+                return;
+            };
+            let template = crate::compose::reassemble_template(cs);
+            let options = self.send_options(cs);
+            (template, options.sign, options.encrypt, cs.account.clone())
+        };
+        let Some(conn) = self.db.as_ref() else {
+            self.set_error("Local database is unavailable.");
+            return;
+        };
+        match outbox::enqueue(
+            conn,
+            account.as_deref(),
+            &template,
+            sign,
+            encrypt,
+            Some(&send_after),
+        ) {
+            Ok(Some(_)) => {
+                self.compose_state = None;
+                self.view = View::EnvelopeList;
+                self.clear_autosave();
+                self.set_status(&format!("Scheduled to send at {send_after}."));
+                self.worker.fetch_outbox();
+            }
+            Ok(None) => self.set_status("That message is already queued."),
+            Err(error) => self.set_error(&format!("Could not schedule the message: {error}")),
+        }
+    }
+
     /// Record the message being sent so a failure can queue it.
     pub(crate) fn remember_pending_send(&mut self, template: String, sign: bool, encrypt: bool) {
         self.outbox.pending_send = Some((template, sign, encrypt));
@@ -83,7 +122,7 @@ impl App {
         let Some(ref conn) = self.db else {
             return;
         };
-        let queued = outbox::enqueue(conn, account.as_deref(), &template, sign, encrypt)
+        let queued = outbox::enqueue(conn, account.as_deref(), &template, sign, encrypt, None)
             .ok()
             .flatten()
             .is_some();
@@ -111,5 +150,65 @@ impl App {
             }
             Err(error) => self.set_error(&format!("Outbox: {error}")),
         }
+    }
+}
+
+impl App {
+    /// Open the send-later prompt for the message in progress.
+    pub(crate) fn open_schedule_prompt(&mut self) {
+        if self.compose_state.is_none() {
+            return;
+        }
+        self.schedule_input = "1h".to_string();
+        self.view = View::SchedulePrompt;
+    }
+
+    pub(crate) fn schedule_input(&mut self, c: char) {
+        self.schedule_input.push(c);
+    }
+
+    pub(crate) fn schedule_backspace(&mut self) {
+        self.schedule_input.pop();
+    }
+
+    pub(crate) fn cancel_schedule(&mut self) {
+        self.schedule_input.clear();
+        self.view = View::Compose;
+    }
+
+    /// Parse the delay and queue the message for later.
+    pub(crate) fn submit_schedule(&mut self) {
+        let Some(seconds) = crate::compose::parse_delay(&self.schedule_input) else {
+            self.set_error("Use a delay like 30m, 2h, or 1d.");
+            return;
+        };
+        let send_after = crate::compose::send_time_in(seconds);
+        self.schedule_input.clear();
+        self.schedule_send(send_after);
+    }
+}
+
+impl App {
+    /// Periodically send queued messages whose time has come.
+    pub(crate) fn outbox_flush_tick(&mut self) {
+        self.outbox.ticks_since_flush += 1;
+        if self.outbox.ticks_since_flush < FLUSH_INTERVAL {
+            return;
+        }
+        self.outbox.ticks_since_flush = 0;
+
+        let Some(conn) = self.db.as_ref() else {
+            return;
+        };
+        let now = chrono::Local::now().to_rfc3339();
+        let due = outbox::due(conn, &now)
+            .map(|items| items.len())
+            .unwrap_or(0);
+        if due == 0 {
+            return;
+        }
+        let passphrase = self.crypto_passphrase.clone();
+        self.set_status(&format!("Sending {due} queued message(s)..."));
+        self.worker.flush_outbox(passphrase);
     }
 }

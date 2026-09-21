@@ -88,6 +88,7 @@ pub fn render(app: &mut App, frame: &mut Frame) {
         View::MovePrompt => move_prompt::render(app, frame, outer[2]),
         View::PassphrasePrompt => passphrase_prompt::render(app, frame, outer[2]),
         View::FolderPrompt => folder_prompt::render(app, frame, outer[2]),
+        View::SchedulePrompt => outbox::render_schedule_prompt(app, frame, outer[2]),
         View::MessageSearch => message_view::render_search_prompt(app, frame, outer[2]),
         _ => status_bar::render(app, frame, outer[2]),
     }

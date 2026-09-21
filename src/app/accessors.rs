@@ -147,6 +147,7 @@ impl App {
             active_query: None,
             search_all_folders: false,
             notifications_enabled: true,
+            schedule_input: String::new(),
             move_target: String::new(),
             move_index: 0,
             move_is_copy: false,
@@ -218,6 +219,7 @@ impl App {
     pub fn tick(&mut self) {
         self.tick_count = self.tick_count.wrapping_add(1);
         self.poll_worker();
+        self.outbox_flush_tick();
         self.autosave_tick();
 
         // Auto-refresh: only when idle (not loading, on envelope list, page 1, no search)

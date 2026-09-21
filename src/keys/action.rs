@@ -14,6 +14,8 @@ pub enum View {
     Outbox,
     /// Preferences overlay.
     Settings,
+    /// Prompt for a send-later delay.
+    SchedulePrompt,
     Search,
     Help,
     MovePrompt,
@@ -46,7 +48,6 @@ pub enum View {
     /// Identity add/edit form.
     IdentityEdit,
 }
-
 /// Editing mode for forms that still distinguish navigation vs text entry.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EditMode {
@@ -55,7 +56,6 @@ pub enum EditMode {
     /// Direct text entry.
     Insert,
 }
-
 /// Coarse compose focus buckets used by contextual key resolution.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ComposeFocus {
@@ -170,6 +170,12 @@ pub enum Action {
     OpenSettings,
     SettingsToggleNotifications,
     SettingsClose,
+    // ── Scheduled send ────────────────────────────────────────────────
+    OpenSchedule,
+    ScheduleInput(char),
+    ScheduleBackspace,
+    ScheduleSubmit,
+    ScheduleCancel,
     // ── Folder management ─────────────────────────────────────────────
     FolderNew,
     FolderRename,

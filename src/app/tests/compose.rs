@@ -152,6 +152,7 @@ fn outbox_discard_requires_two_presses() {
         subject: "Queued".to_string(),
         sign: false,
         encrypt: false,
+        send_after: None,
         created_at: "2026-01-01 00:00:00".to_string(),
         template: "To: a@example.com\n\nbody".to_string(),
     }];
@@ -159,4 +160,67 @@ fn outbox_discard_requires_two_presses() {
     app.discard_outbox_item();
     assert_eq!(app.outbox.pending_discard, Some(7));
     assert!(app.status_message.contains("Press d again"));
+}
+
+#[test]
+fn scheduling_queues_the_message_with_a_send_time() {
+    use crate::compose::{ComposeMode, ComposeState};
+    use crate::mail::outbox;
+
+    use super::super::App;
+
+    let conn = rusqlite::Connection::open_in_memory().unwrap();
+    crate::db::init_for_test(&conn).unwrap();
+
+    let mut app = App::new(None);
+    app.db = Some(conn);
+    let mut state = ComposeState::new(ComposeMode::New, Some("acct".to_string()));
+    state.to = "bob@example.com".to_string();
+    state.subject = "Later".to_string();
+    state.dirty = true;
+    app.compose_state = Some(state);
+    app.view = crate::keys::View::Compose;
+
+    app.open_schedule_prompt();
+    assert_eq!(app.view, crate::keys::View::SchedulePrompt);
+    assert_eq!(app.schedule_input, "1h");
+
+    app.schedule_input.clear();
+    for c in "45m".chars() {
+        app.schedule_input(c);
+    }
+    app.submit_schedule();
+
+    assert!(app.compose_state.is_none(), "compose closes once scheduled");
+    assert!(app.status_message.contains("Scheduled to send at"));
+
+    let conn = app.db.as_ref().unwrap();
+    let items = outbox::list(conn).unwrap();
+    assert_eq!(items.len(), 1);
+    assert_eq!(items[0].subject, "Later");
+    assert!(items[0].send_after.is_some());
+
+    // A future message is not due yet.
+    let now = chrono::Local::now().to_rfc3339();
+    assert!(outbox::due(conn, &now).unwrap().is_empty());
+}
+
+#[test]
+fn an_invalid_delay_is_rejected() {
+    use crate::compose::{ComposeMode, ComposeState};
+
+    use super::super::App;
+
+    let mut app = App::new(None);
+    app.compose_state = Some(ComposeState::new(ComposeMode::New, None));
+    app.view = crate::keys::View::Compose;
+    app.open_schedule_prompt();
+    for c in "soon".chars() {
+        app.schedule_input(c);
+    }
+    app.submit_schedule();
+
+    assert!(app.status_is_error);
+    assert!(app.compose_state.is_some(), "compose stays open");
+    assert_eq!(app.view, crate::keys::View::SchedulePrompt);
 }

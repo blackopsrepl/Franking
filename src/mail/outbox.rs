@@ -13,6 +13,8 @@ pub struct OutboxItem {
     /// Whether the message should be signed / encrypted when sent.
     pub sign: bool,
     pub encrypt: bool,
+    /// RFC 3339 time before which the message should not be sent.
+    pub send_after: Option<String>,
     pub created_at: String,
     pub template: String,
 }
@@ -27,6 +29,7 @@ pub fn enqueue(
     template: &str,
     sign: bool,
     encrypt: bool,
+    send_after: Option<&str>,
 ) -> Result<Option<i64>> {
     let existing: Option<i64> = conn
         .query_row(
@@ -40,8 +43,9 @@ pub fn enqueue(
         return Ok(existing);
     }
     conn.execute(
-        "INSERT INTO outbox (account, template, sign, encrypt) VALUES (?1, ?2, ?3, ?4)",
-        rusqlite::params![account, template, sign as i32, encrypt as i32],
+        "INSERT INTO outbox (account, template, sign, encrypt, send_after)
+         VALUES (?1, ?2, ?3, ?4, ?5)",
+        rusqlite::params![account, template, sign as i32, encrypt as i32, send_after],
     )
     .context("cannot queue the outgoing message")?;
     Ok(Some(conn.last_insert_rowid()))
@@ -50,7 +54,7 @@ pub fn enqueue(
 /// Queued messages, oldest first.
 pub fn list(conn: &Connection) -> Result<Vec<OutboxItem>> {
     let mut statement = conn.prepare(
-        "SELECT id, account, template, sign, encrypt, created_at
+        "SELECT id, account, template, sign, encrypt, created_at, send_after
          FROM outbox ORDER BY id",
     )?;
     let rows = statement.query_map([], |row| {
@@ -62,6 +66,7 @@ pub fn list(conn: &Connection) -> Result<Vec<OutboxItem>> {
             sign: row.get::<_, i32>(3)? != 0,
             encrypt: row.get::<_, i32>(4)? != 0,
             created_at: row.get(5)?,
+            send_after: row.get(6)?,
             template,
         })
     })?;
@@ -74,6 +79,17 @@ pub fn delete(conn: &Connection, id: i64) -> Result<()> {
     conn.execute("DELETE FROM outbox WHERE id = ?1", [id])
         .context("cannot delete the queued message")?;
     Ok(())
+}
+
+/// Queued messages whose scheduled time has arrived.
+pub fn due(conn: &Connection, now: &str) -> Result<Vec<OutboxItem>> {
+    Ok(list(conn)?
+        .into_iter()
+        .filter(|item| match item.send_after.as_deref() {
+            Some(after) => after <= now,
+            None => true,
+        })
+        .collect())
 }
 
 /// Number of queued messages.
@@ -108,6 +124,7 @@ mod tests {
             "To: a@example.com\nSubject: First\n\none",
             true,
             false,
+            None,
         )
         .unwrap()
         .expect("queued");
@@ -117,6 +134,7 @@ mod tests {
             "To: b@example.com\nSubject: Second\n\ntwo",
             false,
             true,
+            None,
         )
         .unwrap()
         .expect("queued");
@@ -128,6 +146,7 @@ mod tests {
             "To: a@example.com\nSubject: First\n\none",
             true,
             false,
+            None,
         )
         .unwrap();
         assert_eq!(again, Some(first));
@@ -146,10 +165,48 @@ mod tests {
     }
 
     #[test]
+    fn due_lists_only_messages_whose_time_has_come() {
+        let conn = rusqlite::Connection::open_in_memory().unwrap();
+        crate::db::init_for_test(&conn).unwrap();
+
+        enqueue(
+            &conn,
+            None,
+            "To: a@example.com\nSubject: Now\n\nbody",
+            false,
+            false,
+            None,
+        )
+        .unwrap();
+        enqueue(
+            &conn,
+            None,
+            "To: b@example.com\nSubject: Past\n\nbody",
+            false,
+            false,
+            Some("2026-01-01T00:00:00Z"),
+        )
+        .unwrap();
+        enqueue(
+            &conn,
+            None,
+            "To: c@example.com\nSubject: Future\n\nbody",
+            false,
+            false,
+            Some("2030-01-01T00:00:00Z"),
+        )
+        .unwrap();
+
+        let due = super::due(&conn, "2026-06-01T00:00:00Z").unwrap();
+        let subjects: Vec<&str> = due.iter().map(|item| item.subject.as_str()).collect();
+        assert_eq!(subjects, vec!["Now", "Past"], "future messages wait");
+    }
+
+    #[test]
     fn messages_without_a_subject_are_labelled() {
         let conn = rusqlite::Connection::open_in_memory().unwrap();
         crate::db::init_for_test(&conn).unwrap();
-        enqueue(&conn, None, "To: a@example.com\n\nbody", false, false).unwrap();
+        enqueue(&conn, None, "To: a@example.com\n\nbody", false, false, None).unwrap();
         assert_eq!(list(&conn).unwrap()[0].subject, "(no subject)");
     }
 }
