@@ -8,7 +8,8 @@ use crate::mail::types::{Envelope, Folder};
 
 use super::envelope::fetch_envelope_metadata;
 use super::model::ImapSmtpService;
-use super::search::{folder_description, search_criteria};
+use super::roles::role_from_attributes;
+use super::search::search_criteria;
 
 impl ImapSmtpService {
     pub fn list_folders(&self, account: Option<&str>) -> MailResult<Vec<Folder>> {
@@ -25,9 +26,13 @@ impl ImapSmtpService {
                         .iter()
                         .any(|attr| matches!(attr, imap::types::NameAttribute::NoSelect))
                 })
-                .map(|name| Folder {
-                    name: name.name().to_string(),
-                    desc: folder_description(name.name()),
+                .map(|name| {
+                    let role = role_from_attributes(name.attributes());
+                    Folder {
+                        name: name.name().to_string(),
+                        desc: role.description().map(str::to_string),
+                        role,
+                    }
                 })
                 .collect::<Vec<_>>();
             Ok(names)

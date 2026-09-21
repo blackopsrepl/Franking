@@ -31,10 +31,60 @@ pub fn sort_accounts(accounts: &mut [Account]) {
     });
 }
 
+/// Semantic role of a mailbox, from RFC 6154 SPECIAL-USE where available and
+/// otherwise inferred from common names.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum FolderRole {
+    Inbox,
+    Sent,
+    Drafts,
+    Trash,
+    Archive,
+    Junk,
+    Flagged,
+    All,
+    #[default]
+    Other,
+}
+
+impl FolderRole {
+    /// Infer a role from a mailbox name when the server advertises no attribute.
+    pub fn from_name(name: &str) -> Self {
+        match name.to_ascii_lowercase().as_str() {
+            "inbox" => Self::Inbox,
+            "sent" | "sent items" | "sent messages" | "sent mail" | "inbox.sent" => Self::Sent,
+            "drafts" | "draft" | "inbox.drafts" => Self::Drafts,
+            "trash" | "deleted" | "deleted items" | "deleted messages" | "bin" | "inbox.trash" => {
+                Self::Trash
+            }
+            "archive" | "archives" | "inbox.archive" => Self::Archive,
+            "spam" | "junk" | "bulk mail" => Self::Junk,
+            "starred" | "flagged" => Self::Flagged,
+            "all mail" | "all" => Self::All,
+            _ => Self::Other,
+        }
+    }
+
+    pub fn description(self) -> Option<&'static str> {
+        match self {
+            Self::Inbox => Some("Incoming messages"),
+            Self::Sent => Some("Sent messages"),
+            Self::Drafts => Some("Draft messages"),
+            Self::Trash => Some("Deleted messages"),
+            Self::Archive => Some("Archived messages"),
+            Self::Junk => Some("Spam and junk"),
+            Self::Flagged => Some("Flagged messages"),
+            Self::All => Some("All messages"),
+            Self::Other => None,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Folder {
     pub name: String,
     pub desc: Option<String>,
+    pub role: FolderRole,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -128,9 +178,11 @@ impl From<crate::himalaya::types::Account> for Account {
 
 impl From<crate::himalaya::types::Folder> for Folder {
     fn from(value: crate::himalaya::types::Folder) -> Self {
+        let role = FolderRole::from_name(&value.name);
         Self {
             name: value.name,
             desc: value.desc,
+            role,
         }
     }
 }
@@ -161,7 +213,7 @@ impl From<crate::himalaya::types::Envelope> for Envelope {
 
 #[cfg(test)]
 mod tests {
-    use super::{preferred_account, sort_accounts, Account};
+    use super::{preferred_account, sort_accounts, Account, FolderRole};
 
     #[test]
     fn preferred_account_uses_real_account_before_local_test_fallback() {
@@ -213,5 +265,15 @@ mod tests {
                 .collect::<Vec<_>>(),
             vec!["alpha", "zeta", "test"]
         );
+    }
+
+    #[test]
+    fn folder_role_infers_from_common_names() {
+        assert_eq!(FolderRole::from_name("INBOX"), FolderRole::Inbox);
+        assert_eq!(FolderRole::from_name("Sent Items"), FolderRole::Sent);
+        assert_eq!(FolderRole::from_name("Drafts"), FolderRole::Drafts);
+        assert_eq!(FolderRole::from_name("Deleted Items"), FolderRole::Trash);
+        assert_eq!(FolderRole::from_name("Junk"), FolderRole::Junk);
+        assert_eq!(FolderRole::from_name("Projects"), FolderRole::Other);
     }
 }

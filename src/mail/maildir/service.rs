@@ -5,7 +5,7 @@ use std::fs;
 use crate::mail::errors::{MailError, MailResult};
 use crate::mail::mime;
 use crate::mail::service::MailService;
-use crate::mail::types::{Account, Envelope, Folder};
+use crate::mail::types::{Account, Envelope, Folder, FolderRole};
 
 use super::flags::*;
 use super::fs_ops::*;
@@ -35,18 +35,22 @@ impl MailService for MaildirService {
             Folder {
                 name: "INBOX".to_string(),
                 desc: Some("Incoming messages".to_string()),
+                role: FolderRole::Inbox,
             },
             Folder {
                 name: "Sent".to_string(),
                 desc: Some("Sent messages".to_string()),
+                role: FolderRole::Sent,
             },
             Folder {
                 name: "Drafts".to_string(),
                 desc: Some("Draft messages".to_string()),
+                role: FolderRole::Drafts,
             },
             Folder {
                 name: "Trash".to_string(),
                 desc: Some("Deleted messages".to_string()),
+                role: FolderRole::Trash,
             },
         ])
     }

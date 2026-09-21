@@ -39,16 +39,6 @@ pub(super) fn imap_quote(value: &str) -> String {
     format!("\"{escaped}\"")
 }
 
-pub(super) fn folder_description(name: &str) -> Option<String> {
-    match name.to_ascii_lowercase().as_str() {
-        "inbox" => Some("Incoming messages".to_string()),
-        "sent" | "sent items" => Some("Sent messages".to_string()),
-        "drafts" => Some("Draft messages".to_string()),
-        "trash" | "deleted" | "bin" => Some("Deleted messages".to_string()),
-        _ => None,
-    }
-}
-
 pub(super) fn uid_set(uids: &[u32]) -> String {
     uids.iter()
         .map(u32::to_string)

@@ -4,6 +4,36 @@ use std::io::{Read, Write};
 
 use crate::mail::errors::MailResult;
 use crate::mail::session::map_imap_error;
+use crate::mail::types::FolderRole;
+
+/// Resolve a mailbox role from RFC 6154 attributes.
+pub(super) fn role_from_attributes(attributes: &[imap::types::NameAttribute<'_>]) -> FolderRole {
+    for attribute in attributes {
+        let name = attribute_name(attribute);
+        if name.eq_ignore_ascii_case("\\Sent") {
+            return FolderRole::Sent;
+        }
+        if name.eq_ignore_ascii_case("\\Drafts") {
+            return FolderRole::Drafts;
+        }
+        if name.eq_ignore_ascii_case("\\Trash") {
+            return FolderRole::Trash;
+        }
+        if name.eq_ignore_ascii_case("\\Archive") {
+            return FolderRole::Archive;
+        }
+        if name.eq_ignore_ascii_case("\\Junk") {
+            return FolderRole::Junk;
+        }
+        if name.eq_ignore_ascii_case("\\Flagged") {
+            return FolderRole::Flagged;
+        }
+        if name.eq_ignore_ascii_case("\\All") {
+            return FolderRole::All;
+        }
+    }
+    FolderRole::Other
+}
 
 pub(super) fn list_folder_attributes<S: Read + Write>(
     session: &mut imap::Session<S>,
