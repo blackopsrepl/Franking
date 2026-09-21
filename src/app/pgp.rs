@@ -19,6 +19,20 @@ pub(super) fn process_pgp(message: &mut MessageDocument) -> Option<String> {
         }
     }
 
+    if message.protection() == Some(Protection::PgpEncrypted) {
+        if let Some(raw) = message.raw.as_deref() {
+            return Some(match pgp::decrypt_mime(raw, &keyring.secret, "") {
+                Some(data) => {
+                    let text = String::from_utf8_lossy(&data).to_string();
+                    message.body = BodyDocument::from_plain(&text);
+                    message.plain_body = Some(text);
+                    "PGP/MIME encrypted message decrypted".to_string()
+                }
+                None => "PGP/MIME encrypted (no usable secret key)".to_string(),
+            });
+        }
+    }
+
     let body = message.plain_body.clone()?;
     let kind = pgp::detect_inline(&body)?;
 

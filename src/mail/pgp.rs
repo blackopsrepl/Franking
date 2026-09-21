@@ -50,6 +50,52 @@ pub fn verify_detached(content: &[u8], signature: &[u8], keys: &[SignedPublicKey
         .collect()
 }
 
+/// Decrypt a PGP/MIME (multipart/encrypted) message with a secret key.
+pub fn decrypt_mime(raw: &[u8], keys: &[SignedSecretKey], passphrase: &str) -> Option<Vec<u8>> {
+    let parser = MessageParser::new()
+        .with_minimal_headers()
+        .default_header_text();
+    let message = parser.parse(raw)?;
+    let root = message.part(0)?;
+    let content_type = root.content_type()?;
+    if !content_type.c_type.eq_ignore_ascii_case("multipart")
+        || !content_type
+            .c_subtype
+            .as_deref()
+            .is_some_and(|subtype| subtype.eq_ignore_ascii_case("encrypted"))
+    {
+        return None;
+    }
+    let PartType::Multipart(ids) = &root.body else {
+        return None;
+    };
+    if ids.len() < 2 {
+        return None;
+    }
+    let encrypted_part = message.part(ids[1])?;
+    let ciphertext = encrypted_part.contents();
+    let password: Password = passphrase.into();
+
+    for key in keys {
+        let Ok(message) = Message::from_bytes(std::io::Cursor::new(ciphertext)) else {
+            return None;
+        };
+        let Ok(mut decrypted) = message.decrypt(&password, key) else {
+            continue;
+        };
+        if decrypted.is_compressed() {
+            match decrypted.decompress() {
+                Ok(decompressed) => decrypted = decompressed,
+                Err(_) => continue,
+            }
+        }
+        if let Ok(data) = decrypted.as_data_vec() {
+            return Some(data);
+        }
+    }
+    None
+}
+
 /// Verify a PGP/MIME (multipart/signed) message, returning signer fingerprints.
 pub fn verify_mime(raw: &[u8], keys: &[SignedPublicKey]) -> Option<Vec<String>> {
     let parser = MessageParser::new()
