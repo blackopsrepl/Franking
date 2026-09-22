@@ -4,8 +4,8 @@
 
   <br />
 
-  [![CI](https://github.com/blackopsrepl/franking/actions/workflows/ci.yml/badge.svg?style=for-the-badge)](https://github.com/blackopsrepl/franking/actions/workflows/ci.yml)
-  [![Version](https://img.shields.io/github/v/tag/blackopsrepl/franking?style=for-the-badge&color=00E6A8)](https://github.com/blackopsrepl/franking/tags)
+  [![CI](https://github.com/blackopsrepl/Franking/actions/workflows/ci.yml/badge.svg?style=for-the-badge)](https://github.com/blackopsrepl/Franking/actions/workflows/ci.yml)
+  [![Version](https://img.shields.io/github/v/tag/blackopsrepl/Franking?style=for-the-badge&color=00E6A8)](https://github.com/blackopsrepl/Franking/tags)
   [![Rust](https://img.shields.io/badge/rust-stable-orange?style=for-the-badge)](https://www.rust-lang.org)
   [![Built With Ratatui](https://img.shields.io/badge/built%20with-ratatui-5A54FF?style=for-the-badge)](https://ratatui.rs/)
 
