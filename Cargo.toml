@@ -1,6 +1,6 @@
 [package]
 name = "franking"
-version = "2.0.0"
+version = "2.0.1"
 edition = "2021"
 description = "A spiffy ratatui TUI email client with an app-owned IMAP/SMTP engine"
 
