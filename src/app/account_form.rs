@@ -53,6 +53,7 @@ impl App {
             if let Some(field) = state.focused_field_mut() {
                 field.push(c);
             }
+            state.sync_security_to_ports();
         }
     }
 
@@ -61,6 +62,7 @@ impl App {
             if let Some(field) = state.focused_field_mut() {
                 field.pop();
             }
+            state.sync_security_to_ports();
         }
     }
 
@@ -69,6 +71,7 @@ impl App {
             match state.focused {
                 AccountField::Default => state.toggle_default(),
                 AccountField::Auth => state.cycle_auth_mode(),
+                AccountField::ImapSecurity | AccountField::SmtpSecurity => state.cycle_security(),
                 _ => {}
             }
         }
@@ -89,6 +92,8 @@ impl App {
             }
         };
         let password = state.password.clone();
+        let imap_security = state.imap_security;
+        let smtp_security = state.smtp_security;
         let is_default = state.is_default;
         let editing = state.editing;
         let auth_mode = state.auth_mode;
@@ -149,10 +154,10 @@ impl App {
             maildir_path: None,
             imap_host: Some(imap_host),
             imap_port: Some(imap_port),
-            imap_security: Some("tls".to_string()),
+            imap_security: Some(imap_security.as_str().to_string()),
             smtp_host: Some(smtp_host),
             smtp_port: Some(smtp_port),
-            smtp_security: Some("tls".to_string()),
+            smtp_security: Some(smtp_security.as_str().to_string()),
             sieve_host,
             sieve_port,
             sieve_security: None,

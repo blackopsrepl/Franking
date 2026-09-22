@@ -240,3 +240,59 @@ fn saving_an_incomplete_account_reports_what_is_missing() {
     );
     assert_eq!(app.view, View::AccountEdit, "the form is not closed");
 }
+
+#[test]
+fn the_form_stores_the_chosen_connection_security() {
+    use crate::account_edit::{AccountEditState, ConnectionSecurity};
+    use crate::keys::View;
+
+    use super::super::App;
+
+    let conn = rusqlite::Connection::open_in_memory().unwrap();
+    crate::db::init_for_test(&conn).unwrap();
+
+    let mut app = App::new(None);
+    app.db = Some(conn);
+    app.view = View::AccountEdit;
+    let mut state = AccountEditState::new();
+    state.name = "dovecot".to_string();
+    state.username = "test@localhost".to_string();
+    state.imap_host = "127.0.0.1".to_string();
+    state.imap_port = "1153".to_string();
+    state.smtp_host = "127.0.0.1".to_string();
+    state.smtp_port = "1025".to_string();
+    // Editing an existing account, so no password is needed and no keyring
+    // lookup happens; the security choice is what this covers.
+    state.editing = true;
+    state.imap_security = ConnectionSecurity::Plain;
+    state.smtp_security = ConnectionSecurity::StartTls;
+    app.account_edit_state = Some(state);
+
+    app.account_form_save();
+
+    let stored = crate::mail::account_store::list_accounts(app.db.as_ref().unwrap())
+        .unwrap()
+        .into_iter()
+        .find(|account| account.name == "dovecot")
+        .expect("the account is stored");
+    assert_eq!(stored.imap_security.as_deref(), Some("plain"));
+    assert_eq!(stored.smtp_security.as_deref(), Some("starttls"));
+}
+
+#[test]
+fn typing_a_port_moves_the_security_with_it() {
+    use crate::account_edit::{AccountEditState, AccountField, ConnectionSecurity};
+
+    let mut state = AccountEditState::new();
+    state.focused = AccountField::ImapPort;
+    state.imap_port.clear();
+    for c in "1153".chars() {
+        state.imap_port.push(c);
+        state.sync_security_to_ports();
+    }
+    assert_eq!(
+        state.imap_security,
+        ConnectionSecurity::StartTls,
+        "a cleartext port selects STARTTLS"
+    );
+}

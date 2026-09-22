@@ -44,13 +44,23 @@ pub fn render(app: &App, frame: &mut Frame) {
 
     let masked = "*".repeat(state.password.chars().count());
     let client_secret_masked = "*".repeat(state.client_secret.chars().count());
-    let fields: [(AccountField, &str, &str); 13] = [
+    let fields: [(AccountField, &str, &str); 15] = [
         (AccountField::Name, "Name    ", state.name.as_str()),
         (AccountField::Username, "Login   ", state.username.as_str()),
         (AccountField::ImapHost, "IMAP    ", state.imap_host.as_str()),
         (AccountField::ImapPort, "IMAP pt ", state.imap_port.as_str()),
+        (
+            AccountField::ImapSecurity,
+            "IMAP sec",
+            state.imap_security.label(),
+        ),
         (AccountField::SmtpHost, "SMTP    ", state.smtp_host.as_str()),
         (AccountField::SmtpPort, "SMTP pt ", state.smtp_port.as_str()),
+        (
+            AccountField::SmtpSecurity,
+            "SMTP sec",
+            state.smtp_security.label(),
+        ),
         (
             AccountField::SieveHost,
             "Sieve   ",
