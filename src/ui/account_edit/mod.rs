@@ -45,43 +45,79 @@ pub fn render(app: &App, frame: &mut Frame) {
     let masked = "*".repeat(state.password.chars().count());
     let client_secret_masked = "*".repeat(state.client_secret.chars().count());
     let fields: [(AccountField, &str, &str); 15] = [
-        (AccountField::Name, "Name    ", state.name.as_str()),
-        (AccountField::Username, "Login   ", state.username.as_str()),
-        (AccountField::ImapHost, "IMAP    ", state.imap_host.as_str()),
-        (AccountField::ImapPort, "IMAP pt ", state.imap_port.as_str()),
+        (
+            AccountField::Name,
+            AccountField::Name.label(),
+            state.name.as_str(),
+        ),
+        (
+            AccountField::Username,
+            AccountField::Username.label(),
+            state.username.as_str(),
+        ),
+        (
+            AccountField::ImapHost,
+            AccountField::ImapHost.label(),
+            state.imap_host.as_str(),
+        ),
+        (
+            AccountField::ImapPort,
+            AccountField::ImapPort.label(),
+            state.imap_port.as_str(),
+        ),
         (
             AccountField::ImapSecurity,
-            "IMAP sec",
+            AccountField::ImapSecurity.label(),
             state.imap_security.label(),
         ),
-        (AccountField::SmtpHost, "SMTP    ", state.smtp_host.as_str()),
-        (AccountField::SmtpPort, "SMTP pt ", state.smtp_port.as_str()),
+        (
+            AccountField::SmtpHost,
+            AccountField::SmtpHost.label(),
+            state.smtp_host.as_str(),
+        ),
+        (
+            AccountField::SmtpPort,
+            AccountField::SmtpPort.label(),
+            state.smtp_port.as_str(),
+        ),
         (
             AccountField::SmtpSecurity,
-            "SMTP sec",
+            AccountField::SmtpSecurity.label(),
             state.smtp_security.label(),
         ),
         (
             AccountField::SieveHost,
-            "Sieve   ",
+            AccountField::SieveHost.label(),
             state.sieve_host.as_str(),
         ),
         (
             AccountField::SievePort,
-            "Sieve pt",
+            AccountField::SievePort.label(),
             state.sieve_port.as_str(),
         ),
-        (AccountField::Auth, "Auth    ", state.auth_mode.label()),
-        (AccountField::ClientId, "Client  ", state.client_id.as_str()),
+        (
+            AccountField::Auth,
+            AccountField::Auth.label(),
+            state.auth_mode.label(),
+        ),
+        (
+            AccountField::ClientId,
+            AccountField::ClientId.label(),
+            state.client_id.as_str(),
+        ),
         (
             AccountField::ClientSecret,
-            "Secret  ",
+            AccountField::ClientSecret.label(),
             client_secret_masked.as_str(),
         ),
-        (AccountField::Password, "Password", masked.as_str()),
+        (
+            AccountField::Password,
+            AccountField::Password.label(),
+            masked.as_str(),
+        ),
         (
             AccountField::Default,
-            "Default ",
+            AccountField::Default.label(),
             if state.is_default {
                 "[x] set as default"
             } else {
