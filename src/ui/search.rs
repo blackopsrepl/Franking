@@ -14,14 +14,17 @@ pub fn render(app: &App, frame: &mut Frame, area: Rect) {
         " "
     }; // blinking block
 
+    let scope = format!("  [{} — Tab switches]", app.search_scope.label());
+
     let spans = vec![
         Span::styled(" / ", t.status_key()),
+        Span::styled(scope, t.accent_style()),
         Span::styled(
             format!("{}{cursor_char}", app.search_query),
             t.search_input(),
         ),
         Span::styled(
-            "  (himalaya query: subject foo, from bar, order by date desc)",
+            "  (text · subject X · from X · to X · body X · flag seen/flagged · join with 'and')",
             t.dimmed(),
         ),
     ];

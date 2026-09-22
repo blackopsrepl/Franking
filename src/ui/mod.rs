@@ -1,16 +1,27 @@
+mod account_edit;
 mod account_list;
 pub mod action_bar;
+mod attachment_list;
 mod compose;
 mod contact_edit;
 mod contacts;
 mod envelope_list;
+mod file_picker;
 mod folder_list;
+mod folder_prompt;
 mod help;
 mod identity_edit;
 mod identity_list;
+mod links;
 mod message_view;
 mod move_prompt;
+mod outbox;
+mod passphrase_prompt;
+mod pgp_keys;
+mod saved_searches;
 mod search;
+mod settings;
+mod sieve;
 mod status_bar;
 pub mod util;
 
@@ -23,11 +34,28 @@ use crate::keys::View;
 pub fn render(app: &mut App, frame: &mut Frame) {
     let area = frame.area();
     app.last_terminal_height = area.height;
+    app.last_terminal_width = area.width;
 
     // ── Full-screen takeover views ───────────────────────────────
     match app.view {
         View::Compose => {
             compose::render(app, frame);
+            return;
+        }
+        View::SieveScripts | View::SieveName | View::SieveEdit => {
+            sieve::render(app, frame);
+            return;
+        }
+        View::FilePicker => {
+            file_picker::render(app, frame);
+            return;
+        }
+        View::SavedSearches => {
+            saved_searches::render(app, frame);
+            return;
+        }
+        View::Keys | View::KeysPrompt => {
+            pgp_keys::render(app, frame);
             return;
         }
         View::Contacts | View::ContactSearch => {
@@ -68,6 +96,10 @@ pub fn render(app: &mut App, frame: &mut Frame) {
     match app.view {
         View::Search => search::render(app, frame, outer[2]),
         View::MovePrompt => move_prompt::render(app, frame, outer[2]),
+        View::PassphrasePrompt => passphrase_prompt::render(app, frame, outer[2]),
+        View::FolderPrompt => folder_prompt::render(app, frame, outer[2]),
+        View::SchedulePrompt => outbox::render_schedule_prompt(app, frame, outer[2]),
+        View::MessageSearch => message_view::render_search_prompt(app, frame, outer[2]),
         _ => status_bar::render(app, frame, outer[2]),
     }
 
@@ -75,8 +107,26 @@ pub fn render(app: &mut App, frame: &mut Frame) {
     if app.view == View::AccountList {
         account_list::render(app, frame);
     }
+    if app.view == View::AccountEdit {
+        account_edit::render(app, frame);
+    }
     if app.view == View::Help {
         help::render(app, frame);
+    }
+    if app.view == View::AttachmentList {
+        attachment_list::render(app, frame);
+    }
+    if app.view == View::LinkList {
+        links::render(app, frame);
+    }
+    if app.view == View::Outbox {
+        outbox::render(app, frame);
+    }
+    if app.view == View::AttachmentView {
+        attachment_list::render_preview(app, frame);
+    }
+    if app.view == View::Settings {
+        settings::render(app, frame);
     }
     if app.view == View::ContactEdit {
         contact_edit::render(app, frame);

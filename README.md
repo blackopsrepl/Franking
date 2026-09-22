@@ -14,8 +14,47 @@
 # SolverForge Mail
 
 A spiffy ratatui-based TUI email client with an app-owned mail layer, native
-maildir support, and a temporary Himalaya migration adapter for remote
-accounts that have not yet moved to native transport.
+maildir support, and native IMAP/SMTP transport for DB-backed accounts.
+
+## Screenshots
+
+Every screenshot below is the running application: the images are rendered from
+the app's own cell grid, with the colours it chose.
+
+<table>
+  <tr>
+    <td width="50%"><img src="assets/screenshots/envelope-list.png" alt="Folder list and envelope list"></td>
+    <td width="50%"><img src="assets/screenshots/message-view.png" alt="Message reader with attachments and a calendar invitation"></td>
+  </tr>
+  <tr>
+    <td><b>Folders and messages</b> — unread counts, per-account folders, threaded and flat views, server-side ordering.</td>
+    <td><b>Reader</b> — headers, attachments, and a calendar invitation shown with its timezone.</td>
+  </tr>
+  <tr>
+    <td><img src="assets/screenshots/compose.png" alt="Compose a reply"></td>
+    <td><img src="assets/screenshots/attachments.png" alt="Attachment list"></td>
+  </tr>
+  <tr>
+    <td><b>Compose</b> — reply, forward, attachments, PGP and S/MIME toggles, save-as-draft.</td>
+    <td><b>Attachments</b> — preview in place, save one, or write them all into an archive.</td>
+  </tr>
+  <tr>
+    <td><img src="assets/screenshots/search.png" alt="Search with a scope selector"></td>
+    <td><img src="assets/screenshots/preferences.png" alt="Preferences"></td>
+  </tr>
+  <tr>
+    <td><b>Search</b> — cached matches appear at once, the server result replaces them; the scope cycles folder → all folders → all accounts.</td>
+    <td><b>Preferences</b> — notifications rule, mark-read, draft encryption, page size, autosave.</td>
+  </tr>
+  <tr>
+    <td><img src="assets/screenshots/keys.png" alt="Key material overlay"></td>
+    <td><img src="assets/screenshots/identities.png" alt="Identities for an account"></td>
+  </tr>
+  <tr>
+    <td><b>Key material</b> — import, generate, export, and delete PGP keys.</td>
+    <td><b>Identities</b> — per-account From addresses, signatures, and Sent mailbox.</td>
+  </tr>
+</table>
 
 ## Quick Start
 
@@ -32,15 +71,14 @@ cargo run -- --setup
 
 - **Non-blocking I/O** - Background workers for all mail operations
 - **Relative timestamps** - "2h ago", "Yesterday", "Mon"
-- **Threading support** - Press `t` to toggle threaded view
+- **Threading support** - Press `t` to toggle threaded view; replies nest under their parent and server-side `THREAD` is used when available
 - **Auto-refresh** - New mail check every 60 seconds
 - **Folder unread counts** - Shows (3) badge on folders
 - **Mouse support** - Click to select, scroll wheel works
-- **Multi-account** - Switch with Ctrl+a
+- **Multi-account** - Switch with Ctrl+a; an "All Inboxes" folder merges every account's inbox when more than one account is configured
 - **Fast keyboard navigation** - j/k and g/G in list/message views, plus direct multiline editing in compose
 - **Smart error handling** - Typed mail diagnostics and clean user-facing errors
-- **Structured message reader** - MIME-aware message content with `Auto`, `Plain`, and `HTML` modes
-- **External HTML open** - Safe argv-based browser handoff for full-fidelity HTML viewing
+- **Structured message reader** - MIME-aware message content with one canonical HTML-first render path
 - **Address book** - Contacts with name, email, phone, org, notes, tags
 - **Contact import** - vCard (.vcf) and Google CSV import
 - **Auto-harvest contacts** - Captured from sent/received mail
@@ -48,6 +86,15 @@ cargo run -- --setup
 - **Local SQLite database** - Contacts and identities stored in `~/.local/share/solverforge/mail.db`
 - **App-owned account store** - Accounts, endpoints, auth bindings, and secret references live in SQLite
 - **Keyring-backed secrets** - Password and app-password flows store secret IDs in the app and raw secrets in the OS keyring
+- **Account discovery** - Add an account by email: Google/iCloud/Outlook presets, Mozilla autoconfig, Microsoft Autodiscover, then RFC 6186 SRV
+- **Attachments** - Attach files on send; download attachments from received mail
+- **Drafts** - Save a draft and resume it from the Drafts folder; the draft is removed after sending
+- **Security indicators** - SPF/DKIM/DMARC verdicts from `Authentication-Results`, PGP/MIME and S/MIME structure detection, and OpenPGP/S/MIME verification and decryption
+- **Crypto keyring** - public/secret keys under `~/.local/share/solverforge/mail/keys` verify and decrypt OpenPGP (inline and PGP/MIME) and S/MIME (PKCS#7 signed/enveloped)
+- **Calendar invitations** - `text/calendar` events show their summary and time with its timezone, cancelled events are marked, and `c` hands the invitation to Planner123 (`planner123-cli ical import`)
+- **Desktop notifications** - `notify-send` on new mail when the IDLE watcher fires
+- **Offline cache** - Listings and search fall back to the local store when the server is unreachable
+- **Mark read/unread** - Press `N` to toggle the Seen flag
 
 ## Keybindings
 
@@ -64,6 +111,8 @@ cargo run -- --setup
 - `d` - Delete
 - `m` - Move to folder
 - `!` - Toggle flag
+- `N` - Toggle read/unread
+- `A` - Mark all read
 - `t` - Toggle threaded view
 - `/` - Search
 - `Tab` - Focus folders
@@ -78,8 +127,7 @@ cargo run -- --setup
 - `f` - Forward
 - `d` - Delete
 - `a` - Download attachments
-- `1` / `2` / `3` - `Auto` / `Plain` / `HTML`
-- `o` - Open HTML externally
+- `N` - Toggle read/unread
 
 ### Compose View
 - `Tab` / `Shift+Tab` - Next/previous compose field
@@ -150,10 +198,11 @@ cargo run -- --setup
 ```
 
 Supported setup flows inside the wizard:
-- **Generic IMAP/SMTP**: Temporarily gated in this build until native remote transport lands
-- **iCloud**: Temporarily gated in this build until native remote transport lands
-- **Gmail/Outlook**: Temporary Himalaya-backed OAuth bootstrap while native OAuth transport is still pending
-- **Auth source of truth**: SQLite + OS keyring remain the target control plane, with the current remote transport path still temporarily backed by the Himalaya adapter for legacy accounts
+- **Generic IMAP/SMTP**: Native app-owned IMAP read + SMTP send using SQLite account metadata and OS-keyring secrets
+- **iCloud**: Native app-owned endpoint presets with app-password storage in the OS keyring
+- **Gmail OAuth**: Native browser-based OAuth bootstrap with app-owned token refresh and SQLite-backed metadata
+- **Outlook OAuth**: Native browser-based OAuth bootstrap with app-owned token refresh and SQLite-backed metadata
+- **Auth source of truth**: SQLite stores account definitions, endpoints, auth bindings, OAuth state, and secret references; raw secrets stay in the OS keyring
 
 ## Architecture
 
@@ -175,13 +224,13 @@ cargo run -- --account test
 
 SolverForge Mail expects:
 - no external dependencies for the local `test` maildir account
-- the system keyring/`secret-tool` for password and app-password setup flows
-- only the Himalaya backend binary/config for legacy accounts and the temporary OAuth bootstrap path
+- the system keyring/`secret-tool` for password, app-password, and OAuth token storage
+- network reachability to the configured IMAP and SMTP endpoints for remote accounts
 
 ### Authentication errors
-- **iCloud**: The app-owned setup flow is intentionally disabled in this build. If you still use a legacy Himalaya config with `auth.cmd`, verify `~/.authinfo.gpg` decrypts in this session.
-- **Gmail/Outlook**: OAuth bootstrap is still temporary. Re-run `himalaya account configure <account>` if the legacy OAuth token expires.
-- **Password-based IMAP/SMTP**: Native app-owned transport is not enabled in this build yet. Use a legacy Himalaya-backed account if you need remote IMAP/SMTP today.
+- **Generic IMAP/SMTP**: Re-open `--setup`, confirm the endpoint/port pair, and verify the stored keyring secret matches the server login.
+- **iCloud**: Use an app-specific password, not your Apple ID password. If you keep `~/.authinfo.gpg` for other tooling, verify it still decrypts in this session.
+- **Gmail/Outlook OAuth**: Re-open `--setup`, run the provider flow again, and verify the stored client credentials match the OAuth app you registered with the provider.
 - **Local `test` account failing**: This is not an auth issue. Fix backend discovery, config loading, or local maildir paths first.
 
 ### Keyring issues
@@ -206,6 +255,10 @@ cargo build --release
 
 # Test
 cargo test
+
+# Live integration tests: Dovecot (IMAP + ManageSieve) and Mailpit (SMTP) in
+# throwaway containers, removed again on exit (KEEP=1 leaves them running)
+make live-test
 
 # Local CI-style validation
 make ci
@@ -238,15 +291,17 @@ solverforge-mail/
 │   ├── event.rs             # Terminal event handling
 │   ├── keys.rs              # Keybinding definitions
 │   ├── theme.rs             # Color theme loader
-│   ├── himalaya/
-│   │   ├── client.rs        # Temporary Himalaya CLI migration adapter
-│   │   ├── config.rs        # Backend discovery and config hints
-│   │   ├── diagnostics.rs   # Shared error classification
-│   │   └── types.rs         # JSON types
 │   ├── mail/
 │   │   ├── service.rs       # App-facing mail service boundary
+│   │   ├── remote/          # Native IMAP/SMTP transport
+│   │   │   ├── next/        # Commands on the app-owned IMAP client
+│   │   │   └── session/     # Transport, codec reading policy, pool, IDLE
 │   │   ├── message.rs       # Structured message content + display modes
 │   │   ├── mime.rs          # Shared raw-message MIME parser
+│   │   ├── pgp.rs           # PGP verify/decrypt/key generation
+│   │   ├── planner123.rs    # Handing invitations to Planner123
+│   │   ├── smime.rs         # S/MIME verify/decrypt
+│   │   ├── sieve.rs         # ManageSieve script management
 │   │   ├── maildir.rs       # Native local maildir backend
 │   │   └── account_store.rs # App-owned account metadata store
 │   └── ui/

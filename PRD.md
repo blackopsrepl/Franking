@@ -2,7 +2,7 @@
 
 Status: Draft
 Owner: SolverForge Mail
-Last Updated: 2026-04-06
+Last Updated: 2026-04-13
 
 ## 1. Executive Summary
 
@@ -14,6 +14,7 @@ This project will replace the Himalaya CLI boundary with an app-owned mail engin
 - auth state and secret references
 - OAuth flows and token refresh
 - IMAP and SMTP sessions
+- MIME parsing and structured message content
 - local maildir access for the test backend
 - typed diagnostics
 - setup and account management workflows
@@ -64,7 +65,7 @@ The app needs a single, coherent mail runtime it controls end to end.
 
 ## 3. Product Goal
 
-Build a first-party mail engine for SolverForge Mail that provides a stable, production-grade foundation for account setup, auth, transport, sync, diagnostics, and sending without depending on the Himalaya CLI or Himalaya config at runtime.
+Build a first-party mail engine for SolverForge Mail that provides a stable, production-grade foundation for account setup, auth, transport, MIME-aware message reading, diagnostics, and sending without depending on the Himalaya CLI or Himalaya config at runtime.
 
 ## 4. Product Principles
 
@@ -77,14 +78,20 @@ Build a first-party mail engine for SolverForge Mail that provides a stable, pro
 3. Local and remote backends share one interface.
    Maildir and IMAP/SMTP must implement the same app-facing service boundary.
 
-4. Error handling must be typed and actionable.
+4. Parse once, choose once, render once.
+   MIME parsing and canonical body selection belong in the mail layer, not in the TUI. The UI consumes one terminal-native message document, not competing body modes.
+
+5. Error handling must be typed and actionable.
    No generic "auth failed" buckets when the failure is actually config, secret service, token refresh, or transport.
 
-5. Narrow scope beats fake generality.
+6. Narrow scope beats fake generality.
    The first release should be excellent for a small set of providers and flows instead of mediocre for all mail setups.
 
-6. No second half-finished auth pivot.
+7. No second half-finished auth pivot.
    There will be one account/auth architecture, not two competing ones.
+
+8. No escape-hatch rendering paths.
+   If HTML mail is supported, it must be supported by the primary in-app renderer rather than by handing users off to an external viewer.
 
 ## 5. Goals
 
@@ -92,12 +99,15 @@ Build a first-party mail engine for SolverForge Mail that provides a stable, pro
 
 - Remove all runtime dependency on the Himalaya CLI.
 - Remove all runtime dependency on Himalaya config files and env semantics.
+- Replace the current string-based message-read path with a structured MIME-first message model.
 - Support app-owned setup and operation for:
   - local maildir test account
   - generic IMAP/SMTP with password or app password
   - Gmail OAuth2
   - Outlook OAuth2
   - iCloud app-specific password
+- Support `multipart/alternative`, `text/plain`, and `text/html` reads through one deterministic in-TUI rendering path.
+- Remove body-mode switching and any external HTML viewer dependency from the message-reading experience.
 - Provide typed, user-facing diagnostics for config, keyring, OAuth, TLS, IMAP auth, SMTP auth, and local-backend failures.
 - Preserve the current TUI application model wherever practical.
 
@@ -114,7 +124,8 @@ The following are explicitly out of scope for the first implementation:
 - supporting every provider-specific extension or special-case behavior
 - full offline-first sync
 - server-side search parity across all providers
-- HTML rendering improvements
+- embedding a browser engine in the TUI
+- full HTML/CSS fidelity inside the terminal
 - calendar, contacts sync, or CardDAV/CalDAV
 - mobile sync or daemon mode
 - rewriting mail protocols from raw sockets when mature Rust libraries exist
@@ -169,6 +180,9 @@ The first production deliverable will support:
 - native maildir implementation for the local test account
 - native IMAP read operations
 - native SMTP send operations
+- shared MIME-first parsed message model for full message reads
+- one canonical terminal-native body document for message rendering
+- one in-TUI message-reading path for both plain-text and HTML mail
 - internal draft/template generation for compose, reply, and forward
 - typed error classification
 - one interactive setup wizard
@@ -254,6 +268,58 @@ Required categories:
 - unsupported feature
 
 User-facing messages must be derived from typed errors, not raw command stderr.
+
+### 10.6 Message Model and MIME Ownership
+
+`read message` and `preview message` must return structured message content, not a pre-rendered body string.
+
+Recommended message model:
+
+- parsed headers
+- extracted plain-text source part
+- extracted HTML source part
+- attachment and inline-part metadata
+- canonical `BodyDocument` selected once per message
+
+Recommended modules:
+
+- `src/mail/message.rs`
+- `src/mail/mime.rs`
+
+Required parser responsibilities:
+
+- parse raw message bytes once
+- decode transfer encodings and common charsets
+- extract `text/plain` and `text/html`
+- identify attachments and inline parts
+- choose a deterministic canonical body source
+- transform the selected source into a terminal-native `BodyDocument`
+- expose one render path to the UI
+
+Recommended initial library stack:
+
+- `mail-parser` for RFC 5322 and MIME parsing plus charset handling
+- an HTML parser that preserves document structure and feeds the terminal-native `BodyDocument`
+
+Backend rules:
+
+- Maildir reads raw bytes from disk and feeds the shared MIME parser.
+- Any temporary Himalaya compatibility path must export raw message bytes and feed the shared MIME parser rather than parse human-friendly CLI text.
+- Native IMAP reads must preserve the same raw-message-to-parser boundary.
+
+UI rules:
+
+- the app stores structured message content plus a canonical `BodyDocument` instead of `String` body text
+- the message view renders headers from parsed fields, not by scanning rendered body text
+- the message view renders exactly one canonical body representation per message
+- there are no user-facing body mode toggles and no external HTML viewer path
+
+Canonical body selection rules:
+
+- if an HTML body exists, HTML is the canonical source
+- else if a plain-text body exists, plain text is the canonical source
+- else the UI shows an explicit no-renderable-body state
+- once selected, the canonical body is not switchable in the UI
 
 ## 11. Data Model
 
@@ -523,11 +589,13 @@ Deliverables:
 - `mail` module skeleton
 - `MailService` trait
 - typed `MailError`
+- typed `MessageContent` and canonical message document model
 - app and worker routed through the trait
 
 Exit Criteria:
 
 - TUI compiles and runs with the new abstraction
+- message-read paths no longer require a flattened `String` body contract
 - Himalaya can remain behind a temporary adapter only during this phase
 
 ### Phase 1: Local Backend
@@ -535,11 +603,14 @@ Exit Criteria:
 Deliverables:
 
 - native `MaildirService`
+- shared MIME parser wired to maildir reads
+- canonical terminal-native body renderer for plain-text and HTML messages
 - `test` account owned by the new interface
 
 Exit Criteria:
 
 - local test account works without Himalaya
+- HTML-only and `multipart/alternative` fixtures are readable in the TUI
 - integration tests cover maildir read path and mutation path
 
 ### Phase 2: Account Store and Setup
@@ -562,6 +633,7 @@ Deliverables:
 - native folder list
 - native envelope list
 - native message read
+- native message read uses the shared MIME parser boundary
 - flag, move, copy, delete operations
 
 Exit Criteria:
@@ -616,6 +688,9 @@ Exit Criteria:
 - Gmail account can complete OAuth and refresh tokens
 - Outlook account can complete OAuth and refresh tokens
 - iCloud account can authenticate via app password
+- HTML-only and `multipart/alternative` messages are readable in the TUI through the same canonical renderer
+- users do not switch between competing body modes
+- supported HTML mail does not require an external viewer path
 - compose, reply, forward, move, delete, and flags work on supported providers
 
 ### 19.2 Reliability Acceptance
@@ -638,6 +713,8 @@ Exit Criteria:
 - auth state transitions
 - token refresh logic
 - provider preset resolution
+- canonical body selection policy
+- MIME header and body extraction
 - error classification
 
 ### 20.2 Integration Tests
@@ -647,6 +724,7 @@ Exit Criteria:
 - SMTP test server
 - OAuth callback and refresh test harness
 - MIME send and parse fixtures
+- HTML-only, `multipart/alternative`, quoted-printable, base64, and malformed MIME fixtures
 
 ### 20.3 Manual Acceptance Matrix
 
@@ -659,6 +737,7 @@ Required manual test scenarios:
 - missing keyring session
 - iCloud app-password flow
 - local test account while all remote accounts are broken
+- at least one HTML-heavy inbox or fixture account path
 
 ## 21. Observability and Supportability
 
@@ -687,6 +766,7 @@ Logs must never include:
 - SMTP interoperability issues
 - OAuth callback handling complexity
 - MIME correctness for replies/forwards
+- terminal rendering quality for HTML-derived terminal documents
 - Linux secret-service availability
 
 ### 22.2 Product Risks
@@ -709,17 +789,16 @@ These must be resolved before final implementation:
 - Should iCloud continue supporting `~/.authinfo.gpg`, or should all secrets move to keyring only?
 - Should refresh tokens live only in keyring, or may encrypted references be cached in SQLite?
 - Which Rust library stack best balances maturity, maintenance, and TLS behavior for IMAP/SMTP?
-- Is HTML rendering intentionally out of scope for this rewrite, or should MIME parsing prepare for it?
 - Should message-body caching be part of first delivery or postponed?
 
 ## 24. Recommended Immediate Next Steps
 
 1. Approve this PRD as the target architecture.
-2. Create an engineering design document for the `MailService` trait and `MailError` types.
+2. Create an engineering design document for the `MailService`, `MailError`, `MessageContent`, canonical `BodyDocument`, and renderer pipeline.
 3. Implement Phase 0 and Phase 1 before touching OAuth.
 4. Do not reintroduce any Himalaya-dependent runtime path during the transition.
 5. Treat import from Himalaya config as a temporary migration utility, not an architectural dependency.
 
 ## 25. Final Decision Statement
 
-SolverForge Mail should stop treating the Himalaya CLI as its production mail engine. The professional path is to own the mail control plane inside the application, keep the UI mostly intact, use Rust protocol libraries rather than raw protocol implementations, and ship the replacement in narrow, test-gated phases.
+SolverForge Mail should stop treating the Himalaya CLI as its production mail engine. The professional path is to own the mail control plane, transport, and MIME-aware message pipeline inside the application, keep the UI mostly intact, use Rust protocol libraries rather than raw protocol implementations, and ship the replacement in narrow, test-gated phases.

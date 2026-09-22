@@ -12,6 +12,9 @@ pub enum IdentityField {
     /// Sender display name that goes into the From header (e.g. "Alice Example").
     SenderName,
     Email,
+    Signature,
+    /// Mailbox for the sent copy (optional).
+    SentFolder,
     IsDefault,
     // ── Action bar buttons ─────────────────────────────────────────
     Save,
@@ -23,7 +26,9 @@ impl IdentityField {
         match self {
             IdentityField::Name => IdentityField::SenderName,
             IdentityField::SenderName => IdentityField::Email,
-            IdentityField::Email => IdentityField::IsDefault,
+            IdentityField::Email => IdentityField::Signature,
+            IdentityField::Signature => IdentityField::SentFolder,
+            IdentityField::SentFolder => IdentityField::IsDefault,
             IdentityField::IsDefault => IdentityField::Save,
             IdentityField::Save => IdentityField::Cancel,
             IdentityField::Cancel => IdentityField::Name,
@@ -35,7 +40,9 @@ impl IdentityField {
             IdentityField::Name => IdentityField::Cancel,
             IdentityField::SenderName => IdentityField::Name,
             IdentityField::Email => IdentityField::SenderName,
-            IdentityField::IsDefault => IdentityField::Email,
+            IdentityField::Signature => IdentityField::Email,
+            IdentityField::IsDefault => IdentityField::SentFolder,
+            IdentityField::SentFolder => IdentityField::Signature,
             IdentityField::Save => IdentityField::IsDefault,
             IdentityField::Cancel => IdentityField::Save,
         }
@@ -46,6 +53,8 @@ impl IdentityField {
             IdentityField::Name => "Name   ",
             IdentityField::SenderName => "Sender ",
             IdentityField::Email => "Email  ",
+            IdentityField::Signature => "Signat.",
+            IdentityField::SentFolder => "Sent   ",
             IdentityField::IsDefault => "Default",
             IdentityField::Save => "Save",
             IdentityField::Cancel => "Cancel",
@@ -69,6 +78,10 @@ pub struct IdentityEditState {
     /// Sender display name for the From header (e.g. "Alice Example"). Optional.
     pub display_name: String,
     pub email: String,
+    /// Signature appended to new messages (optional).
+    pub signature: String,
+    /// Mailbox for the sent copy (optional; empty uses the account default).
+    pub sent_folder: String,
     pub is_default: bool,
     /// Currently focused field.
     pub focused: IdentityField,
@@ -85,6 +98,8 @@ impl IdentityEditState {
             name: String::new(),
             display_name: String::new(),
             email: String::new(),
+            signature: String::new(),
+            sent_folder: String::new(),
             is_default: false,
             focused: IdentityField::Name,
             error: None,
@@ -99,6 +114,8 @@ impl IdentityEditState {
             name: identity.name.clone().unwrap_or_default(),
             display_name: identity.display_name.clone().unwrap_or_default(),
             email: identity.email.clone(),
+            signature: identity.signature.clone().unwrap_or_default(),
+            sent_folder: identity.sent_folder.clone().unwrap_or_default(),
             is_default: identity.is_default,
             focused: IdentityField::Name,
             error: None,
@@ -112,6 +129,8 @@ impl IdentityEditState {
             IdentityField::Name => Some(&mut self.name),
             IdentityField::SenderName => Some(&mut self.display_name),
             IdentityField::Email => Some(&mut self.email),
+            IdentityField::Signature => Some(&mut self.signature),
+            IdentityField::SentFolder => Some(&mut self.sent_folder),
             IdentityField::IsDefault => None,
             IdentityField::Save | IdentityField::Cancel => None,
         }
@@ -122,9 +141,9 @@ impl IdentityEditState {
         self.is_default = !self.is_default;
     }
 
-    /// Validate and return `(name, display_name, email, is_default)` for saving.
+    /// Validate and return the field values for saving.
     /// Returns `Err` if validation fails.
-    pub fn validate(&self) -> Result<(Option<String>, Option<String>, String, bool), String> {
+    pub fn validate(&self) -> Result<crate::identities::NewIdentity, String> {
         let name = {
             let n = self.name.trim().to_string();
             if n.is_empty() {
@@ -145,6 +164,29 @@ impl IdentityEditState {
                 Some(n)
             }
         };
-        Ok((name, display_name, email, self.is_default))
+        let signature = {
+            let text = self.signature.trim().to_string();
+            if text.is_empty() {
+                None
+            } else {
+                Some(text)
+            }
+        };
+        let sent_folder = {
+            let text = self.sent_folder.trim().to_string();
+            if text.is_empty() {
+                None
+            } else {
+                Some(text)
+            }
+        };
+        Ok(crate::identities::NewIdentity {
+            name,
+            display_name,
+            email,
+            signature,
+            sent_folder,
+            is_default: self.is_default,
+        })
     }
 }

@@ -27,6 +27,28 @@ tui-textarea = { version = "0.7.0", features = ["search"] }
 rpassword = "7"
 mail-parser = "0.11"
 html2text = "0.16"
+# Own IMAP command layer: the codec is the grammar, we own the transport and policy.
+imap-codec = { version = "=2.0.0-alpha.9", features = ["ext_condstore_qresync", "ext_utf8", "starttls"] }
+imap-types = { version = "=2.0.0-alpha.7", features = ["ext_condstore_qresync", "ext_utf8", "starttls"] }
+base64 = "0.22"
+lettre = { version = "0.11", default-features = false, features = [
+  "builder",
+  "hostname",
+  "native-tls",
+  "smtp-transport",
+] }
+native-tls = "0.2"
+rand = "0.8"
+sha2 = "0.10"
+ureq = { version = "2.10", features = ["json"] }
+url = "2.5"
+roxmltree = "0.20"
+tokio = { version = "1", features = ["rt"] }
+hickory-resolver = "0.24"
+pgp = "0.20.0"
+openssl = "0.10"
+zip = { version = "8.6.0", default-features = false, features = ["deflate"] }
+chrono-tz = "0.10.4"
 
 [dev-dependencies]
 pretty_assertions = "1"

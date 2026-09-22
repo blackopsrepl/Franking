@@ -29,6 +29,11 @@ fn main() -> Result<()> {
         parse_account_flag(&args)
     };
 
+    // ── PGP key generation (non-interactive, exits after writing) ───
+    if let Some(uid) = flag_value(&args, "--pgp-keygen") {
+        return run_pgp_keygen(&uid);
+    }
+
     // ── Contact import (non-interactive, exits after import) ────────
     if let Some(path) = parse_import_flag(&args) {
         return run_import(&path);
@@ -94,7 +99,7 @@ fn run(
             execute!(io::stdout(), EnterAlternateScreen, EnableMouseCapture)?;
             terminal.clear()?;
             match status {
-                Ok(s) if s.success() => app.set_status("Opened HTML in the external viewer."),
+                Ok(s) if s.success() => app.set_status("Opened externally."),
                 Ok(s) => app.set_status(&format!("Open command exited with {s}")),
                 Err(e) => app.set_status(&format!("Failed to launch external viewer: {e}")),
             }
@@ -106,6 +111,31 @@ fn run(
 fn restore_terminal() -> Result<()> {
     disable_raw_mode()?;
     execute!(io::stdout(), DisableMouseCapture, LeaveAlternateScreen)?;
+    Ok(())
+}
+
+fn flag_value(args: &[String], flag: &str) -> Option<String> {
+    let position = args.iter().position(|arg| arg == flag)?;
+    args.get(position + 1).cloned()
+}
+
+fn run_pgp_keygen(uid: &str) -> Result<()> {
+    use solverforge_mail::mail::pgp;
+
+    let dir = pgp::default_keys_dir();
+    let (secret, public) = pgp::generate_keypair(uid)?;
+    let name: String = uid
+        .split('@')
+        .next()
+        .unwrap_or("key")
+        .chars()
+        .map(|c| if c.is_ascii_alphanumeric() { c } else { '-' })
+        .collect();
+    pgp::write_keypair(&dir, &name, &secret, &public)?;
+    println!(
+        "Wrote {name}.pub.asc and {name}.sec.asc to {}",
+        dir.display()
+    );
     Ok(())
 }
 
@@ -172,7 +202,8 @@ fn run_identity_cmd(cmd: IdentityCmd) -> Result<()> {
             } else {
                 // List all identities across all accounts.
                 let mut stmt = conn.prepare(
-                    "SELECT id, account, name, display_name, email, is_default
+                    "SELECT id, account, name, display_name, email, signature,
+                            sent_folder, is_default
                      FROM identities ORDER BY account, is_default DESC, name, email",
                 )?;
                 let collected = stmt
@@ -183,7 +214,9 @@ fn run_identity_cmd(cmd: IdentityCmd) -> Result<()> {
                             name: row.get(2)?,
                             display_name: row.get(3)?,
                             email: row.get(4)?,
-                            is_default: row.get::<_, i32>(5)? != 0,
+                            signature: row.get(5)?,
+                            sent_folder: row.get(6)?,
+                            is_default: row.get::<_, i32>(7)? != 0,
                         })
                     })?
                     .collect::<rusqlite::Result<Vec<_>>>()?;

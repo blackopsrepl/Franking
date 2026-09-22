@@ -1,6 +1,6 @@
 # ╔══════════════════════════════════════════════════════════════════════════════╗
 # ║                          SOLVERFORGE-MAIL                                  ║
-# ║                   ratatui TUI email client · himalaya backend              ║
+# ║                 ratatui TUI email client · app-owned mail engine           ║
 # ╚══════════════════════════════════════════════════════════════════════════════╝
 #
 # Part of SolverForge Linux — https://solverforge.com
@@ -37,7 +37,7 @@ SF_SHARE := $(SF_HOME)/mail
 
 # ── Phony Targets ─────────────────────────────────────────────────────────────
 
-.PHONY: help build release debug check clippy fmt fmt-check test lint ci pre-release version
+.PHONY: help build release debug check clippy fmt fmt-check test live-test lint ci pre-release version
 .PHONY: dev run run-account
 .PHONY: install uninstall setup accounts
 .PHONY: clean dist-clean loc info deps-check
@@ -109,6 +109,9 @@ test: ## Run all tests
 	@cargo test 2>&1 | sed 's/^/    /' && \
 		printf "\n$(GREEN)$(CHECK) All tests passed$(RESET)\n\n" || \
 		(printf "\n$(RED)$(CROSS) Tests failed$(RESET)\n\n" && exit 1)
+
+live-test: ## Run the live IMAP/SMTP integration tests in containers
+	@bash scripts/live-test.sh
 
 lint: fmt-check clippy ## Run all lints (fmt-check + clippy)
 	@printf "\n$(GREEN)$(BOLD)$(CHECK) All lint checks passed$(RESET)\n\n"
@@ -235,6 +238,7 @@ help:
 	@/bin/echo -e ""
 	@/bin/echo -e "$(CYAN)$(BOLD)Quality:$(RESET)"
 	@/bin/echo -e "  $(GREEN)make test$(RESET)             - Run all tests"
+	@/bin/echo -e "  $(GREEN)make live-test$(RESET)        - Run live tests against Dovecot and Mailpit"
 	@/bin/echo -e "  $(GREEN)make lint$(RESET)             - fmt-check + clippy"
 	@/bin/echo -e "  $(GREEN)make fmt$(RESET)              - Format code"
 	@/bin/echo -e "  $(GREEN)make clippy$(RESET)           - Run clippy lints"

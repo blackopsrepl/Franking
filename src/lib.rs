@@ -1,3 +1,4 @@
+pub mod account_edit;
 pub mod app;
 pub mod compose;
 pub mod compose_editor;
@@ -5,7 +6,7 @@ pub mod contact_edit;
 pub mod contacts;
 pub mod db;
 pub mod event;
-pub mod himalaya;
+pub mod file_picker;
 pub mod identities;
 pub mod identity_edit;
 pub mod import;

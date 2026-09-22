@@ -31,10 +31,63 @@ pub fn sort_accounts(accounts: &mut [Account]) {
     });
 }
 
+/// Semantic role of a mailbox, from RFC 6154 SPECIAL-USE where available and
+/// otherwise inferred from common names.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum FolderRole {
+    Inbox,
+    Sent,
+    Drafts,
+    Trash,
+    Archive,
+    Junk,
+    Flagged,
+    All,
+    #[default]
+    Other,
+}
+
+impl FolderRole {
+    /// Infer a role from a mailbox name when the server advertises no attribute.
+    pub fn from_name(name: &str) -> Self {
+        match name.to_ascii_lowercase().as_str() {
+            "inbox" => Self::Inbox,
+            "sent" | "sent items" | "sent messages" | "sent mail" | "inbox.sent" => Self::Sent,
+            "drafts" | "draft" | "inbox.drafts" => Self::Drafts,
+            "trash" | "deleted" | "deleted items" | "deleted messages" | "bin" | "inbox.trash" => {
+                Self::Trash
+            }
+            "archive" | "archives" | "inbox.archive" => Self::Archive,
+            "spam" | "junk" | "bulk mail" => Self::Junk,
+            "starred" | "flagged" => Self::Flagged,
+            "all mail" | "all" => Self::All,
+            _ => Self::Other,
+        }
+    }
+
+    pub fn description(self) -> Option<&'static str> {
+        match self {
+            Self::Inbox => Some("Incoming messages"),
+            Self::Sent => Some("Sent messages"),
+            Self::Drafts => Some("Draft messages"),
+            Self::Trash => Some("Deleted messages"),
+            Self::Archive => Some("Archived messages"),
+            Self::Junk => Some("Spam and junk"),
+            Self::Flagged => Some("Flagged messages"),
+            Self::All => Some("All messages"),
+            Self::Other => None,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Folder {
     pub name: String,
     pub desc: Option<String>,
+    pub role: FolderRole,
+    /// Whether the account is subscribed to this mailbox, when the backend
+    /// reports subscriptions.
+    pub subscribed: Option<bool>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -44,6 +97,28 @@ pub struct Envelope {
     pub subject: String,
     pub sender: Sender,
     pub date: String,
+    /// RFC 5322 Message-ID, bracket-stripped.
+    pub message_id: Option<String>,
+    /// Parent Message-ID from In-Reply-To, bracket-stripped.
+    pub in_reply_to: Option<String>,
+    /// Source account, set when listed (used by the unified inbox).
+    pub account: Option<String>,
+    /// Source folder, set when listed.
+    pub folder: Option<String>,
+}
+
+/// The changes a server reported for a cached folder since a sync anchor.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct FolderDelta {
+    /// True when the anchor could not be used and a full listing is required.
+    pub full_resync: bool,
+    pub uid_validity: Option<u32>,
+    pub uid_next: Option<u32>,
+    pub highest_modseq: Option<u64>,
+    /// UIDs the server no longer has.
+    pub vanished: Vec<u32>,
+    /// UIDs whose flags changed, with their current flags.
+    pub changed_flags: Vec<(u32, Vec<String>)>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -116,52 +191,9 @@ impl Envelope {
     }
 }
 
-impl From<crate::himalaya::types::Account> for Account {
-    fn from(value: crate::himalaya::types::Account) -> Self {
-        Self {
-            name: value.name,
-            backend: value.backend,
-            default: value.default,
-        }
-    }
-}
-
-impl From<crate::himalaya::types::Folder> for Folder {
-    fn from(value: crate::himalaya::types::Folder) -> Self {
-        Self {
-            name: value.name,
-            desc: value.desc,
-        }
-    }
-}
-
-impl From<crate::himalaya::types::Sender> for Sender {
-    fn from(value: crate::himalaya::types::Sender) -> Self {
-        match value {
-            crate::himalaya::types::Sender::Plain(s) => Sender::Plain(s),
-            crate::himalaya::types::Sender::Structured { name, addr } => {
-                Sender::Structured { name, addr }
-            }
-            crate::himalaya::types::Sender::Unknown => Sender::Unknown,
-        }
-    }
-}
-
-impl From<crate::himalaya::types::Envelope> for Envelope {
-    fn from(value: crate::himalaya::types::Envelope) -> Self {
-        Self {
-            id: value.id,
-            flags: value.flags,
-            subject: value.subject,
-            sender: value.sender.into(),
-            date: value.date,
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
-    use super::{preferred_account, sort_accounts, Account};
+    use super::{preferred_account, sort_accounts, Account, FolderRole};
 
     #[test]
     fn preferred_account_uses_real_account_before_local_test_fallback() {
@@ -213,5 +245,15 @@ mod tests {
                 .collect::<Vec<_>>(),
             vec!["alpha", "zeta", "test"]
         );
+    }
+
+    #[test]
+    fn folder_role_infers_from_common_names() {
+        assert_eq!(FolderRole::from_name("INBOX"), FolderRole::Inbox);
+        assert_eq!(FolderRole::from_name("Sent Items"), FolderRole::Sent);
+        assert_eq!(FolderRole::from_name("Drafts"), FolderRole::Drafts);
+        assert_eq!(FolderRole::from_name("Deleted Items"), FolderRole::Trash);
+        assert_eq!(FolderRole::from_name("Junk"), FolderRole::Junk);
+        assert_eq!(FolderRole::from_name("Projects"), FolderRole::Other);
     }
 }
