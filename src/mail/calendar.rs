@@ -51,6 +51,16 @@ impl Event {
     /// contradict each other. A floating time is not converted: it has no zone
     /// to convert from.
     pub fn start_display(&self) -> Option<String> {
+        self.start_display_in(&crate::mail::local_time::local_timezone_name())
+    }
+
+    /// The start time for display in the reader's `local_name` timezone.
+    ///
+    /// The reader's zone arrives as an argument rather than being read from the
+    /// process environment here, so the label and the converted time always
+    /// describe the same zone and a caller can state one without touching
+    /// global state.
+    pub fn start_display_in(&self, local_name: &str) -> Option<String> {
         let start = self.start.as_deref().filter(|start| !start.is_empty())?;
         if self.all_day {
             return Some(format!("{} (all day)", date_display(start)));
@@ -69,16 +79,20 @@ impl Event {
             // rather than presenting it as if it were local.
             return Some(original);
         };
-        let local_name = crate::mail::local_time::local_timezone_name();
         if local_name.eq_ignore_ascii_case(name) {
             return Some(original);
         }
+        let Ok(local) = local_name.parse::<chrono_tz::Tz>() else {
+            // The reader's zone is not one this build knows: keep the stated
+            // time rather than converting it to a zone it cannot name.
+            return Some(original);
+        };
 
         match naive.and_local_timezone(tz) {
             chrono::LocalResult::Single(at) | chrono::LocalResult::Ambiguous(at, _) => {
                 Some(format!(
                     "{original} ({} {local_name})",
-                    at.with_timezone(&chrono::Local).format("%Y-%m-%d %H:%M")
+                    at.with_timezone(&local).format("%Y-%m-%d %H:%M")
                 ))
             }
             chrono::LocalResult::None => Some(original),

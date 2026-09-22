@@ -5,16 +5,15 @@
 /// Tries `TZ`, then the distribution's timezone file, then the zoneinfo
 /// symlink that `localtime` points at. Falls back to UTC rather than guessing.
 pub fn local_timezone_name() -> String {
-    if let Ok(name) = std::env::var("TZ") {
-        let name = name.trim().trim_start_matches(':');
-        if !name.is_empty() {
-            return name.to_string();
-        }
-    }
-    std::fs::read_to_string("/etc/timezone")
-        .map(|value| value.trim().to_string())
+    let from_env = std::env::var("TZ")
         .ok()
-        .filter(|value| !value.is_empty())
+        .and_then(|value| normalize_timezone_name(&value));
+    from_env
+        .or_else(|| {
+            std::fs::read_to_string("/etc/timezone")
+                .ok()
+                .and_then(|value| normalize_timezone_name(&value))
+        })
         .or_else(|| {
             std::fs::read_link("/etc/localtime").ok().and_then(|path| {
                 let text = path.to_string_lossy().to_string();
@@ -24,19 +23,35 @@ pub fn local_timezone_name() -> String {
         .unwrap_or_else(|| "UTC".to_string())
 }
 
+/// Trim a timezone identifier into the form this build can parse.
+///
+/// `TZ` may be written with a leading colon or with surrounding whitespace; a
+/// value that is empty once trimmed carries no zone.
+pub fn normalize_timezone_name(raw: &str) -> Option<String> {
+    let name = raw.trim().trim_start_matches(':').trim();
+    if name.is_empty() {
+        None
+    } else {
+        Some(name.to_string())
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::local_timezone_name;
+    use super::normalize_timezone_name;
 
     #[test]
-    fn an_explicit_zone_wins() {
-        let previous = std::env::var_os("TZ");
-        std::env::set_var("TZ", ":Europe/Berlin");
-        let name = local_timezone_name();
-        match previous {
-            Some(value) => std::env::set_var("TZ", value),
-            None => std::env::remove_var("TZ"),
-        }
-        assert_eq!(name, "Europe/Berlin", "a leading colon is stripped");
+    fn an_explicit_zone_is_normalized() {
+        assert_eq!(
+            normalize_timezone_name(":Europe/Berlin").as_deref(),
+            Some("Europe/Berlin"),
+            "a leading colon is stripped"
+        );
+        assert_eq!(
+            normalize_timezone_name("  Europe/Rome \n").as_deref(),
+            Some("Europe/Rome")
+        );
+        assert_eq!(normalize_timezone_name("  "), None);
+        assert_eq!(normalize_timezone_name(":"), None);
     }
 }

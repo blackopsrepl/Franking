@@ -17,30 +17,10 @@ fn extracts_event_fields() {
     assert_eq!(event.location.as_deref(), Some("Room 1"));
 }
 
-/// Run `body` with `TZ` set, so the reader's zone is known.
-///
-/// The variable is process-wide, so these cases take a lock.
-fn with_timezone<T>(name: &str, body: impl FnOnce() -> T) -> T {
-    static LOCK: std::sync::OnceLock<std::sync::Mutex<()>> = std::sync::OnceLock::new();
-    let _guard = LOCK
-        .get_or_init(|| std::sync::Mutex::new(()))
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner());
-
-    let previous = std::env::var_os("TZ");
-    std::env::set_var("TZ", name);
-    let result = body();
-    match previous {
-        Some(value) => std::env::set_var("TZ", value),
-        None => std::env::remove_var("TZ"),
-    }
-    result
-}
-
 #[test]
 fn a_utc_start_is_shown_with_its_zone_and_the_local_equivalent() {
     let event = parse_invitation(&ics("SUMMARY:Standup\r\nDTSTART:20260413T090000Z")).unwrap();
-    let display = with_timezone("Europe/Berlin", || event.start_display()).expect("a time");
+    let display = event.start_display_in("Europe/Berlin").expect("a time");
 
     // The organizer's time keeps its own label, and the reader's equivalent is
     // named with the reader's zone, so neither number can be misread.
@@ -57,7 +37,7 @@ fn a_named_timezone_start_is_shown_as_written_and_converted() {
     ))
     .unwrap();
     assert_eq!(event.start_tz.as_deref(), Some("Europe/Berlin"));
-    let display = with_timezone("Europe/Rome", || event.start_display()).expect("a time");
+    let display = event.start_display_in("Europe/Rome").expect("a time");
     assert_eq!(
         display,
         "2026-04-16 10:00 Europe/Berlin (2026-04-16 10:00 Europe/Rome)"
@@ -70,7 +50,7 @@ fn a_start_in_the_reader_zone_needs_no_conversion() {
         "SUMMARY:Local\r\nDTSTART;TZID=Europe/Berlin:20260416T100000",
     ))
     .unwrap();
-    let display = with_timezone("Europe/Berlin", || event.start_display()).expect("a time");
+    let display = event.start_display_in("Europe/Berlin").expect("a time");
     assert_eq!(display, "2026-04-16 10:00 Europe/Berlin");
 }
 
