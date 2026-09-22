@@ -185,8 +185,8 @@ pub fn cert_emails(cert: &X509) -> Vec<String> {
     let mut addresses = Vec::new();
     for entry in cert.subject_name().entries() {
         if entry.object().nid().short_name().ok() == Some("emailAddress") {
-            if let Ok(value) = entry.data().as_utf8() {
-                addresses.push(value.to_string().to_lowercase());
+            if let Ok(value) = entry.data().to_string() {
+                addresses.push(value.to_lowercase());
             }
         }
     }

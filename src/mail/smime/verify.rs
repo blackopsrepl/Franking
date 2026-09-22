@@ -155,11 +155,7 @@ pub fn name_to_string(name: &X509NameRef) -> String {
     let mut parts = Vec::new();
     for entry in name.entries() {
         let key = entry.object().nid().short_name().unwrap_or("?");
-        let value = entry
-            .data()
-            .as_utf8()
-            .map(|value| value.to_string())
-            .unwrap_or_default();
+        let value = entry.data().to_string().unwrap_or_default();
         parts.push(format!("{key}={value}"));
     }
     parts.join(", ")
