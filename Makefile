@@ -22,6 +22,13 @@ CROSS    := ✗
 ARROW    := ▸
 PROGRESS := →
 
+# Printed after a release: the tag and the branch go to every remote.
+define release_pushed
+printf "\n$(GREEN)$(CHECK) Release committed and tagged. Publish with:$(RESET)\n"; \
+printf "    git push blackopsrepl main:main --follow-tags\n"; \
+printf "    git push vigilance main:main --follow-tags\n\n"
+endef
+
 # ── Project Metadata ─────────────────────────────────────────────────────────
 
 NAME     := franking
@@ -40,6 +47,7 @@ SF_SHARE := $(SF_HOME)/mail
 .PHONY: help build release debug check clippy fmt fmt-check test live-test lint ci pre-release version
 .PHONY: dev run run-account
 .PHONY: install uninstall setup accounts
+.PHONY: bump-dry bump-patch bump-minor bump-major release-tool
 .PHONY: clean dist-clean loc info deps-check
 
 .DEFAULT_GOAL := help
@@ -225,6 +233,30 @@ version: ## Print the current crate version
 	@printf "$(YELLOW)$(BOLD)%s$(RESET)\n" "$(VERSION)"
 
 # ══════════════════════════════════════════════════════════════════════════════
+#  RELEASE  (commit-and-tag-version owns the version surfaces and changelog)
+# ══════════════════════════════════════════════════════════════════════════════
+
+release-tool:
+	@command -v commit-and-tag-version >/dev/null 2>&1 || \
+		(printf "$(RED)$(CROSS) commit-and-tag-version not found — install it with 'npm i -g commit-and-tag-version'$(RESET)\n" && exit 1)
+
+bump-dry: release-tool ## Preview the next version and changelog without writing
+	@printf "$(PROGRESS) Previewing the next release...\n\n"
+	@commit-and-tag-version --dry-run
+
+bump-patch: release-tool pre-release ## Release a patch (x.y.Z)
+	@commit-and-tag-version --release-as patch
+	@$(call release_pushed)
+
+bump-minor: release-tool pre-release ## Release a minor (x.Y.0)
+	@commit-and-tag-version --release-as minor
+	@$(call release_pushed)
+
+bump-major: release-tool pre-release ## Release a major (X.0.0)
+	@commit-and-tag-version --release-as major
+	@$(call release_pushed)
+
+# ══════════════════════════════════════════════════════════════════════════════
 #  HELP
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -244,6 +276,12 @@ help:
 	@/bin/echo -e "  $(GREEN)make clippy$(RESET)           - Run clippy lints"
 	@/bin/echo -e "  $(GREEN)make ci$(RESET)               - $(YELLOW)$(BOLD)Local CI-style validation: lint → test → build$(RESET)"
 	@/bin/echo -e "  $(GREEN)make pre-release$(RESET)      - Release-oriented validation"
+	@/bin/echo -e ""
+	@/bin/echo -e "$(CYAN)$(BOLD)Release:$(RESET)"
+	@/bin/echo -e "  $(GREEN)make bump-dry$(RESET)         - Preview the next version and changelog"
+	@/bin/echo -e "  $(GREEN)make bump-patch$(RESET)       - Release a patch (x.y.Z)"
+	@/bin/echo -e "  $(GREEN)make bump-minor$(RESET)       - Release a minor (x.Y.0)"
+	@/bin/echo -e "  $(GREEN)make bump-major$(RESET)       - Release a major (X.0.0)"
 	@/bin/echo -e ""
 	@/bin/echo -e "$(CYAN)$(BOLD)Run:$(RESET)"
 	@/bin/echo -e "  $(GREEN)make dev$(RESET)              - Build debug + run"
