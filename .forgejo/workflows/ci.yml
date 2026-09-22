@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [main, dev, release/*, feature/*, codex/*]
+  pull_request:
+    branches: [main, dev, release/*]
+  workflow_dispatch:
+
+jobs:
+  rust:
+    name: Rust checks
+    # The local runners advertise language labels; `ubuntu-latest` is a GitHub
+    # label that no runner here serves, which left every run queued.
+    runs-on: rust
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # The runner image ships an older stable without clippy, so install the
+      # current stable toolchain the crate is built against instead of
+      # borrowing the image's.
+      - name: Install Rust
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain none
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+          export PATH="$HOME/.cargo/bin:$PATH"
+          rustup toolchain install stable --profile minimal --component rustfmt --component clippy
+          rustup default stable
+          cargo --version
+
+      - name: Check formatting
+        run: cargo fmt --all --check
+
+      - name: Run clippy
+        run: cargo clippy --locked --all-targets -- -D warnings
+
+      - name: Run tests
+        run: cargo test --locked
+
+      - name: Build release
+        run: cargo build --locked --release
