@@ -7,17 +7,17 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 find_franking() {
     local repo_release="$SCRIPT_DIR/target/release/franking"
     local repo_debug="$SCRIPT_DIR/target/debug/franking"
-    local installed_sibling="$SCRIPT_DIR/../bin/franking"
-    local installed_home="$HOME/.local/share/solverforge/bin/franking"
+    local installed_cargo="$HOME/.cargo/bin/franking"
+    local installed_wrapper="$SCRIPT_DIR/../bin/franking"
 
     if [ -x "$repo_release" ]; then
         printf "%s\n" "$repo_release"
     elif [ -x "$repo_debug" ]; then
         printf "%s\n" "$repo_debug"
-    elif [ -x "$installed_sibling" ]; then
-        printf "%s\n" "$installed_sibling"
-    elif [ -x "$installed_home" ]; then
-        printf "%s\n" "$installed_home"
+    elif [ -x "$installed_cargo" ]; then
+        printf "%s\n" "$installed_cargo"
+    elif [ -x "$installed_wrapper" ]; then
+        printf "%s\n" "$installed_wrapper"
     elif command -v franking >/dev/null 2>&1; then
         command -v franking
     else

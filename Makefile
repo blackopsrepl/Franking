@@ -25,6 +25,7 @@ PROGRESS := →
 # ── Project Metadata ─────────────────────────────────────────────────────────
 
 NAME     := franking
+CARGO_HOME ?= $(HOME)/.cargo
 VERSION  := $(shell grep -m1 '^version' Cargo.toml | sed 's/version = "\(.*\)"/\1/')
 BIN      := target/release/$(NAME)
 BIN_DBG  := target/debug/$(NAME)
@@ -32,7 +33,6 @@ BIN_DBG  := target/debug/$(NAME)
 # ── Install Paths (SolverForge Linux framework) ───────────────────────────────
 
 SF_HOME  := $(HOME)/.local/share/solverforge
-SF_BIN   := $(SF_HOME)/bin
 SF_SHARE := $(SF_HOME)/mail
 
 # ── Phony Targets ─────────────────────────────────────────────────────────────
@@ -144,26 +144,26 @@ run-account: release ## Run with specific account (ACCOUNT=name)
 	@./$(BIN) --account $(ACCOUNT)
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  INSTALL  (SolverForge Linux framework)
+#  INSTALL  (binary into CARGO_HOME, helper into the SolverForge Linux share)
 # ══════════════════════════════════════════════════════════════════════════════
 
-install: release ## Install into SolverForge Linux (~/.local/share/solverforge)
+install: ## Install the binary and the SolverForge Linux setup helper
 	$(call banner)
 	@printf "$(CYAN)$(BOLD)╔══════════════════════════════════════╗$(RESET)\n"
-	@printf "$(CYAN)$(BOLD)║    Installing into SolverForge       ║$(RESET)\n"
+	@printf "$(CYAN)$(BOLD)║    Installing $(NAME)$(RESET)\n"
 	@printf "$(CYAN)$(BOLD)╚══════════════════════════════════════╝$(RESET)\n\n"
-	@printf "$(PROGRESS) Installing binary → $(SF_BIN)/$(NAME)\n"
-	@install -Dm755 $(BIN) $(SF_BIN)/$(NAME)
+	@printf "$(PROGRESS) Installing binary → $(CARGO_HOME)/bin/$(NAME)\n"
+	@cargo install --path . --locked --force
 	@printf "$(GREEN)$(CHECK) Binary installed$(RESET)\n"
 	@printf "$(PROGRESS) Installing setup scripts → $(SF_SHARE)/\n"
 	@install -d $(SF_SHARE)
 	@install -m755 setup-accounts.sh    $(SF_SHARE)/
 	@printf "$(GREEN)$(CHECK) Setup scripts installed$(RESET)\n"
-	@printf "\n$(GREEN)$(BOLD)$(CHECK) Installed $(NAME) v$(VERSION) into SolverForge$(RESET)\n\n"
+	@printf "\n$(GREEN)$(BOLD)$(CHECK) Installed $(NAME) v$(VERSION)$(RESET)\n\n"
 
-uninstall: ## Remove from SolverForge Linux
-	@printf "$(PROGRESS) Removing $(SF_BIN)/$(NAME)...\n"
-	@rm -f $(SF_BIN)/$(NAME)
+uninstall: ## Remove the installed binary and setup helper
+	@printf "$(PROGRESS) Removing $(CARGO_HOME)/bin/$(NAME)...\n"
+	@cargo uninstall $(NAME) || true
 	@printf "$(PROGRESS) Removing $(SF_SHARE)/...\n"
 	@rm -rf $(SF_SHARE)
 	@printf "$(GREEN)$(CHECK) Uninstalled$(RESET)\n"
@@ -218,7 +218,7 @@ info: ## Show project info
 	@printf "  $(GRAY)rustc$(RESET)      %s\n" "$$(rustc --version 2>/dev/null || echo 'not found')"
 	@printf "  $(GRAY)cargo$(RESET)      %s\n" "$$(cargo --version 2>/dev/null || echo 'not found')"
 	@printf "  $(GRAY)binary$(RESET)     %s\n" "$(BIN)"
-	@printf "  $(GRAY)install→$(RESET)   %s\n" "$(SF_BIN)/$(NAME)"
+	@printf "  $(GRAY)install→$(RESET)   %s\n" "$(CARGO_HOME)/bin/$(NAME)"
 	@echo
 
 version: ## Print the current crate version
@@ -251,7 +251,7 @@ help:
 	@/bin/echo -e "  $(GREEN)make run-account ACCOUNT=x$(RESET) - Run with specific account"
 	@/bin/echo -e ""
 	@/bin/echo -e "$(CYAN)$(BOLD)Install (SolverForge Linux):$(RESET)"
-	@/bin/echo -e "  $(GREEN)make install$(RESET)          - Install into ~/.local/share/solverforge"
+	@/bin/echo -e "  $(GREEN)make install$(RESET)          - Install the binary and the setup helper"
 	@/bin/echo -e "  $(GREEN)make uninstall$(RESET)        - Remove from SolverForge"
 	@/bin/echo -e "  $(GREEN)make setup$(RESET)            - Interactive account wizard"
 	@/bin/echo -e "  $(GREEN)make accounts$(RESET)         - List configured accounts"
