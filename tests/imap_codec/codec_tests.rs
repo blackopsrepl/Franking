@@ -2,6 +2,8 @@
 
 use std::sync::Arc;
 
+use franking::mail::remote::next;
+use franking::mail::session::{open_imap_client, SessionPool};
 use imap_types::command::{CommandBody, FetchModifier, SelectParameter};
 use imap_types::core::{Atom, Charset, Vec1};
 use imap_types::extensions::sort::{SortCriterion, SortKey};
@@ -10,8 +12,6 @@ use imap_types::fetch::{MacroOrMessageDataItemNames, MessageDataItemName};
 use imap_types::response::{Code, Data, Response};
 use imap_types::search::SearchKey;
 use imap_types::sequence::SequenceSet;
-use solverforge_mail::mail::remote::next;
-use solverforge_mail::mail::session::{open_imap_client, SessionPool};
 
 use super::support::{
     account, ensure_mailbox, mailbox_lock, seed, test_address, FixedCredentials, FOLDER,
@@ -142,7 +142,7 @@ fn codec_layer_matches_the_legacy_client() {
     seed(&account);
 
     let credentials = FixedCredentials;
-    let legacy = solverforge_mail::mail::remote::ImapSmtpService::new(
+    let legacy = franking::mail::remote::ImapSmtpService::new(
         account.clone(),
         Arc::new(SessionPool::with_credentials(Arc::new(FixedCredentials))),
     );
@@ -169,7 +169,7 @@ fn codec_layer_matches_the_legacy_client() {
         .list_envelopes(None, FOLDER, 1, 1000, None)
         .expect("legacy listing");
 
-    let summarize = |envelopes: &[solverforge_mail::mail::types::Envelope]| {
+    let summarize = |envelopes: &[franking::mail::types::Envelope]| {
         envelopes
             .iter()
             .map(|envelope| {

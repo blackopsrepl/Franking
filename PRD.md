@@ -1,12 +1,12 @@
 # PRD: Replace Himalaya CLI With an App-Owned Mail Engine
 
 Status: Draft
-Owner: SolverForge Mail
+Owner: Franking
 Last Updated: 2026-04-13
 
 ## 1. Executive Summary
 
-SolverForge Mail currently delegates mail access, account configuration, and much of auth behavior to the external `himalaya` CLI. That boundary has become a systemic failure point. The application does not own backend discovery, config semantics, auth state, token refresh, or protocol diagnostics. As a result, the app is fragile, difficult to reason about, and hard to support.
+Franking currently delegates mail access, account configuration, and much of auth behavior to the external `himalaya` CLI. That boundary has become a systemic failure point. The application does not own backend discovery, config semantics, auth state, token refresh, or protocol diagnostics. As a result, the app is fragile, difficult to reason about, and hard to support.
 
 This project will replace the Himalaya CLI boundary with an app-owned mail engine implemented in Rust. The application will directly own:
 
@@ -25,7 +25,7 @@ The application will not reimplement mail protocols from raw sockets unless nece
 
 ### 2.1 Current State
 
-Today, SolverForge Mail:
+Today, Franking:
 
 - shells out to `himalaya` for account listing, folder listing, message fetches, flags, moves, deletes, templates, and sending
 - depends on external binary discovery
@@ -39,7 +39,7 @@ The app also has a local SQLite database for contacts and identities. An earlier
 
 The current architecture creates a split-brain system:
 
-- SolverForge Mail owns the UI and some local state
+- Franking owns the UI and some local state
 - Himalaya owns remote account definitions, remote auth behavior, and many operational errors
 - the desktop environment or GPG session owns secret availability
 
@@ -65,7 +65,7 @@ The app needs a single, coherent mail runtime it controls end to end.
 
 ## 3. Product Goal
 
-Build a first-party mail engine for SolverForge Mail that provides a stable, production-grade foundation for account setup, auth, transport, MIME-aware message reading, diagnostics, and sending without depending on the Himalaya CLI or Himalaya config at runtime.
+Build a first-party mail engine for Franking that provides a stable, production-grade foundation for account setup, auth, transport, MIME-aware message reading, diagnostics, and sending without depending on the Himalaya CLI or Himalaya config at runtime.
 
 ## 4. Product Principles
 
@@ -146,8 +146,8 @@ The project is successful when all of the following are true:
 
 ### 8.1 First-Time User
 
-- installs SolverForge Mail
-- runs `solverforge-mail --setup`
+- installs Franking
+- runs `franking --setup`
 - adds a Gmail account via OAuth
 - sees account status immediately
 - launches the app with that account
@@ -544,15 +544,15 @@ The app must own:
 
 Minimum commands:
 
-- `solverforge-mail --setup`
-- `solverforge-mail --accounts`
+- `franking --setup`
+- `franking --accounts`
 
 Recommended follow-up commands:
 
-- `solverforge-mail --account-add`
-- `solverforge-mail --account-edit <name>`
-- `solverforge-mail --account-delete <name>`
-- `solverforge-mail --account-probe <name>`
+- `franking --account-add`
+- `franking --account-edit <name>`
+- `franking --account-delete <name>`
+- `franking --account-probe <name>`
 
 ## 17. Migration Strategy
 
@@ -801,4 +801,4 @@ These must be resolved before final implementation:
 
 ## 25. Final Decision Statement
 
-SolverForge Mail should stop treating the Himalaya CLI as its production mail engine. The professional path is to own the mail control plane, transport, and MIME-aware message pipeline inside the application, keep the UI mostly intact, use Rust protocol libraries rather than raw protocol implementations, and ship the replacement in narrow, test-gated phases.
+Franking should stop treating the Himalaya CLI as its production mail engine. The professional path is to own the mail control plane, transport, and MIME-aware message pipeline inside the application, keep the UI mostly intact, use Rust protocol libraries rather than raw protocol implementations, and ship the replacement in narrow, test-gated phases.

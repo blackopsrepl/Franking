@@ -1,18 +1,18 @@
 //! Identity form and compose editor interaction tests.
 
 use crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyEventState, KeyModifiers};
-use solverforge_mail::app::App;
-use solverforge_mail::compose::{ComposeMode, ComposeState, FocusedField};
+use franking::app::App;
+use franking::compose::{ComposeMode, ComposeState, FocusedField};
 
 #[test]
 fn tab_to_save_saves_identity_edit_form() {
+    use franking::identity_edit::{IdentityEditState, IdentityField};
+    use franking::keys::View;
     use rusqlite::Connection;
-    use solverforge_mail::identity_edit::{IdentityEditState, IdentityField};
-    use solverforge_mail::keys::View;
 
     // Set up an in-memory DB with the full schema.
     let conn = Connection::open_in_memory().unwrap();
-    solverforge_mail::db::init_for_test(&conn).unwrap();
+    franking::db::init_for_test(&conn).unwrap();
 
     let mut app = App::new(Some("testaccount".to_string()));
     app.db = Some(conn);
@@ -65,7 +65,7 @@ fn tab_to_save_saves_identity_edit_form() {
 #[test]
 fn compose_typing_updates_to_field_directly() {
     use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-    use solverforge_mail::keys::View;
+    use franking::keys::View;
 
     let mut app = App::new(None);
     app.view = View::Compose;
@@ -87,7 +87,7 @@ fn compose_typing_updates_to_field_directly() {
 #[test]
 fn compose_typing_updates_subject_directly() {
     use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-    use solverforge_mail::keys::View;
+    use franking::keys::View;
 
     let mut app = App::new(None);
     app.view = View::Compose;
@@ -108,8 +108,8 @@ fn compose_typing_updates_subject_directly() {
 #[test]
 fn compose_confirm_discard_blocks_ctrl_passthrough_on_from_field() {
     use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-    use solverforge_mail::identities::Identity;
-    use solverforge_mail::keys::View;
+    use franking::identities::Identity;
+    use franking::keys::View;
 
     let mut app = App::new(None);
     app.view = View::Compose;
@@ -154,7 +154,7 @@ fn compose_confirm_discard_blocks_ctrl_passthrough_on_from_field() {
 #[test]
 fn compose_body_escape_leaves_a_pristine_message_without_dirtying_it() {
     use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-    use solverforge_mail::keys::View;
+    use franking::keys::View;
 
     let mut app = App::new(None);
     app.view = View::Compose;
@@ -177,7 +177,7 @@ fn compose_body_escape_leaves_a_pristine_message_without_dirtying_it() {
 #[test]
 fn compose_body_escape_asks_before_losing_typed_text() {
     use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-    use solverforge_mail::keys::View;
+    use franking::keys::View;
 
     let mut app = App::new(None);
     app.view = View::Compose;
@@ -199,7 +199,7 @@ fn compose_body_escape_asks_before_losing_typed_text() {
 #[test]
 fn compose_body_navigation_does_not_mark_pristine_draft_dirty() {
     use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-    use solverforge_mail::keys::View;
+    use franking::keys::View;
 
     let mut app = App::new(None);
     app.view = View::Compose;
@@ -221,7 +221,7 @@ fn compose_body_navigation_does_not_mark_pristine_draft_dirty() {
 #[test]
 fn compose_tab_out_of_body_clears_active_search() {
     use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-    use solverforge_mail::keys::View;
+    use franking::keys::View;
 
     let mut app = App::new(None);
     app.view = View::Compose;

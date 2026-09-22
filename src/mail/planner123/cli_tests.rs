@@ -39,12 +39,12 @@ fn with_cli<T>(dir: &std::path::Path, body: impl FnOnce() -> T) -> T {
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner());
 
-    let previous = std::env::var_os("SOLVERFORGE_PLANNER123_CLI");
-    std::env::set_var("SOLVERFORGE_PLANNER123_CLI", dir.join("planner123-cli"));
+    let previous = std::env::var_os("FRANKING_PLANNER123_CLI");
+    std::env::set_var("FRANKING_PLANNER123_CLI", dir.join("planner123-cli"));
     let result = body();
     match previous {
-        Some(value) => std::env::set_var("SOLVERFORGE_PLANNER123_CLI", value),
-        None => std::env::remove_var("SOLVERFORGE_PLANNER123_CLI"),
+        Some(value) => std::env::set_var("FRANKING_PLANNER123_CLI", value),
+        None => std::env::remove_var("FRANKING_PLANNER123_CLI"),
     }
     result
 }
@@ -126,12 +126,12 @@ fn the_default_calendar_comes_from_the_cli() {
 
 #[test]
 fn a_missing_binary_is_reported_as_such() {
-    let previous = std::env::var_os("SOLVERFORGE_PLANNER123_CLI");
-    std::env::set_var("SOLVERFORGE_PLANNER123_CLI", "/nonexistent/planner123-cli");
+    let previous = std::env::var_os("FRANKING_PLANNER123_CLI");
+    std::env::set_var("FRANKING_PLANNER123_CLI", "/nonexistent/planner123-cli");
     let found = Planner123::discover(None, "UTC".to_string());
     match previous {
-        Some(value) => std::env::set_var("SOLVERFORGE_PLANNER123_CLI", value),
-        None => std::env::remove_var("SOLVERFORGE_PLANNER123_CLI"),
+        Some(value) => std::env::set_var("FRANKING_PLANNER123_CLI", value),
+        None => std::env::remove_var("FRANKING_PLANNER123_CLI"),
     }
     // Another planner123-cli may be on PATH, which is a valid discovery.
     if let Some(client) = found {

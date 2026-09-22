@@ -130,7 +130,7 @@ fn lookup_secret(service: &str, username: &str) -> MailResult<String> {
             "username",
             username,
             "application",
-            "solverforge-mail",
+            crate::brand::KEYRING_APPLICATION,
         ])
         .output()
         .map_err(|err| {
@@ -170,7 +170,7 @@ fn store_secret(label: &str, service: &str, username: &str, secret: &str) -> Mai
             "username",
             username,
             "application",
-            "solverforge-mail",
+            crate::brand::KEYRING_APPLICATION,
         ])
         .stdin(Stdio::piped())
         .stdout(Stdio::null())

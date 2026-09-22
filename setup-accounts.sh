@@ -4,11 +4,11 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-find_solverforge_mail() {
-    local repo_release="$SCRIPT_DIR/target/release/solverforge-mail"
-    local repo_debug="$SCRIPT_DIR/target/debug/solverforge-mail"
-    local installed_sibling="$SCRIPT_DIR/../bin/solverforge-mail"
-    local installed_home="$HOME/.local/share/solverforge/bin/solverforge-mail"
+find_franking() {
+    local repo_release="$SCRIPT_DIR/target/release/franking"
+    local repo_debug="$SCRIPT_DIR/target/debug/franking"
+    local installed_sibling="$SCRIPT_DIR/../bin/franking"
+    local installed_home="$HOME/.local/share/solverforge/bin/franking"
 
     if [ -x "$repo_release" ]; then
         printf "%s\n" "$repo_release"
@@ -18,19 +18,19 @@ find_solverforge_mail() {
         printf "%s\n" "$installed_sibling"
     elif [ -x "$installed_home" ]; then
         printf "%s\n" "$installed_home"
-    elif command -v solverforge-mail >/dev/null 2>&1; then
-        command -v solverforge-mail
+    elif command -v franking >/dev/null 2>&1; then
+        command -v franking
     else
         printf "\n"
     fi
 }
 
-SOLVERFORGE_MAIL_BIN="$(find_solverforge_mail)"
+FRANKING_BIN="$(find_franking)"
 
-if [ -z "$SOLVERFORGE_MAIL_BIN" ]; then
-    echo "SolverForge Mail binary not found."
+if [ -z "$FRANKING_BIN" ]; then
+    echo "Franking binary not found."
     echo "Build it first with 'cargo build --release' or install it."
     exit 1
 fi
 
-exec "$SOLVERFORGE_MAIL_BIN" --setup "$@"
+exec "$FRANKING_BIN" --setup "$@"

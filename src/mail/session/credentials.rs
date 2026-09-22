@@ -28,7 +28,7 @@ pub fn lookup_secret(service: &str, username: &str) -> MailResult<String> {
             "username",
             username,
             "application",
-            "solverforge-mail",
+            crate::brand::KEYRING_APPLICATION,
         ])
         .stdin(Stdio::null())
         .output()

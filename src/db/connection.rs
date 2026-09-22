@@ -1,5 +1,5 @@
 /* SQLite database layer.
-The database is stored at `~/.local/share/solverforge/mail.db`.
+The database is stored under the app's data directory (`brand::data_dir`).
 Schema is current-state only. Older local DBs are reset instead of migrated. */
 
 use std::path::PathBuf;
@@ -15,10 +15,7 @@ const SCHEMA_VERSION: u32 = 3;
 
 /// Return the path to the database file.
 pub fn db_path() -> PathBuf {
-    dirs::data_dir()
-        .unwrap_or_else(|| PathBuf::from("."))
-        .join("solverforge")
-        .join("mail.db")
+    crate::brand::data_dir().join("mail.db")
 }
 
 /// Open (or create) the database. Creates parent directories if needed.

@@ -12,7 +12,7 @@ use serde::Deserialize;
 use super::errors::{MailError, MailResult};
 
 /// Environment variables that name the Planner123 CLI explicitly.
-const BINARY_VARS: [&str; 2] = ["SOLVERFORGE_PLANNER123_CLI", "PLANNER123_CLI"];
+const BINARY_VARS: [&str; 2] = ["FRANKING_PLANNER123_CLI", "PLANNER123_CLI"];
 
 /// What Planner123 reported about an import.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -122,7 +122,7 @@ impl Planner123 {
 /// Write the invitation beside other temporary files, for the CLI to read.
 fn write_temporary_ics(ics: &[u8]) -> MailResult<PathBuf> {
     let dir = std::env::temp_dir();
-    let name = format!("solverforge-invite-{}.ics", std::process::id());
+    let name = format!("franking-invite-{}.ics", std::process::id());
     let path = dir.join(name);
     std::fs::write(&path, ics)
         .map_err(|error| MailError::io(format!("cannot write {}: {error}", path.display())))?;

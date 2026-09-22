@@ -1,10 +1,10 @@
 //! Compose, identity, and contact modal tests.
 
 use crossterm::event::KeyCode;
-use pretty_assertions::assert_eq;
-use solverforge_mail::keys::{
+use franking::keys::{
     resolve, resolve_compose_with_context, Action, ComposeFocus, ComposeKeyContext, EditMode, View,
 };
+use pretty_assertions::assert_eq;
 
 use super::support::{ctrl, key};
 

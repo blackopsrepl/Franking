@@ -20,8 +20,8 @@ fn stored_account(name: &str, backend_kind: &str) -> AccountRecord {
         sieve_security: None,
         auth_mode: Some("password".to_string()),
         username: Some("alice@example.com".to_string()),
-        keyring_imap_secret_id: Some("solverforge-mail/work/imap".to_string()),
-        keyring_smtp_secret_id: Some("solverforge-mail/work/smtp".to_string()),
+        keyring_imap_secret_id: Some("franking/work/imap".to_string()),
+        keyring_smtp_secret_id: Some("franking/work/smtp".to_string()),
     }
 }
 

@@ -137,7 +137,10 @@ fn wait_for_callback(listener: &TcpListener, expected_state: &str) -> Result<OAu
                         "HTTP/1.1 400 Bad Request\r\nContent-Type: text/plain\r\n\r\nOAuth authorization failed: {error}\n"
                     )
                 } else {
-                    "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\nSolverForge Mail received the OAuth callback. You can close this tab.\n".to_string()
+                    format!(
+                        "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\n{} received the OAuth callback. You can close this tab.\n",
+                        crate::brand::NAME
+                    )
                 };
                 let _ = stream.write_all(response.as_bytes());
                 let _ = stream.flush();

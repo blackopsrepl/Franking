@@ -31,7 +31,7 @@ impl App {
         let Some(client) = Planner123::discover(self.planner123_calendar.clone(), local_timezone())
         else {
             self.set_error(
-                "Planner123 was not found. Install planner123-cli, or set SOLVERFORGE_PLANNER123_CLI.",
+                "Planner123 was not found. Install planner123-cli, or set FRANKING_PLANNER123_CLI.",
             );
             return;
         };

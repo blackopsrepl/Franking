@@ -1,5 +1,5 @@
 [package]
-name = "solverforge-mail"
+name = "franking"
 version = "1.0.1"
 edition = "2021"
 description = "A spiffy ratatui TUI email client with an app-owned IMAP/SMTP engine"

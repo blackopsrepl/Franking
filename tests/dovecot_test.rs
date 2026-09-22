@@ -1,6 +1,6 @@
 //! Live IMAP integration test.
 //!
-//! Runs only when `SOLVERFORGE_IMAP_TEST_ADDR` is set. `scripts/live-test.sh`
+//! Runs only when `FRANKING_IMAP_TEST_ADDR` is set. `scripts/live-test.sh`
 //! (or `make live-test`) starts a Dovecot container with the cleartext drop-in
 //! the tests need, waits for it to accept connections, and runs this target;
 //! any username authenticates with the container's password.
@@ -10,17 +10,17 @@
 //! point the credentials at that account:
 //!
 //! ```text
-//! SOLVERFORGE_IMAP_TEST_ADDR=127.0.0.1:1153 cargo test --test dovecot_test
+//! FRANKING_IMAP_TEST_ADDR=127.0.0.1:1153 cargo test --test dovecot_test
 //! ```
 
 use std::sync::Arc;
 
-use solverforge_mail::mail::account_store::AccountRecord;
-use solverforge_mail::mail::mime;
-use solverforge_mail::mail::remote::next;
-use solverforge_mail::mail::remote::ImapSmtpService;
-use solverforge_mail::mail::session::{CredentialProvider, SessionPool};
-use solverforge_mail::mail::MailResult;
+use franking::mail::account_store::AccountRecord;
+use franking::mail::mime;
+use franking::mail::remote::next;
+use franking::mail::remote::ImapSmtpService;
+use franking::mail::session::{CredentialProvider, SessionPool};
+use franking::mail::MailResult;
 
 #[derive(Debug)]
 struct FixedCredentials;
@@ -57,7 +57,7 @@ fn account(host: &str, port: u16) -> AccountRecord {
 
 #[test]
 fn dovecot_append_list_read_and_flag() {
-    let Ok(address) = std::env::var("SOLVERFORGE_IMAP_TEST_ADDR") else {
+    let Ok(address) = std::env::var("FRANKING_IMAP_TEST_ADDR") else {
         return;
     };
     let (host, port) = address.rsplit_once(':').expect("host:port");
@@ -109,7 +109,7 @@ fn dovecot_append_list_read_and_flag() {
 
 #[test]
 fn dovecot_threads_messages() {
-    let Ok(address) = std::env::var("SOLVERFORGE_IMAP_TEST_ADDR") else {
+    let Ok(address) = std::env::var("FRANKING_IMAP_TEST_ADDR") else {
         return;
     };
     let (host, port) = address.rsplit_once(':').expect("host:port");
@@ -141,7 +141,7 @@ fn dovecot_threads_messages() {
 
 #[test]
 fn dovecot_folder_lifecycle() {
-    let Ok(address) = std::env::var("SOLVERFORGE_IMAP_TEST_ADDR") else {
+    let Ok(address) = std::env::var("FRANKING_IMAP_TEST_ADDR") else {
         return;
     };
     let (host, port) = address.rsplit_once(':').expect("host:port");

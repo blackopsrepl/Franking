@@ -1,15 +1,15 @@
 //! Live ManageSieve test against a real Pigeonhole server.
 //!
-//! Skipped unless `SOLVERFORGE_SIEVE_TEST_ADDR` is set; `scripts/live-test.sh`
+//! Skipped unless `FRANKING_SIEVE_TEST_ADDR` is set; `scripts/live-test.sh`
 //! (or `make live-test`) starts a Dovecot container with Pigeonhole and exports
 //! that address, so the script path is verified against a real server rather
 //! than only against a scripted stand-in.
 
-use solverforge_mail::mail::sieve::{SieveClient, SieveConfig, SieveSecurity};
+use franking::mail::sieve::{SieveClient, SieveConfig, SieveSecurity};
 
 /// The address the harness exported, if any.
 fn address() -> Option<(String, u16)> {
-    let value = std::env::var("SOLVERFORGE_SIEVE_TEST_ADDR").ok()?;
+    let value = std::env::var("FRANKING_SIEVE_TEST_ADDR").ok()?;
     let (host, port) = value.rsplit_once(':')?;
     Some((host.to_string(), port.parse().ok()?))
 }
@@ -19,9 +19,8 @@ fn config(host: &str, port: u16) -> SieveConfig {
         host: host.to_string(),
         port,
         // The container authenticates any user against its password.
-        username: std::env::var("SOLVERFORGE_IMAP_TEST_USER")
-            .unwrap_or_else(|_| "test".to_string()),
-        password: std::env::var("SOLVERFORGE_IMAP_TEST_PASSWORD")
+        username: std::env::var("FRANKING_IMAP_TEST_USER").unwrap_or_else(|_| "test".to_string()),
+        password: std::env::var("FRANKING_IMAP_TEST_PASSWORD")
             .unwrap_or_else(|_| "password".to_string()),
         security: SieveSecurity::Plain,
     }

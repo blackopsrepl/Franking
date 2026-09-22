@@ -1,8 +1,8 @@
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-use pretty_assertions::assert_eq;
-use solverforge_mail::keys::{
+use franking::keys::{
     resolve_compose_with_context, Action, ComposeFocus, ComposeKeyContext, EditMode,
 };
+use pretty_assertions::assert_eq;
 
 fn key(code: KeyCode) -> KeyEvent {
     KeyEvent::new(code, KeyModifiers::NONE)

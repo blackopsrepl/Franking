@@ -1,17 +1,17 @@
 <div align="center">
 
-  <img src="assets/mascot.png" alt="SolverForge Mail mascot" width="320" />
+  <img src="assets/mascot.png" alt="Franking mascot" width="320" />
 
   <br />
 
-  [![CI](https://github.com/blackopsrepl/solverforge-mail/actions/workflows/ci.yml/badge.svg?style=for-the-badge)](https://github.com/blackopsrepl/solverforge-mail/actions/workflows/ci.yml)
+  [![CI](https://github.com/blackopsrepl/franking/actions/workflows/ci.yml/badge.svg?style=for-the-badge)](https://github.com/blackopsrepl/franking/actions/workflows/ci.yml)
   [![Version](https://img.shields.io/badge/version-v0.2.0-00E6A8?style=for-the-badge)](https://github.com/blackopsrepl/solverforge-mail)
   [![Rust](https://img.shields.io/badge/rust-stable-orange?style=for-the-badge)](https://www.rust-lang.org)
   [![Built With Ratatui](https://img.shields.io/badge/built%20with-ratatui-5A54FF?style=for-the-badge)](https://ratatui.rs/)
 
 </div>
 
-# SolverForge Mail
+# Franking
 
 A spiffy ratatui-based TUI email client with an app-owned mail layer, native
 maildir support, and native IMAP/SMTP transport for DB-backed accounts.
@@ -83,14 +83,14 @@ cargo run -- --setup
 - **Contact import** - vCard (.vcf) and Google CSV import
 - **Auto-harvest contacts** - Captured from sent/received mail
 - **Sender identities** - Multiple From addresses per account with default
-- **Local SQLite database** - Contacts and identities stored in `~/.local/share/solverforge/mail.db`
+- **Local SQLite database** - Contacts and identities stored in `~/.local/share/franking/mail.db`
 - **App-owned account store** - Accounts, endpoints, auth bindings, and secret references live in SQLite
 - **Keyring-backed secrets** - Password and app-password flows store secret IDs in the app and raw secrets in the OS keyring
 - **Account discovery** - Add an account by email: Google/iCloud/Outlook presets, Mozilla autoconfig, Microsoft Autodiscover, then RFC 6186 SRV
 - **Attachments** - Attach files on send; download attachments from received mail
 - **Drafts** - Save a draft and resume it from the Drafts folder; the draft is removed after sending
 - **Security indicators** - SPF/DKIM/DMARC verdicts from `Authentication-Results`, PGP/MIME and S/MIME structure detection, and OpenPGP/S/MIME verification and decryption
-- **Crypto keyring** - public/secret keys under `~/.local/share/solverforge/mail/keys` verify and decrypt OpenPGP (inline and PGP/MIME) and S/MIME (PKCS#7 signed/enveloped)
+- **Crypto keyring** - public/secret keys under `~/.local/share/franking/keys` verify and decrypt OpenPGP (inline and PGP/MIME) and S/MIME (PKCS#7 signed/enveloped)
 - **Calendar invitations** - `text/calendar` events show their summary and time with its timezone, cancelled events are marked, and `c` hands the invitation to Planner123 (`planner123-cli ical import`)
 - **Desktop notifications** - `notify-send` on new mail when the IDLE watcher fires
 - **Offline cache** - Listings and search fall back to the local store when the server is unreachable
@@ -222,7 +222,7 @@ Check the local maildir test account first. If this fails, the backend/runtime i
 cargo run -- --account test
 ```
 
-SolverForge Mail expects:
+Franking expects:
 - no external dependencies for the local `test` maildir account
 - the system keyring/`secret-tool` for password, app-password, and OAuth token storage
 - network reachability to the configured IMAP and SMTP endpoints for remote accounts
@@ -281,7 +281,7 @@ make ci
 ## Files
 
 ```
-solverforge-mail/
+franking/
 ├── setup-accounts.sh         # Interactive account setup wizard
 ├── src/
 │   ├── main.rs              # Entry point, terminal setup, CLI modes

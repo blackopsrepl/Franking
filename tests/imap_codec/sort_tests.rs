@@ -2,10 +2,10 @@
 
 use std::sync::Arc;
 
-use solverforge_mail::mail::remote::next;
-use solverforge_mail::mail::remote::ImapSmtpService;
-use solverforge_mail::mail::session::{open_imap_client, SessionPool};
-use solverforge_mail::mail::sort::{SortKey, SortOrder};
+use franking::mail::remote::next;
+use franking::mail::remote::ImapSmtpService;
+use franking::mail::session::{open_imap_client, SessionPool};
+use franking::mail::sort::{SortKey, SortOrder};
 
 use super::support::{
     account, ensure_mailbox, mailbox_lock, test_address, FixedCredentials, FOLDER,

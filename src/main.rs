@@ -8,10 +8,10 @@ use crossterm::execute;
 use crossterm::terminal::{
     disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen,
 };
+use franking::app::App;
+use franking::event::{Event, EventHandler};
+use franking::{db, identities, import, setup, ui};
 use ratatui::prelude::*;
-use solverforge_mail::app::App;
-use solverforge_mail::event::{Event, EventHandler};
-use solverforge_mail::{db, identities, import, setup, ui};
 
 fn main() -> Result<()> {
     let args: Vec<String> = std::env::args().collect();
@@ -120,7 +120,7 @@ fn flag_value(args: &[String], flag: &str) -> Option<String> {
 }
 
 fn run_pgp_keygen(uid: &str) -> Result<()> {
-    use solverforge_mail::mail::pgp;
+    use franking::mail::pgp;
 
     let dir = pgp::default_keys_dir();
     let (secret, public) = pgp::generate_keypair(uid)?;

@@ -1,5 +1,5 @@
 # ╔══════════════════════════════════════════════════════════════════════════════╗
-# ║                          SOLVERFORGE-MAIL                                  ║
+# ║                             FRANKING                                       ║
 # ║                 ratatui TUI email client · app-owned mail engine           ║
 # ╚══════════════════════════════════════════════════════════════════════════════╝
 #
@@ -24,7 +24,7 @@ PROGRESS := →
 
 # ── Project Metadata ─────────────────────────────────────────────────────────
 
-NAME     := solverforge-mail
+NAME     := franking
 VERSION  := $(shell grep -m1 '^version' Cargo.toml | sed 's/version = "\(.*\)"/\1/')
 BIN      := target/release/$(NAME)
 BIN_DBG  := target/debug/$(NAME)
@@ -48,7 +48,7 @@ SF_SHARE := $(SF_HOME)/mail
 
 define banner
 	@printf "$(CYAN)$(BOLD)╔══════════════════════════════════════╗$(RESET)\n"
-	@printf "$(CYAN)$(BOLD)║  ✉  solverforge-mail %-15s ║$(RESET)\n" "v$(VERSION)"
+	@printf "$(CYAN)$(BOLD)║  ✉  franking %-15s ║$(RESET)\n" "v$(VERSION)"
 	@printf "$(CYAN)$(BOLD)╚══════════════════════════════════════╝$(RESET)\n\n"
 endef
 
@@ -177,7 +177,7 @@ setup: release ## Interactive account setup wizard
 	@./$(BIN) --setup
 
 accounts: release ## List configured email accounts and their status
-	@printf "$(PROGRESS) Querying SolverForge Mail runtime...\n"
+	@printf "$(PROGRESS) Querying Franking runtime...\n"
 	@./$(BIN) --accounts
 
 # ══════════════════════════════════════════════════════════════════════════════

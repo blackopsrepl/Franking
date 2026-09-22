@@ -29,7 +29,12 @@ pub struct SieveState {
 }
 
 /// Starter body for a newly created script.
-const NEW_SCRIPT_TEMPLATE: &str = "# SolverForge Mail filter\nrequire [\"fileinto\"];\n\n# if header :contains \"from\" \"alice@example.com\" {\n#     fileinto \"Alice\";\n#     stop;\n# }\n";
+fn new_script_template() -> String {
+    format!(
+        "# {} filter\nrequire [\"fileinto\"];\n\n# if header :contains \"from\" \"alice@example.com\" {{\n#     fileinto \"Alice\";\n#     stop;\n# }}\n",
+        crate::brand::NAME
+    )
+}
 
 impl App {
     /// Open the Sieve script browser, reloading the script list.
@@ -95,7 +100,7 @@ impl App {
 
     /// Prompt for a name for a new script.
     pub(crate) fn sieve_new(&mut self) {
-        self.sieve.name = "solverforge".to_string();
+        self.sieve.name = "franking".to_string();
         self.sieve.renaming = false;
         self.view = View::SieveName;
     }
@@ -148,7 +153,7 @@ impl App {
             return;
         }
         self.sieve.editor_name = name;
-        self.sieve.editor = Some(ComposeEditor::from_text(NEW_SCRIPT_TEMPLATE));
+        self.sieve.editor = Some(ComposeEditor::from_text(&new_script_template()));
         self.view = View::SieveEdit;
     }
 

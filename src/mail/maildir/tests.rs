@@ -15,7 +15,7 @@ fn temp_maildir() -> PathBuf {
         .duration_since(UNIX_EPOCH)
         .unwrap()
         .as_nanos();
-    std::env::temp_dir().join(format!("solverforge-maildir-test-{unique}"))
+    std::env::temp_dir().join(format!("franking-maildir-test-{unique}"))
 }
 
 #[test]
@@ -63,7 +63,7 @@ fn maildir_round_trip_supports_read_flag_move_and_send() {
     service
         .template_send(
             Some("test"),
-            "To: bob@example.com\nSubject: Test send\n\nHello from SolverForge Mail",
+            "To: bob@example.com\nSubject: Test send\n\nHello from Franking",
             &Default::default(),
         )
         .unwrap();

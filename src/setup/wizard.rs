@@ -14,7 +14,7 @@ use super::oauth_setup::configure_oauth_account;
 
 pub fn run_wizard() -> Result<Option<String>> {
     println!("╔════════════════════════════════════════════╗");
-    println!("║     SolverForge Mail - Account Setup      ║");
+    println!("║        {} - Account Setup         ║", crate::brand::NAME);
     println!("╚════════════════════════════════════════════╝");
     println!();
 
@@ -29,7 +29,10 @@ pub fn run_wizard() -> Result<Option<String>> {
         println!("3) Add or update a Gmail OAuth account");
         println!("4) Add or update an Outlook OAuth account");
         println!("5) Add an account by email address (auto-discover)");
-        println!("6) Launch SolverForge Mail with the first working account");
+        println!(
+            "6) Launch {} with the first working account",
+            crate::brand::NAME
+        );
         println!("7) Exit");
         println!();
 
@@ -143,7 +146,11 @@ fn first_working_account(accounts: &[Account]) -> Result<String> {
 
     for account in &candidates {
         if mail_service().probe_account(&account.name).is_ok() {
-            println!("Launching SolverForge Mail with account {}.", account.name);
+            println!(
+                "Launching {} with account {}.",
+                crate::brand::NAME,
+                account.name
+            );
             return Ok(account.name.clone());
         }
     }

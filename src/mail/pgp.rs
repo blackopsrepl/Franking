@@ -158,20 +158,16 @@ impl Keyring {
 pub fn default_keys_dir() -> PathBuf {
     // An explicit directory wins, so an operator (or a test) can point the
     // keyring somewhere other than the user's data directory.
-    if let Some(dir) = std::env::var_os("SOLVERFORGE_MAIL_KEYS_DIR") {
+    if let Some(dir) = std::env::var_os("FRANKING_KEYS_DIR") {
         return PathBuf::from(dir);
     }
-    dirs::data_dir()
-        .unwrap_or_else(|| PathBuf::from("."))
-        .join("solverforge")
-        .join("mail")
-        .join("keys")
+    crate::brand::data_dir().join("keys")
 }
 
 /// Resolve a passphrase for encrypted secret keys from the environment or a
 /// `passphrase` file in the keys directory.
 pub fn resolve_passphrase() -> String {
-    if let Ok(value) = std::env::var("SOLVERFORGE_PGP_PASSPHRASE") {
+    if let Ok(value) = std::env::var("FRANKING_PGP_PASSPHRASE") {
         return value;
     }
     std::fs::read_to_string(default_keys_dir().join("passphrase"))

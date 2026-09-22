@@ -2,10 +2,10 @@
 
 use std::sync::{Mutex, MutexGuard, OnceLock};
 
-use solverforge_mail::mail::account_store::AccountRecord;
-use solverforge_mail::mail::remote::next;
-use solverforge_mail::mail::session::{CredentialProvider, SessionPool};
-use solverforge_mail::mail::MailResult;
+use franking::mail::account_store::AccountRecord;
+use franking::mail::remote::next;
+use franking::mail::session::{CredentialProvider, SessionPool};
+use franking::mail::MailResult;
 
 #[derive(Debug)]
 pub(crate) struct FixedCredentials;
@@ -49,7 +49,7 @@ pub(crate) fn account(host: &str, port: u16) -> AccountRecord {
 }
 
 pub(crate) fn test_address() -> Option<(String, u16)> {
-    let address = std::env::var("SOLVERFORGE_IMAP_TEST_ADDR").ok()?;
+    let address = std::env::var("FRANKING_IMAP_TEST_ADDR").ok()?;
     let (host, port) = address.rsplit_once(':')?;
     Some((host.to_string(), port.parse().ok()?))
 }
@@ -81,7 +81,7 @@ pub(crate) fn ensure_mailbox(account: &AccountRecord) {
                 return Ok(());
             }
             if Instant::now() >= deadline {
-                return Err(solverforge_mail::mail::MailError::other(format!(
+                return Err(franking::mail::MailError::other(format!(
                     "the test mailbox {FOLDER} was not created: {created:?}"
                 )));
             }

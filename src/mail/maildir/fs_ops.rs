@@ -14,10 +14,7 @@ use super::flags::{file_name, flags_to_names, next_message_path, parse_flag_code
 const SAMPLE_MESSAGE: &str = include_str!("../../../tests/fixtures/message.txt");
 
 pub fn default_test_maildir_path() -> PathBuf {
-    dirs::data_dir()
-        .unwrap_or_else(|| PathBuf::from("."))
-        .join("solverforge")
-        .join("test-maildir")
+    crate::brand::data_dir().join("test-maildir")
 }
 
 pub(super) fn ensure_maildir_structure(root: &Path) -> MailResult<()> {

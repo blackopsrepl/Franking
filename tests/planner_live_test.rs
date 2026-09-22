@@ -1,10 +1,10 @@
 //! Live proof that an invitation reaches a real Planner123 database.
 //!
-//! Skipped unless `SOLVERFORGE_PLANNER123_CLI` points at a `planner123-cli`
+//! Skipped unless `FRANKING_PLANNER123_CLI` points at a `planner123-cli`
 //! binary, so `cargo test` stays self-contained:
 //!
 //! ```text
-//! SOLVERFORGE_PLANNER123_CLI=/path/to/planner123-cli cargo test --test planner_live_test
+//! FRANKING_PLANNER123_CLI=/path/to/planner123-cli cargo test --test planner_live_test
 //! ```
 //!
 //! The test runs against a scratch XDG data directory, never the user's own
@@ -13,11 +13,11 @@
 use std::path::PathBuf;
 use std::process::Command;
 
-use solverforge_mail::mail::planner123::Planner123;
+use franking::mail::planner123::Planner123;
 
 /// The real CLI, when one is configured.
 fn configured_cli() -> Option<PathBuf> {
-    std::env::var_os("SOLVERFORGE_PLANNER123_CLI").map(PathBuf::from)
+    std::env::var_os("FRANKING_PLANNER123_CLI").map(PathBuf::from)
 }
 
 /// An invitation whose event carries a named timezone.
@@ -49,7 +49,7 @@ fn an_invitation_becomes_an_event_in_planner123() {
     std::fs::create_dir_all(&dir).expect("scratch directory");
     std::env::set_var("XDG_DATA_HOME", dir.join("data"));
     std::env::set_var("XDG_CONFIG_HOME", dir.join("config"));
-    std::env::set_var("SOLVERFORGE_PLANNER123_CLI", &cli);
+    std::env::set_var("FRANKING_PLANNER123_CLI", &cli);
 
     // A calendar to import into, created through the same CLI.
     let status = Command::new(&cli)

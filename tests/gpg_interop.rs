@@ -8,10 +8,10 @@ use std::path::PathBuf;
 use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use solverforge_mail::mail::pgp::{self, Keyring};
-use solverforge_mail::mail::pgp_mime;
-use solverforge_mail::mail::pgp_sign;
-use solverforge_mail::mail::service::SendOptions;
+use franking::mail::pgp::{self, Keyring};
+use franking::mail::pgp_mime;
+use franking::mail::pgp_sign;
+use franking::mail::service::SendOptions;
 
 const UID: &str = "Interop Test <interop@example.com>";
 

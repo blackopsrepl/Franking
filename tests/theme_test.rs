@@ -1,6 +1,6 @@
+use franking::theme::{fallback_theme, parse_colors_toml, parse_hex_color};
 use pretty_assertions::assert_eq;
 use ratatui::style::Color;
-use solverforge_mail::theme::{fallback_theme, parse_colors_toml, parse_hex_color};
 
 #[test]
 fn parse_hex_color_valid() {

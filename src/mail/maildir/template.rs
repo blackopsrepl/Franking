@@ -91,7 +91,7 @@ pub(super) fn render_outgoing(parsed: &TemplateMessage) -> MailResult<String> {
     let from = {
         let value = header("from");
         if value.is_empty() {
-            "SolverForge Mail <test@solverforge.local>".to_string()
+            format!("{} <test@franking.local>", crate::brand::NAME)
         } else {
             value
         }
@@ -141,10 +141,7 @@ pub(super) fn render_outgoing(parsed: &TemplateMessage) -> MailResult<String> {
         return Ok(raw);
     }
 
-    let boundary = format!(
-        "solverforge-{}",
-        local_message_id().trim_matches(['<', '>'])
-    );
+    let boundary = format!("franking-{}", local_message_id().trim_matches(['<', '>']));
     raw.push_str(&format!(
         "Content-Type: multipart/mixed; boundary=\"{boundary}\"\r\n\r\n"
     ));

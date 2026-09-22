@@ -40,7 +40,7 @@ fn render_scripts(app: &App, frame: &mut Frame) {
 
     frame.render_widget(
         Paragraph::new(Line::from(vec![
-            Span::styled("  SolverForge Mail", t.header()),
+            Span::styled(format!("  {}", crate::brand::NAME), t.header()),
             Span::styled("  ·  Sieve filters", t.dimmed()),
         ]))
         .style(t.status_bar()),
@@ -113,7 +113,7 @@ fn render_editor(app: &App, frame: &mut Frame) {
 
     frame.render_widget(
         Paragraph::new(Line::from(vec![
-            Span::styled("  SolverForge Mail", t.header()),
+            Span::styled(format!("  {}", crate::brand::NAME), t.header()),
             Span::styled(
                 format!("  ·  editing {}", app.sieve.editor_name),
                 t.dimmed(),

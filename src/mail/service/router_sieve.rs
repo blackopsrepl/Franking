@@ -25,7 +25,7 @@ pub(super) fn resolve_target(
     let port = record
         .sieve_port
         .or_else(|| {
-            std::env::var("SOLVERFORGE_SIEVE_PORT")
+            std::env::var("FRANKING_SIEVE_PORT")
                 .ok()
                 .and_then(|value| value.parse().ok())
         })

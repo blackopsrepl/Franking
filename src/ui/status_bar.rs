@@ -66,7 +66,8 @@ pub fn render_header(app: &App, frame: &mut Frame, area: Rect) {
     let thread_indicator = if app.threaded { " \u{2637}" } else { "" };
 
     let title = format!(
-        "  \u{f0e0}  SolverForge Mail{mail_badge}          {account_label}  \u{2502}  {}{thread_indicator}  ",
+        "  \u{f0e0}  {}{mail_badge}          {account_label}  \u{2502}  {}{thread_indicator}  ",
+        crate::brand::NAME,
         app.current_folder
     );
 

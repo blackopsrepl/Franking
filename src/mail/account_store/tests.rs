@@ -28,8 +28,8 @@ fn upsert_account_persists_endpoint_and_auth_details() {
         sieve_security: None,
         auth_mode: Some("password".to_string()),
         username: Some("alice@example.com".to_string()),
-        keyring_imap_secret_id: Some("solverforge-mail/work/imap".to_string()),
-        keyring_smtp_secret_id: Some("solverforge-mail/work/smtp".to_string()),
+        keyring_imap_secret_id: Some("franking/work/imap".to_string()),
+        keyring_smtp_secret_id: Some("franking/work/smtp".to_string()),
     };
 
     upsert_account(&conn, &config).unwrap();
@@ -40,7 +40,7 @@ fn upsert_account_persists_endpoint_and_auth_details() {
     assert_eq!(stored.auth_mode.as_deref(), Some("password"));
     assert_eq!(
         stored.keyring_imap_secret_id.as_deref(),
-        Some("solverforge-mail/work/imap")
+        Some("franking/work/imap")
     );
     assert_eq!(stored.provider_kind, "generic");
     assert!(stored.is_default);
@@ -77,8 +77,8 @@ fn upsert_oauth_state_persists_refresh_metadata() {
     let oauth = OauthStateConfig {
         provider_kind: "gmail".to_string(),
         client_id: "client".to_string(),
-        client_secret_ref: Some("solverforge-mail/gmail/client-secret".to_string()),
-        refresh_token_ref: "solverforge-mail/gmail/refresh-token".to_string(),
+        client_secret_ref: Some("franking/gmail/client-secret".to_string()),
+        refresh_token_ref: "franking/gmail/refresh-token".to_string(),
         access_token_cached: Some("access".to_string()),
         access_token_expires_at: Some("2026-04-13T10:00:00+00:00".to_string()),
         scopes: "scope1 scope2".to_string(),
@@ -91,12 +91,9 @@ fn upsert_oauth_state_persists_refresh_metadata() {
     assert_eq!(stored.client_id, "client");
     assert_eq!(
         stored.client_secret_ref.as_deref(),
-        Some("solverforge-mail/gmail/client-secret")
+        Some("franking/gmail/client-secret")
     );
-    assert_eq!(
-        stored.refresh_token_ref,
-        "solverforge-mail/gmail/refresh-token"
-    );
+    assert_eq!(stored.refresh_token_ref, "franking/gmail/refresh-token");
     assert_eq!(stored.access_token_cached.as_deref(), Some("access"));
 }
 

@@ -22,8 +22,8 @@ SIEVE_PORT=${SIEVE_PORT:-4190}
 SMTP_PORT=${SMTP_PORT:-1025}
 DOVECOT_IMAGE=${DOVECOT_IMAGE:-dovecot/dovecot:latest}
 MAILPIT_IMAGE=${MAILPIT_IMAGE:-axllent/mailpit:latest}
-DOVECOT_CONTAINER=${DOVECOT_CONTAINER:-sfm-dovecot}
-MAILPIT_CONTAINER=${MAILPIT_CONTAINER:-sfm-mailpit}
+DOVECOT_CONTAINER=${DOVECOT_CONTAINER:-franking-dovecot}
+MAILPIT_CONTAINER=${MAILPIT_CONTAINER:-franking-mailpit}
 KEEP=${KEEP:-0}
 
 DOVECOT_USER='test'
@@ -110,11 +110,11 @@ else
   printf 'warning: ManageSieve did not come up; Sieve tests will be skipped\n' >&2
 fi
 
-export SOLVERFORGE_IMAP_TEST_ADDR="127.0.0.1:$IMAP_PORT"
-export SOLVERFORGE_IMAP_TEST_USER="$DOVECOT_USER"
-export SOLVERFORGE_IMAP_TEST_PASSWORD="$DOVECOT_PASSWORD"
-export SOLVERFORGE_SIEVE_TEST_ADDR="127.0.0.1:$SIEVE_PORT"
-export SOLVERFORGE_SMTP_TEST_ADDR="127.0.0.1:$SMTP_PORT"
+export FRANKING_IMAP_TEST_ADDR="127.0.0.1:$IMAP_PORT"
+export FRANKING_IMAP_TEST_USER="$DOVECOT_USER"
+export FRANKING_IMAP_TEST_PASSWORD="$DOVECOT_PASSWORD"
+export FRANKING_SIEVE_TEST_ADDR="127.0.0.1:$SIEVE_PORT"
+export FRANKING_SMTP_TEST_ADDR="127.0.0.1:$SMTP_PORT"
 
 targets=(--test imap_codec --test dovecot_test --test sieve_live_test)
 printf '\nrunning: cargo test %s\n\n' "${targets[*]}"

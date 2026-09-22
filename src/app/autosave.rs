@@ -17,10 +17,7 @@ const TICKS_PER_SECOND: u64 = 4;
 
 /// Directory used for autosaves.
 pub(crate) fn default_dir() -> PathBuf {
-    dirs::data_dir()
-        .unwrap_or_else(|| PathBuf::from("."))
-        .join("solverforge")
-        .join("compose")
+    crate::brand::data_dir().join("compose")
 }
 
 /// Write the composed template, creating the directory when needed.

@@ -1,7 +1,7 @@
 /*! Account form state tests. */
 
-use solverforge_mail::account_edit::{AccountEditState, AccountField};
-use solverforge_mail::mail::account_store::AccountRecord;
+use franking::account_edit::{AccountEditState, AccountField};
+use franking::mail::account_store::AccountRecord;
 
 #[test]
 fn tab_cycles_through_every_field_and_wraps() {

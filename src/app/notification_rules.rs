@@ -145,7 +145,7 @@ pub(crate) fn notify_new_mail(folder: &str) {
     use std::process::{Command, Stdio};
 
     let _ = Command::new("notify-send")
-        .args(["SolverForge Mail", &format!("New mail in {folder}")])
+        .args([crate::brand::NAME, &format!("New mail in {folder}")])
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .spawn();

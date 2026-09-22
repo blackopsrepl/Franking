@@ -20,12 +20,12 @@ fn with_keys_dir(name: &str, body: impl FnOnce(&std::path::Path)) {
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
 
-    let previous = std::env::var_os("SOLVERFORGE_MAIL_KEYS_DIR");
-    std::env::set_var("SOLVERFORGE_MAIL_KEYS_DIR", &dir);
+    let previous = std::env::var_os("FRANKING_KEYS_DIR");
+    std::env::set_var("FRANKING_KEYS_DIR", &dir);
     body(&dir);
     match previous {
-        Some(value) => std::env::set_var("SOLVERFORGE_MAIL_KEYS_DIR", value),
-        None => std::env::remove_var("SOLVERFORGE_MAIL_KEYS_DIR"),
+        Some(value) => std::env::set_var("FRANKING_KEYS_DIR", value),
+        None => std::env::remove_var("FRANKING_KEYS_DIR"),
     }
     let _ = std::fs::remove_dir_all(&dir);
 }

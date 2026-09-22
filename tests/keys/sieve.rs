@@ -1,8 +1,8 @@
 //! Sieve filter browser and editor keybinding tests.
 
 use crossterm::event::KeyCode;
+use franking::keys::{resolve, Action, View};
 use pretty_assertions::assert_eq;
-use solverforge_mail::keys::{resolve, Action, View};
 
 use super::support::{ctrl, key};
 

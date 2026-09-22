@@ -39,8 +39,7 @@ impl App {
         let Some(path) = self.save_selected_attachment_file() else {
             return;
         };
-        let program =
-            std::env::var("SOLVERFORGE_OPENER").unwrap_or_else(|_| "xdg-open".to_string());
+        let program = std::env::var("FRANKING_OPENER").unwrap_or_else(|_| "xdg-open".to_string());
         self.pending_open_command = Some(PendingOpenCommand {
             program,
             args: vec![path.display().to_string()],

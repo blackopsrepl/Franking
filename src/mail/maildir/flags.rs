@@ -113,7 +113,7 @@ pub(super) fn local_message_id() -> String {
         .duration_since(UNIX_EPOCH)
         .map(|duration| duration.as_nanos())
         .unwrap_or(0);
-    format!("<{nanos}.{}@solverforge.local>", std::process::id())
+    format!("<{nanos}.{}@franking.local>", std::process::id())
 }
 
 pub(super) fn next_message_path(mailbox_dir: &Path, flags: &[char]) -> PathBuf {
@@ -121,7 +121,7 @@ pub(super) fn next_message_path(mailbox_dir: &Path, flags: &[char]) -> PathBuf {
         .duration_since(UNIX_EPOCH)
         .map(|duration| duration.as_nanos())
         .unwrap_or(0);
-    let base = format!("{nanos}.{}.solverforge", std::process::id());
+    let base = format!("{nanos}.{}.franking", std::process::id());
     if flags.is_empty() {
         mailbox_dir.join("new").join(base)
     } else {

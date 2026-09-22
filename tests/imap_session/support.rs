@@ -1,8 +1,8 @@
 //! Shared helpers for the IMAP session integration tests.
 
-use solverforge_mail::mail::account_store::AccountRecord;
-use solverforge_mail::mail::session::CredentialProvider;
-use solverforge_mail::mail::MailResult;
+use franking::mail::account_store::AccountRecord;
+use franking::mail::session::CredentialProvider;
+use franking::mail::MailResult;
 
 #[derive(Debug)]
 pub(crate) struct FixedCredentials;

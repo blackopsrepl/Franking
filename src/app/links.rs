@@ -46,8 +46,7 @@ impl App {
             self.set_status("No link is selected.");
             return;
         };
-        let program =
-            std::env::var("SOLVERFORGE_OPENER").unwrap_or_else(|_| "xdg-open".to_string());
+        let program = std::env::var("FRANKING_OPENER").unwrap_or_else(|_| "xdg-open".to_string());
         self.pending_open_command = Some(PendingOpenCommand {
             program,
             args: vec![href],

@@ -124,7 +124,7 @@ pub fn downloads_dir() -> PathBuf {
     dirs::download_dir()
         .or_else(dirs::data_dir)
         .unwrap_or_else(|| PathBuf::from("."))
-        .join("solverforge-mail")
+        .join(crate::brand::DATA_DIR)
 }
 
 fn unique_file_name(base: &Path, index: usize, requested: &str) -> String {
@@ -180,7 +180,7 @@ mod tests {
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        std::env::temp_dir().join(format!("solverforge-attachments-{nanos}"))
+        std::env::temp_dir().join(format!("franking-attachments-{nanos}"))
     }
 
     #[test]

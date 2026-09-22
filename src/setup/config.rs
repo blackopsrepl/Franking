@@ -37,7 +37,10 @@ pub fn save_oauth_state(account_name: &str, config: &OauthStateConfig) -> Result
 }
 
 pub fn secret_service_id(account_name: &str, protocol: &str) -> String {
-    format!("solverforge-mail/{account_name}/{protocol}")
+    format!(
+        "{}/{account_name}/{protocol}",
+        crate::brand::KEYRING_NAMESPACE
+    )
 }
 
 pub fn store_secret(label: &str, service: &str, username: &str, password: &str) -> Result<()> {
@@ -51,7 +54,7 @@ pub fn store_secret(label: &str, service: &str, username: &str, password: &str) 
             "username",
             username,
             "application",
-            "solverforge-mail",
+            crate::brand::KEYRING_APPLICATION,
         ])
         .stdin(Stdio::piped())
         .stdout(Stdio::null())
@@ -89,7 +92,7 @@ pub fn lookup_secret(service: &str, username: &str) -> Result<String> {
             "username",
             username,
             "application",
-            "solverforge-mail",
+            crate::brand::KEYRING_APPLICATION,
         ])
         .output()
         .with_context(|| format!("failed to execute secret-tool for service {}", service))?;
@@ -143,8 +146,7 @@ pub(super) fn rewrite_authinfo_gpg(email: &str, password: &str, recipient: &str)
         email, password
     ));
 
-    let tmp =
-        std::env::temp_dir().join(format!("solverforge-mail-authinfo-{}", std::process::id()));
+    let tmp = std::env::temp_dir().join(format!("franking-authinfo-{}", std::process::id()));
     fs::write(&tmp, lines.join("\n") + "\n")
         .with_context(|| format!("failed to write {}", tmp.display()))?;
 

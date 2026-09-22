@@ -39,7 +39,7 @@ fn new_sieve_script_opens_the_editor_with_a_template() {
     let mut app = App::new(None);
     app.sieve_new();
     assert_eq!(app.view, View::SieveName);
-    assert_eq!(app.sieve.name, "solverforge");
+    assert_eq!(app.sieve.name, "franking");
 
     app.sieve.name.clear();
     app.sieve_name_submit();

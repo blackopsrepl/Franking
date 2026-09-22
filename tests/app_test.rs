@@ -1,10 +1,10 @@
-use solverforge_mail::keys::View;
+use franking::keys::View;
 
 // These tests cover the state machine logic directly without invoking
 // network or backend I/O.
 // We construct an App and manipulate its state directly.
 
-use solverforge_mail::app::App;
+use franking::app::App;
 
 #[test]
 fn app_initial_state() {

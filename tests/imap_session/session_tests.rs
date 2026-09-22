@@ -4,8 +4,8 @@ use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use std::time::Duration;
 
-use solverforge_mail::mail::remote::next;
-use solverforge_mail::mail::session::{Capabilities, IdleOutcome, SessionPool};
+use franking::mail::remote::next;
+use franking::mail::session::{Capabilities, IdleOutcome, SessionPool};
 
 use super::fake_imap::{Behavior, FakeImap};
 use super::support::{account, FixedCredentials};
@@ -53,7 +53,7 @@ fn capabilities_are_probed_on_connect() {
             client
                 .capability()
                 .map(|list| Capabilities::from_capabilities(&list))
-                .map_err(|error| solverforge_mail::mail::MailError::other(error.to_string()))
+                .map_err(|error| franking::mail::MailError::other(error.to_string()))
         })
         .unwrap();
 

@@ -1,5 +1,6 @@
 pub mod account_edit;
 pub mod app;
+pub mod brand;
 pub mod compose;
 pub mod compose_editor;
 pub mod contact_edit;

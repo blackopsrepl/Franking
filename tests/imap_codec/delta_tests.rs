@@ -2,8 +2,8 @@
 
 use std::sync::Arc;
 
-use solverforge_mail::mail::remote::next;
-use solverforge_mail::mail::session::{open_imap_client, SessionPool};
+use franking::mail::remote::next;
+use franking::mail::session::{open_imap_client, SessionPool};
 
 use super::support::{
     account, ensure_mailbox, mailbox_lock, seed, test_address, FixedCredentials, FOLDER,
@@ -22,7 +22,7 @@ fn qresync_reports_vanished_and_changed_flags() {
     seed(&account);
 
     let pool = Arc::new(SessionPool::with_credentials(Arc::new(FixedCredentials)));
-    let service = solverforge_mail::mail::remote::ImapSmtpService::new(account.clone(), pool);
+    let service = franking::mail::remote::ImapSmtpService::new(account.clone(), pool);
 
     // First sync: no anchor, so a full listing and an anchor come back.
     let first = service
@@ -38,7 +38,7 @@ fn qresync_reports_vanished_and_changed_flags() {
     assert!(first.uid_next.expect("UIDNEXT") > 0);
 
     let uid_next = first.uid_next.unwrap();
-    let anchor = solverforge_mail::mail::remote::next::SyncAnchor {
+    let anchor = franking::mail::remote::next::SyncAnchor {
         uid_validity,
         highest_modseq,
     };
@@ -123,7 +123,7 @@ fn subscriptions_are_listed_and_toggled() {
     let account = account(&host, port);
 
     let pool = Arc::new(SessionPool::with_credentials(Arc::new(FixedCredentials)));
-    let service = solverforge_mail::mail::remote::ImapSmtpService::new(account.clone(), pool);
+    let service = franking::mail::remote::ImapSmtpService::new(account.clone(), pool);
     service.create_folder(None, "subscribe-probe").ok();
 
     // The listing reports unknown subscriptions only until LSUB is available;
@@ -161,7 +161,7 @@ fn subscriptions_are_listed_and_toggled() {
 /// The subscription state of a folder, waiting for the server's subscription
 /// index to catch up with the change that was just made.
 fn subscribed_state(
-    service: &solverforge_mail::mail::remote::ImapSmtpService,
+    service: &franking::mail::remote::ImapSmtpService,
     folder: &str,
     wanted: bool,
 ) -> Option<bool> {
