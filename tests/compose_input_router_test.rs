@@ -86,7 +86,7 @@ fn precedence_autocomplete_intercepts_navigation_acceptance_keys() {
 }
 
 #[test]
-fn body_focus_passthrough_except_tab_cycle() {
+fn body_focus_passes_keys_through_except_tab_and_escape() {
     let c = ctx(ComposeFocus::Body, EditMode::Nav, false, false, false);
     assert_eq!(
         resolve_compose_with_context(key(KeyCode::Char('j')), c),
@@ -96,9 +96,10 @@ fn body_focus_passthrough_except_tab_cycle() {
         resolve_compose_with_context(key(KeyCode::Backspace), c),
         Action::EditorKey(key(KeyCode::Backspace))
     );
+    // Esc leaves the message rather than being swallowed by the body editor.
     assert_eq!(
         resolve_compose_with_context(key(KeyCode::Esc), c),
-        Action::EditorKey(key(KeyCode::Esc))
+        Action::ComposeDiscard
     );
     assert_eq!(
         resolve_compose_with_context(key(KeyCode::Tab), c),

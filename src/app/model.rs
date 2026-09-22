@@ -191,6 +191,8 @@ pub struct App {
     // ── Contacts browser state ───────────────────────────────────────
     pub contacts: Vec<Contact>,
     pub contact_index: Option<usize>,
+    /// Contact awaiting a second delete press.
+    pub(crate) contact_pending_delete: Option<i64>,
     pub contact_search: String,
     /// Whether the contacts search bar is active (accepting typed characters).
     pub contact_search_active: bool,

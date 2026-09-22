@@ -246,7 +246,8 @@ impl App {
             | Action::KeysInput(_)
             | Action::KeysBackspace
             | Action::KeysSubmit
-            | Action::KeysCancel => self.handle_keys_action(action),
+            | Action::KeysCancel
+            | Action::KeysClose => self.handle_keys_action(action),
             // ── Contacts ─────────────────────────────────────────────
             Action::OpenContacts => self.open_contacts(),
             Action::ContactNew => self.contact_new(),

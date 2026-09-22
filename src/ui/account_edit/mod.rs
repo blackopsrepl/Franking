@@ -130,7 +130,9 @@ pub fn render(app: &App, frame: &mut Frame) {
         },
     );
 
-    let error_height = if state.error.is_some() { 1 } else { 0 };
+    // The error owns the row above the action bar. It used to share that row
+    // with the bar, which drew over it, so a refused save looked like nothing
+    // happened.
     if let Some(ref error) = state.error {
         frame.render_widget(
             Paragraph::new(Span::styled(error.clone(), t.error())),
@@ -145,7 +147,7 @@ pub fn render(app: &App, frame: &mut Frame) {
 
     let bar = Rect {
         x: inner.x,
-        y: inner.y + inner.height.saturating_sub(1 + error_height),
+        y: inner.y + inner.height.saturating_sub(1),
         width: inner.width,
         height: 1,
     };
@@ -174,3 +176,6 @@ pub fn render(app: &App, frame: &mut Frame) {
         focused_idx,
     );
 }
+
+#[cfg(test)]
+mod tests;

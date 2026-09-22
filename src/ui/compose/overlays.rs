@@ -8,9 +8,9 @@ use crate::theme::theme;
 
 pub(super) fn render_discard_confirm(frame: &mut Frame, area: Rect) {
     let t = theme();
-    use crate::ui::util::centered_rect;
+    use crate::ui::util::centered_rows;
 
-    let popup = centered_rect(44, 5, area);
+    let popup = centered_rows(44, 5, area);
     frame.render_widget(Clear, popup);
     let block = Block::default()
         .title(Span::styled(" Discard message? ", t.popup_title()))
@@ -32,9 +32,9 @@ pub(super) fn render_discard_confirm(frame: &mut Frame, area: Rect) {
 
 pub(super) fn render_error(err: &str, frame: &mut Frame, area: Rect) {
     let t = theme();
-    use crate::ui::util::centered_rect;
+    use crate::ui::util::centered_rows;
 
-    let popup = centered_rect(60, 5, area);
+    let popup = centered_rows(60, 5, area);
     frame.render_widget(Clear, popup);
     let block = Block::default()
         .title(Span::styled(" Send failed ", t.popup_title()))
@@ -127,9 +127,9 @@ pub(super) fn render_autocomplete(
 /// Prompt for a file path to attach.
 pub(super) fn render_attach_prompt(input: &str, frame: &mut Frame, area: Rect) {
     let t = theme();
-    use crate::ui::util::centered_rect;
+    use crate::ui::util::centered_rows;
 
-    let popup = centered_rect(60, 3, area);
+    let popup = centered_rows(60, 3, area);
     frame.render_widget(Clear, popup);
     let block = Block::default()
         .title(Span::styled(" Attach file ", t.popup_title()))

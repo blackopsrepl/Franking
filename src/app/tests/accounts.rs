@@ -206,3 +206,37 @@ fn contact_tag_filter_cycles_through_tags_and_back_to_all() {
     assert!(app.contact_tag_filter.is_none());
     assert_eq!(app.contacts.len(), 2);
 }
+
+#[test]
+fn saving_an_incomplete_account_reports_what_is_missing() {
+    use crate::account_edit::AccountEditState;
+    use crate::keys::View;
+
+    use super::super::App;
+
+    let conn = rusqlite::Connection::open_in_memory().unwrap();
+    crate::db::init_for_test(&conn).unwrap();
+
+    let mut app = App::new(None);
+    app.db = Some(conn);
+    app.view = View::AccountEdit;
+    let mut state = AccountEditState::new();
+    state.name = "dovecot".to_string();
+    state.username = "test@localhost".to_string();
+    state.imap_host = "127.0.0.1".to_string();
+    // No SMTP host: the form must say so.
+    app.account_edit_state = Some(state);
+
+    app.account_form_save();
+
+    let state = app
+        .account_edit_state
+        .as_ref()
+        .expect("the form stays open");
+    assert_eq!(
+        state.error.as_deref(),
+        Some("SMTP host is required."),
+        "the missing field is named"
+    );
+    assert_eq!(app.view, View::AccountEdit, "the form is not closed");
+}

@@ -215,6 +215,7 @@ pub enum Action {
     KeysBackspace,
     KeysSubmit,
     KeysCancel,
+    KeysClose,
     SieveNext,
     SievePrev,
     SieveActivate,

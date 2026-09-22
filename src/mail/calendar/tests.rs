@@ -17,33 +17,61 @@ fn extracts_event_fields() {
     assert_eq!(event.location.as_deref(), Some("Room 1"));
 }
 
-#[test]
-fn a_utc_start_is_converted_to_the_reader_timezone() {
-    let event = parse_invitation(&ics("SUMMARY:Standup\r\nDTSTART:20260413T090000Z")).unwrap();
-    let display = event.start_display().expect("a display time");
+/// Run `body` with `TZ` set, so the reader's zone is known.
+///
+/// The variable is process-wide, so these cases take a lock.
+fn with_timezone<T>(name: &str, body: impl FnOnce() -> T) -> T {
+    static LOCK: std::sync::OnceLock<std::sync::Mutex<()>> = std::sync::OnceLock::new();
+    let _guard = LOCK
+        .get_or_init(|| std::sync::Mutex::new(()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
 
-    // The same instant on the reader's clock, with the timezone named.
-    let expected = chrono::DateTime::parse_from_rfc3339("2026-04-13T09:00:00Z")
-        .unwrap()
-        .with_timezone(&chrono::Local)
-        .format("%Y-%m-%d %H:%M")
-        .to_string();
-    assert_eq!(display, format!("{expected} (UTC)"), "{display}");
+    let previous = std::env::var_os("TZ");
+    std::env::set_var("TZ", name);
+    let result = body();
+    match previous {
+        Some(value) => std::env::set_var("TZ", value),
+        None => std::env::remove_var("TZ"),
+    }
+    result
 }
 
 #[test]
-fn a_named_timezone_start_is_converted_and_named() {
+fn a_utc_start_is_shown_with_its_zone_and_the_local_equivalent() {
+    let event = parse_invitation(&ics("SUMMARY:Standup\r\nDTSTART:20260413T090000Z")).unwrap();
+    let display = with_timezone("Europe/Berlin", || event.start_display()).expect("a time");
+
+    // The organizer's time keeps its own label, and the reader's equivalent is
+    // named with the reader's zone, so neither number can be misread.
+    assert_eq!(
+        display,
+        "2026-04-13 09:00 UTC (2026-04-13 11:00 Europe/Berlin)"
+    );
+}
+
+#[test]
+fn a_named_timezone_start_is_shown_as_written_and_converted() {
     let event = parse_invitation(&ics(
-        "SUMMARY:Review\r\nDTSTART;TZID=Europe/Berlin:20260413T090000",
+        "SUMMARY:Review\r\nDTSTART;TZID=Europe/Berlin:20260416T100000",
     ))
     .unwrap();
     assert_eq!(event.start_tz.as_deref(), Some("Europe/Berlin"));
-    let display = event.start_display().expect("a display time");
-    assert!(display.ends_with("(Europe/Berlin)"), "{display}");
-    assert!(
-        display.contains("2026-04-13"),
-        "the instant keeps its date in the reader's zone: {display}"
+    let display = with_timezone("Europe/Rome", || event.start_display()).expect("a time");
+    assert_eq!(
+        display,
+        "2026-04-16 10:00 Europe/Berlin (2026-04-16 10:00 Europe/Rome)"
     );
+}
+
+#[test]
+fn a_start_in_the_reader_zone_needs_no_conversion() {
+    let event = parse_invitation(&ics(
+        "SUMMARY:Local\r\nDTSTART;TZID=Europe/Berlin:20260416T100000",
+    ))
+    .unwrap();
+    let display = with_timezone("Europe/Berlin", || event.start_display()).expect("a time");
+    assert_eq!(display, "2026-04-16 10:00 Europe/Berlin");
 }
 
 #[test]
@@ -70,7 +98,10 @@ fn an_unknown_timezone_still_reports_the_identifier() {
     ))
     .unwrap();
     let display = event.start_display().expect("a display time");
-    assert_eq!(display, "2026-04-13 09:00 (Mars/Olympus)");
+    assert_eq!(
+        display, "2026-04-13 09:00 Mars/Olympus",
+        "an unknown zone is named, not assumed"
+    );
 }
 
 #[test]

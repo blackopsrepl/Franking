@@ -152,7 +152,7 @@ fn compose_confirm_discard_blocks_ctrl_passthrough_on_from_field() {
 }
 
 #[test]
-fn compose_body_escape_does_not_mark_pristine_draft_dirty() {
+fn compose_body_escape_leaves_a_pristine_message_without_dirtying_it() {
     use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
     use solverforge_mail::keys::View;
 
@@ -163,14 +163,37 @@ fn compose_body_escape_does_not_mark_pristine_draft_dirty() {
     compose.focused = FocusedField::Body;
     app.compose_state = Some(compose);
 
+    // Esc leaves the message. Nothing was typed, so there is nothing to
+    // confirm and nothing is left behind.
+    app.handle_key(KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE));
+
+    assert!(
+        app.compose_state.is_none(),
+        "a pristine message closes on Esc"
+    );
+    assert_eq!(app.view, View::EnvelopeList);
+}
+
+#[test]
+fn compose_body_escape_asks_before_losing_typed_text() {
+    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+    use solverforge_mail::keys::View;
+
+    let mut app = App::new(None);
+    app.view = View::Compose;
+
+    let mut compose = ComposeState::new(ComposeMode::New, None);
+    compose.focused = FocusedField::Body;
+    compose.dirty = true;
+    app.compose_state = Some(compose);
+
     app.handle_key(KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE));
 
     let cs = app
         .compose_state
         .as_ref()
-        .expect("compose state should exist");
-    assert!(!cs.dirty);
-    assert!(!cs.confirm_discard);
+        .expect("the message is kept until the user answers");
+    assert!(cs.confirm_discard, "the discard is confirmed first");
 }
 
 #[test]

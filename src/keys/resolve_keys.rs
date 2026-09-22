@@ -7,7 +7,7 @@ use super::action::Action;
 /// The key list, and the text prompt it can raise.
 pub(super) fn resolve_keys(key: KeyEvent) -> Action {
     match key.code {
-        KeyCode::Esc => Action::KeysCancel,
+        KeyCode::Esc | KeyCode::Char('q') => Action::KeysClose,
         KeyCode::Char('j') | KeyCode::Down => Action::KeysPrev,
         KeyCode::Char('k') | KeyCode::Up => Action::KeysNext,
         KeyCode::Char('i') => Action::KeysImport,

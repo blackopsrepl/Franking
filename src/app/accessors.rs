@@ -199,6 +199,7 @@ impl App {
             compose_state: None,
             contacts: Vec::new(),
             contact_index: None,
+            contact_pending_delete: None,
             contact_search: String::new(),
             contact_search_active: false,
             contact_tag_filter: None,

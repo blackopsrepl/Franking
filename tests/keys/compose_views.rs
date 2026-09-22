@@ -60,10 +60,12 @@ fn compose_enter_triggers_enter_insert() {
 }
 
 #[test]
-fn compose_esc_triggers_exit_to_nav() {
+fn compose_esc_offers_to_leave_the_message() {
+    // From a header field or the body, Esc leaves the message (asking first
+    // when there is text to lose); only the action bar steps back to the body.
     assert_eq!(
         resolve(View::Compose, key(KeyCode::Esc)),
-        Action::EditorKey(key(KeyCode::Esc))
+        Action::ComposeDiscard
     );
 }
 

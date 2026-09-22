@@ -4,6 +4,7 @@ mod action;
 mod hints;
 mod resolve;
 mod resolve_accounts;
+mod resolve_compose;
 mod resolve_contacts;
 mod resolve_keys;
 mod resolve_message_view;
@@ -13,5 +14,6 @@ mod view;
 
 pub use action::{Action, ComposeFocus, ComposeKeyContext, EditMode};
 pub use hints::hints;
-pub use resolve::{resolve, resolve_compose_with_context};
+pub use resolve::resolve;
+pub use resolve_compose::resolve_compose_with_context;
 pub use view::View;

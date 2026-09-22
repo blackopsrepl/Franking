@@ -86,6 +86,7 @@ impl App {
                     current.saturating_sub(1)
                 };
                 self.contact_index = Some(next);
+                self.contact_pending_delete = None;
             }
             _ => {}
         }

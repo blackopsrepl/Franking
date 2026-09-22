@@ -42,12 +42,14 @@ impl Event {
         })
     }
 
-    /// The start time for display, with its timezone resolved where possible.
+    /// The start time for display, with its timezone named.
     ///
     /// An invitation states the time either in UTC, in a named timezone, or as
-    /// a bare local time. A named timezone is converted to the reader's local
-    /// time and the identifier is kept, because a bare time in an unknown
-    /// timezone would otherwise read as if it were local.
+    /// a bare local time. A stated time is shown as the organizer wrote it, with
+    /// its zone, plus the reader's equivalent when the two zones differ; the
+    /// label always names the zone of the time beside it, so the two never
+    /// contradict each other. A floating time is not converted: it has no zone
+    /// to convert from.
     pub fn start_display(&self) -> Option<String> {
         let start = self.start.as_deref().filter(|start| !start.is_empty())?;
         if self.all_day {
@@ -60,20 +62,26 @@ impl Event {
         let Some(name) = self.timezone_name() else {
             return Some(naive.format("%Y-%m-%d %H:%M").to_string());
         };
+        let original = format!("{} {name}", naive.format("%Y-%m-%d %H:%M"));
+
         let Ok(tz) = name.parse::<chrono_tz::Tz>() else {
-            // An identifier this build does not know: show it rather than
-            // presenting the time as if it were local.
-            return Some(format!("{} ({name})", naive.format("%Y-%m-%d %H:%M")));
+            // An identifier this build does not know: show the time as written
+            // rather than presenting it as if it were local.
+            return Some(original);
         };
+        let local_name = crate::mail::local_time::local_timezone_name();
+        if local_name.eq_ignore_ascii_case(name) {
+            return Some(original);
+        }
+
         match naive.and_local_timezone(tz) {
             chrono::LocalResult::Single(at) | chrono::LocalResult::Ambiguous(at, _) => {
                 Some(format!(
-                    "{} ({})",
-                    at.with_timezone(&chrono::Local).format("%Y-%m-%d %H:%M"),
-                    tz.name()
+                    "{original} ({} {local_name})",
+                    at.with_timezone(&chrono::Local).format("%Y-%m-%d %H:%M")
                 ))
             }
-            chrono::LocalResult::None => Some(format!("{} ({})", naive, tz.name())),
+            chrono::LocalResult::None => Some(original),
         }
     }
 

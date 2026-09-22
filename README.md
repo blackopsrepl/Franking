@@ -16,6 +16,46 @@
 A spiffy ratatui-based TUI email client with an app-owned mail layer, native
 maildir support, and native IMAP/SMTP transport for DB-backed accounts.
 
+## Screenshots
+
+Every screenshot below is the running application: the images are rendered from
+the app's own cell grid, with the colours it chose.
+
+<table>
+  <tr>
+    <td width="50%"><img src="assets/screenshots/envelope-list.png" alt="Folder list and envelope list"></td>
+    <td width="50%"><img src="assets/screenshots/message-view.png" alt="Message reader with attachments and a calendar invitation"></td>
+  </tr>
+  <tr>
+    <td><b>Folders and messages</b> — unread counts, per-account folders, threaded and flat views, server-side ordering.</td>
+    <td><b>Reader</b> — headers, attachments, and a calendar invitation shown with its timezone.</td>
+  </tr>
+  <tr>
+    <td><img src="assets/screenshots/compose.png" alt="Compose a reply"></td>
+    <td><img src="assets/screenshots/attachments.png" alt="Attachment list"></td>
+  </tr>
+  <tr>
+    <td><b>Compose</b> — reply, forward, attachments, PGP and S/MIME toggles, save-as-draft.</td>
+    <td><b>Attachments</b> — preview in place, save one, or write them all into an archive.</td>
+  </tr>
+  <tr>
+    <td><img src="assets/screenshots/search.png" alt="Search with a scope selector"></td>
+    <td><img src="assets/screenshots/preferences.png" alt="Preferences"></td>
+  </tr>
+  <tr>
+    <td><b>Search</b> — cached matches appear at once, the server result replaces them; the scope cycles folder → all folders → all accounts.</td>
+    <td><b>Preferences</b> — notifications rule, mark-read, draft encryption, page size, autosave.</td>
+  </tr>
+  <tr>
+    <td><img src="assets/screenshots/keys.png" alt="Key material overlay"></td>
+    <td><img src="assets/screenshots/identities.png" alt="Identities for an account"></td>
+  </tr>
+  <tr>
+    <td><b>Key material</b> — import, generate, export, and delete PGP keys.</td>
+    <td><b>Identities</b> — per-account From addresses, signatures, and Sent mailbox.</td>
+  </tr>
+</table>
+
 ## Quick Start
 
 ```bash

@@ -142,3 +142,70 @@ fn cancelling_a_prompt_leaves_the_listing_alone() {
         assert_eq!(app.keys.prompt, None::<KeyPrompt>);
     });
 }
+
+#[test]
+fn escaping_the_key_overlay_leaves_it() {
+    use crate::keys::{resolve, Action, View};
+
+    // Esc must close the overlay; cancelling a prompt only returns to the list.
+    assert_eq!(
+        resolve(
+            View::Keys,
+            crossterm::event::KeyEvent::new(
+                crossterm::event::KeyCode::Esc,
+                crossterm::event::KeyModifiers::NONE
+            )
+        ),
+        Action::KeysClose
+    );
+    assert_eq!(
+        resolve(
+            View::KeysPrompt,
+            crossterm::event::KeyEvent::new(
+                crossterm::event::KeyCode::Esc,
+                crossterm::event::KeyModifiers::NONE
+            )
+        ),
+        Action::KeysCancel
+    );
+}
+
+#[test]
+fn deleting_a_contact_takes_two_presses() {
+    use crate::contacts::{self, Contact};
+
+    use super::super::App;
+
+    let conn = rusqlite::Connection::open_in_memory().unwrap();
+    crate::db::init_for_test(&conn).unwrap();
+    contacts::add(
+        &conn,
+        &Contact {
+            id: 0,
+            name: Some("Alice".to_string()),
+            email: "alice@example.com".to_string(),
+            phone: None,
+            org: None,
+            notes: None,
+            harvested: false,
+            tags: Vec::new(),
+        },
+    )
+    .unwrap();
+
+    let mut app = App::new(None);
+    app.db = Some(conn);
+    app.open_contacts();
+    assert_eq!(app.contacts.len(), 1);
+
+    app.contact_delete();
+    assert!(
+        app.status_message.contains("Press d again"),
+        "the first press only asks: {}",
+        app.status_message
+    );
+    assert_eq!(app.contacts.len(), 1, "nothing is gone yet");
+
+    app.contact_delete();
+    assert!(app.contacts.is_empty(), "the second press deletes");
+}

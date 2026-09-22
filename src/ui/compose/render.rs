@@ -95,7 +95,18 @@ fn render_header_bar(app: &App, state: &ComposeState, frame: &mut Frame, area: R
 
     let spans = vec![
         Span::styled(title, t.header()),
-        Span::styled(" ".repeat(fill_len), t.header()),
+        // A status message owns the fill: an action taken from compose (a
+        // saved draft, a failed send) would otherwise be invisible here.
+        if app.status_message.is_empty() {
+            Span::styled(" ".repeat(fill_len), t.header())
+        } else {
+            let style = if app.status_is_error {
+                t.error()
+            } else {
+                t.accent_style()
+            };
+            Span::styled(format!(" {} ", app.status_message), style)
+        },
         Span::styled(acct, t.header().add_modifier(Modifier::BOLD)),
     ];
 

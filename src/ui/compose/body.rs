@@ -41,7 +41,12 @@ pub(super) fn render_compose_action_bar(state: &ComposeState, frame: &mut Frame,
     } else if state.focused == FocusedField::Body {
         (" BODY ".to_string(), theme().mode_insert())
     } else {
-        (" COMPOSE ".to_string(), theme().mode_nav())
+        // Name the focused control: focus is otherwise shown only by colour,
+        // which a reader who cannot distinguish it would never see.
+        (
+            format!(" COMPOSE · {} ", state.focused.label()),
+            theme().mode_nav(),
+        )
     };
     let status_label = if state.attachments.is_empty() {
         status_label

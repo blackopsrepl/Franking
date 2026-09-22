@@ -5,7 +5,7 @@ use ratatui::widgets::{Block, Borders, Clear, List, ListItem, Paragraph};
 
 use crate::app::pgp_keys::KeyPrompt;
 use crate::app::App;
-use crate::ui::util::centered_rect;
+use crate::ui::util::{centered_rect, centered_rows};
 
 use crate::theme::theme;
 
@@ -76,7 +76,7 @@ pub fn render(app: &App, frame: &mut Frame) {
 /// Render the import or key-generation prompt.
 fn render_prompt(app: &App, frame: &mut Frame, prompt: KeyPrompt) {
     let t = theme();
-    let popup = centered_rect(72, 24, frame.area());
+    let popup = centered_rows(72, 9, frame.area());
     frame.render_widget(Clear, popup);
 
     let (title, hint) = match prompt {

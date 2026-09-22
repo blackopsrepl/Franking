@@ -53,6 +53,7 @@ impl App {
             Action::KeysBackspace => self.keys_backspace(),
             Action::KeysSubmit => self.keys_submit(),
             Action::KeysCancel => self.keys_cancel(),
+            Action::KeysClose => self.close_keys(),
             _ => {}
         }
     }
@@ -109,7 +110,14 @@ impl App {
         self.keys.input.pop();
     }
 
-    /// Close the prompt without acting.
+    /// Leave the key overlay.
+    pub(crate) fn close_keys(&mut self) {
+        self.keys.prompt = None;
+        self.keys.input.clear();
+        self.view = View::EnvelopeList;
+    }
+
+    /// Close the prompt without acting, staying on the key list.
     pub(crate) fn keys_cancel(&mut self) {
         self.keys.prompt = None;
         self.keys.input.clear();

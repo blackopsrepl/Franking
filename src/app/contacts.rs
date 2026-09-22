@@ -229,6 +229,15 @@ impl App {
         };
         let id = contact.id;
 
+        // Deleting a contact loses data with no undo, so it takes a second
+        // press, as deleting a message, a folder, or a queued send does.
+        if self.contact_pending_delete != Some(id) {
+            self.contact_pending_delete = Some(id);
+            self.set_status("Press d again to delete this contact.");
+            return;
+        }
+        self.contact_pending_delete = None;
+
         if let Some(ref conn) = self.db {
             match crate::contacts::delete(conn, id) {
                 Ok(()) => {
