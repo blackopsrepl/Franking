@@ -85,6 +85,7 @@ cargo run -- --setup
 - **Auto-harvest contacts** - Captured from sent/received mail
 - **Sender identities** - Multiple From addresses per account with default
 - **Local SQLite database** - Contacts and identities stored in `~/.local/share/franking/mail.db`
+- **Safe database upgrades** - Versioned migrations preserve accounts, contacts, identities, messages, and local decisions; unsupported versions fail without replacing the database
 - **App-owned account store** - Accounts, endpoints, auth bindings, and secret references live in SQLite
 - **Keyring-backed secrets** - Password and app-password flows store secret IDs in the app and raw secrets in the OS keyring
 - **Account discovery** - Add an account by email: Google/iCloud/Outlook presets, Mozilla autoconfig, Microsoft Autodiscover, then RFC 6186 SRV
@@ -249,6 +250,12 @@ gpg -q --for-your-eyes-only -d ~/.authinfo.gpg | head
 ```
 
 ## Development
+
+Schema changes require an ordered migration in `src/db/schema_migrations.rs`
+and an increment of `SCHEMA_VERSION` in `src/db/connection.rs`. Update the
+fresh-install DDL in `src/db/schema.rs` too. Startup applies migrations in one
+transaction before loading mail, and a newer, malformed, or unversioned
+existing database is left intact with an error instead of being reset.
 
 ```bash
 # Build

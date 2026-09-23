@@ -1,33 +1,7 @@
-/*! Current-state schema DDL.
-Older databases are dropped and rebuilt rather than migrated, so this module
-owns both the destructive reset and the create statements. */
+/*! Current-state schema DDL for new databases only. */
 
 use anyhow::Result;
 use rusqlite::Connection;
-
-pub(super) fn reset_schema(conn: &Connection) -> Result<()> {
-    conn.execute_batch(
-        "DROP TABLE IF EXISTS contact_tags;
-         DROP TABLE IF EXISTS contacts;
-         DROP TABLE IF EXISTS identities;
-         DROP TABLE IF EXISTS messages_fts;
-         DROP TABLE IF EXISTS messages;
-         DROP TABLE IF EXISTS sync_state;
-         DROP TABLE IF EXISTS envelope_cache;
-         DROP TABLE IF EXISTS folder_cache;
-         DROP TABLE IF EXISTS auth_bindings;
-         DROP TABLE IF EXISTS oauth_states;
-         DROP TABLE IF EXISTS account_endpoints;
-         DROP TABLE IF EXISTS accounts;
-         DROP TABLE IF EXISTS credentials;
-         DROP TABLE IF EXISTS outbox;
-         DROP TABLE IF EXISTS saved_searches;
-         DROP TABLE IF EXISTS sender_routes;
-         DROP TABLE IF EXISTS legacy_credentials_backup;
-         DROP TABLE IF EXISTS meta;",
-    )?;
-    Ok(())
-}
 
 pub(super) fn create_schema(conn: &Connection) -> Result<()> {
     conn.execute_batch(

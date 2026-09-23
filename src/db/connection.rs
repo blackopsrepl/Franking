@@ -1,17 +1,16 @@
-/* SQLite database layer.
-The database is stored under the app's data directory (`brand::data_dir`).
-Schema is current-state only. Older local DBs are reset instead of migrated. */
+/* SQLite database layer. The database is stored under the app's data directory.
+Every recognized schema upgrade runs inside a transaction before the app starts. */
 
 use std::path::PathBuf;
 
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
 use rusqlite::Connection;
 
-use super::schema::{create_schema, reset_schema};
-use super::schema_migrations::migrate_schema;
+use super::schema::create_schema;
+use super::schema_migrations::migrate;
 
-/// Current schema version. Changing this resets local DB state.
-const SCHEMA_VERSION: u32 = 3;
+/// Increment only with a corresponding migration in `schema_migrations`.
+const SCHEMA_VERSION: u32 = 4;
 
 /// Return the path to the database file.
 pub fn db_path() -> PathBuf {
@@ -48,14 +47,32 @@ pub fn init_for_test(conn: &Connection) -> Result<()> {
 }
 
 fn ensure_current_schema(conn: &Connection) -> Result<()> {
-    let current_version = stored_schema_version(conn)?;
-    if current_version != Some(SCHEMA_VERSION) {
-        reset_schema(conn)?;
-        create_schema(conn)?;
-        set_schema_version(conn, SCHEMA_VERSION)?;
+    let version = stored_schema_version(conn)?;
+    if let Some(version) = version {
+        if version > SCHEMA_VERSION {
+            bail!("database schema {version} is newer than supported schema {SCHEMA_VERSION}");
+        }
+        if version == 0 {
+            bail!("database schema version 0 is not supported");
+        }
+    } else if !database_is_empty(conn)? {
+        bail!("existing database has no schema version; refusing to overwrite it");
     }
-    migrate_schema(conn)?;
-
+    let tx = conn.unchecked_transaction()?;
+    match version {
+        None => {
+            create_schema(&tx)?;
+            set_schema_version(&tx, SCHEMA_VERSION)?;
+        }
+        Some(mut version) => {
+            while version < SCHEMA_VERSION {
+                migrate(&tx, version).with_context(|| format!("upgrading schema {version}"))?;
+                version += 1;
+                set_schema_version(&tx, version)?;
+            }
+        }
+    }
+    tx.commit()?;
     crate::mail::account_store::seed_defaults(conn)?;
     Ok(())
 }
@@ -65,15 +82,24 @@ fn stored_schema_version(conn: &Connection) -> Result<Option<u32>> {
         return Ok(None);
     }
 
-    let version = conn
+    use rusqlite::OptionalExtension;
+    let raw: Option<String> = conn
         .query_row(
             "SELECT value FROM meta WHERE key = 'schema_version'",
             [],
-            |row| row.get::<_, String>(0),
+            |row| row.get(0),
         )
-        .ok()
-        .and_then(|value| value.parse().ok());
-    Ok(version)
+        .optional()?;
+    let raw = raw.context("database meta table has no schema_version")?;
+    Ok(Some(
+        raw.parse().context("database schema_version is invalid")?,
+    ))
+}
+
+fn database_is_empty(conn: &Connection) -> Result<bool> {
+    Ok(!conn.prepare(
+        "SELECT 1 FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' AND type IN ('table', 'view', 'index', 'trigger') LIMIT 1",
+    )?.exists([])?)
 }
 
 fn set_schema_version(conn: &Connection, version: u32) -> Result<()> {
@@ -133,7 +159,7 @@ mod tests {
     }
 
     #[test]
-    fn init_resets_old_schema_to_current_layout() {
+    fn an_unknown_future_schema_is_left_untouched() {
         let conn = Connection::open_in_memory().unwrap();
         conn.execute_batch(
             "CREATE TABLE meta (
@@ -147,10 +173,11 @@ mod tests {
         )
         .unwrap();
 
-        init_for_test(&conn).unwrap();
-
-        assert_eq!(schema_version(&conn), CURRENT_SCHEMA_VERSION);
-        assert!(!table_exists(&conn, "credentials").unwrap());
-        assert!(table_exists(&conn, "accounts").unwrap());
+        assert!(init_for_test(&conn)
+            .unwrap_err()
+            .to_string()
+            .contains("newer"));
+        assert_eq!(schema_version(&conn), 999);
+        assert!(table_exists(&conn, "credentials").unwrap());
     }
 }

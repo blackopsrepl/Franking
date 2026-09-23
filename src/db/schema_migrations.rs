@@ -1,8 +1,16 @@
-/*! Non-destructive column additions for databases created by an older
-schema. */
+/*! Ordered upgrades of installed databases. Version changes are atomic with data. */
 
 use anyhow::Result;
 use rusqlite::Connection;
+
+pub(super) fn migrate(conn: &Connection, from: u32) -> Result<()> {
+    match from {
+        1 => super::migration_v1_v2::apply(conn),
+        2 => super::migration_v2_v3::apply(conn),
+        3 => repair_v3(conn),
+        _ => anyhow::bail!("no migration from schema version {from}"),
+    }
+}
 
 /// The table and column named by an `ALTER TABLE … ADD COLUMN …` statement.
 fn added_column(statement: &str) -> Option<(&str, &str)> {
@@ -19,7 +27,7 @@ fn added_column(statement: &str) -> Option<(&str, &str)> {
 }
 
 /// Add columns introduced after the first schema without resetting local data.
-pub(super) fn migrate_schema(conn: &Connection) -> Result<()> {
+fn repair_v3(conn: &Connection) -> Result<()> {
     for column in ["signature TEXT", "sent_folder TEXT"] {
         let name = column.split_whitespace().next().unwrap_or_default();
         let exists: bool = conn
