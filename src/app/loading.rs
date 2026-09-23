@@ -23,6 +23,17 @@ impl App {
             self.worker.fetch_all_inboxes("INBOX".to_string());
             return;
         }
+        if self.triage_lane.is_some() && self.current_folder.eq_ignore_ascii_case("INBOX") {
+            self.worker.fetch_envelopes(
+                self.acct_owned(),
+                "INBOX".to_string(),
+                1,
+                200,
+                None,
+                self.sort_order,
+            );
+            return;
+        }
         self.worker
             .start_watching(self.acct_owned(), self.current_folder.clone());
         if self.threaded {
@@ -230,6 +241,10 @@ impl App {
     }
 
     pub(crate) fn toggle_thread(&mut self) {
+        if self.triage_lane.is_some() {
+            self.set_status("Threading is available in server folders.");
+            return;
+        }
         self.threaded = !self.threaded;
         if !self.threaded {
             self.clear_collapsed_threads();

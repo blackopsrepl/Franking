@@ -11,12 +11,20 @@ impl Worker {
         let service = self.service.clone();
         thread::spawn(move || {
             let mut merged = Vec::new();
-            if let Ok(accounts) = service.list_accounts() {
-                for account in accounts {
-                    if let Ok(envelopes) =
-                        service.list_envelopes(Some(&account.name), &folder, 1, 200, None)
-                    {
-                        merged.extend(envelopes);
+            let accounts = match service.list_accounts() {
+                Ok(accounts) => accounts,
+                Err(error) => {
+                    let _ = tx.send(WorkerResult::Envelopes(Err(error)));
+                    return;
+                }
+            };
+            for account in accounts {
+                match service.list_envelopes(Some(&account.name), &folder, 1, 200, None) {
+                    Ok(envelopes) => merged.extend(envelopes),
+                    Err(mut error) => {
+                        error.detail = format!("{}: {}", account.name, error.detail);
+                        let _ = tx.send(WorkerResult::Envelopes(Err(error)));
+                        return;
                     }
                 }
             }

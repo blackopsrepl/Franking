@@ -16,5 +16,6 @@ mod saved_searches;
 mod settings;
 mod sieve;
 mod sieve_settings;
+mod triage;
 mod undo;
 mod unread;

@@ -41,6 +41,7 @@ mod sieve_actions;
 mod smime;
 mod sort_order;
 mod threads;
+mod triage;
 mod undo;
 mod unread;
 mod worker;

@@ -23,6 +23,7 @@ impl App {
     }
 
     pub(crate) fn submit_search(&mut self) {
+        self.triage_lane = None;
         let query = self.search_query.clone();
         self.active_query = if query.is_empty() { None } else { Some(query) };
         self.page = 1;

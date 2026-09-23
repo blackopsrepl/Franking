@@ -36,15 +36,15 @@ impl App {
             } else {
                 ComposeMode::Reply
             };
-            let mut cs = ComposeState::new(mode, self.acct_owned());
+            let mut cs = ComposeState::new(mode, self.selected_account());
             cs.reply_to_id = Some(id.clone());
             cs.reply_to_folder = Some(self.selected_folder());
             self.load_identities_into(&mut cs);
             self.compose_state = Some(cs);
             self.loading = true;
             self.worker.fetch_template_reply(
-                self.acct_owned(),
-                self.current_folder.clone(),
+                self.selected_account(),
+                self.selected_folder(),
                 id,
                 all,
             );
@@ -53,7 +53,7 @@ impl App {
 
     pub(crate) fn forward(&mut self) {
         if let Some(id) = self.selected_envelope_id().map(|s| s.to_string()) {
-            let mut cs = ComposeState::new(ComposeMode::Forward, self.acct_owned());
+            let mut cs = ComposeState::new(ComposeMode::Forward, self.selected_account());
             cs.reply_to_id = Some(id.clone());
             cs.reply_to_folder = Some(self.selected_folder());
             self.load_identities_into(&mut cs);
@@ -193,14 +193,14 @@ impl App {
         };
         let template = crate::compose::reassemble_template(cs);
         let options = self.send_options(cs);
+        let account = cs.account.clone();
         self.loading = true;
         self.remember_pending_send(
             template.clone(),
             (&options).into(),
             options.sent_folder.clone(),
         );
-        self.worker
-            .send_template(self.acct_owned(), template, options);
+        self.worker.send_template(account, template, options);
     }
 
     /// Build the protection options for the message being composed.
@@ -224,7 +224,8 @@ impl App {
             let template = crate::compose::reassemble_template(cs);
             let options = self.send_options(cs);
             self.loading = true;
-            self.worker.save_draft(self.acct_owned(), template, options);
+            self.worker
+                .save_draft(cs.account.clone(), template, options);
         }
     }
 

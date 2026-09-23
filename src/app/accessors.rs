@@ -14,6 +14,10 @@ use crate::worker::Worker;
 use super::model::{App, AUTO_REFRESH_TICKS};
 
 impl App {
+    pub fn is_unified_inbox(&self) -> bool {
+        self.current_folder == super::model::UNIFIED_INBOX
+    }
+
     /// Set a transient status message (non-error).
     pub fn set_status(&mut self, msg: &str) {
         self.status_message = msg.to_string();
@@ -130,6 +134,7 @@ impl App {
             folders: Vec::new(),
             folder_index: 0,
             current_folder: "INBOX".to_string(),
+            triage_lane: None,
             envelopes: Vec::new(),
             envelope_state: TableState::default(),
             page: 1,

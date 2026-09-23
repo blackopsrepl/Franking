@@ -43,6 +43,23 @@ Notifications should follow the attention policy, not every server INBOX event.
   appear complete. A cross-account lane needs explicit per-account loading
   errors and consistent paging before it can replace the existing inbox.
 
-The experiment starts with additive, reversible local state. Existing accounts,
+The workflow uses additive, reversible local state. Existing accounts,
 mailboxes, and cached messages must survive upgrades. Sender decisions can be
 revised without changing the server's message history.
+
+## Using mail triage
+
+In an account's INBOX or All Inboxes, `v` cycles through Screening, Inbox,
+Reading, Receipts, Blocked, then the unfiltered server inbox. `1` through `5`
+route the selected sender to Inbox, Reading, Receipts, Blocked, or Screening,
+respectively, from the list or message reader. Routing changes the local view
+for all currently fetched messages from that sender in the receiving account;
+it does not move mail on the server. The lane title says "recent 200/account"
+because the current fetch is bounded per account. Other server folders and
+search are available independently.
+
+## Further workflow work
+
+The response queue, saved shelf, message-specific override, complete paging,
+and attention-aware notifications described above are design targets. They do
+not yet have controls in the application.

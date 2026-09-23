@@ -129,6 +129,9 @@ impl App {
     }
 
     pub(crate) fn page_up(&mut self) {
+        if self.triage_lane.is_some() {
+            return;
+        }
         if self.view == View::EnvelopeList && self.page > 1 {
             self.page -= 1;
             self.load_envelopes();
@@ -136,6 +139,9 @@ impl App {
     }
 
     pub(crate) fn page_down(&mut self) {
+        if self.triage_lane.is_some() {
+            return;
+        }
         if self.view == View::EnvelopeList && self.envelopes.len() >= self.page_size {
             self.page += 1;
             self.load_envelopes();
@@ -147,6 +153,7 @@ impl App {
             View::FolderList => {
                 if let Some(folder) = self.folders.get(self.folder_index) {
                     self.current_folder = folder.name.clone();
+                    self.triage_lane = None;
                     self.page = 1;
                     self.active_query = None;
                     self.view = View::EnvelopeList;
@@ -157,6 +164,7 @@ impl App {
                 if let Some(account) = self.accounts.get(self.account_index) {
                     self.account_name = Some(account.name.clone());
                     self.current_folder = "INBOX".to_string();
+                    self.triage_lane = None;
                     self.page = 1;
                     self.active_query = None;
                     self.view = View::EnvelopeList;

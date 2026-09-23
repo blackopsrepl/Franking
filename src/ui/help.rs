@@ -78,6 +78,11 @@ pub fn render(app: &App, frame: &mut Frame) {
         binding("f", "Forward"),
         binding("d", "Delete"),
         binding("e", "Archive"),
+        binding("v", "Cycle inbox triage lanes (recent 200 per account)"),
+        binding(
+            "1/2/3/4/5",
+            "Route sender: Inbox/Reading/Receipts/Blocked/Screening",
+        ),
         binding("a", "Download attachments"),
         binding("P", "Unlock PGP with passphrase"),
         binding("T", "Trust the S/MIME signer certificate"),

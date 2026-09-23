@@ -49,6 +49,7 @@ impl App {
                 if self.account_name.as_deref() == Some(name.as_str()) {
                     self.account_name = None;
                     self.current_folder = "INBOX".to_string();
+                    self.triage_lane = None;
                 }
                 self.load_accounts();
                 self.set_status(&format!("Deleted account {name}."));

@@ -46,6 +46,8 @@ pub struct App {
     pub folders: Vec<Folder>,
     pub folder_index: usize,
     pub current_folder: String,
+    /// Optional local triage lane over the current account's INBOX.
+    pub(crate) triage_lane: Option<crate::db::sender_routes::Route>,
 
     // ── Envelope state ──────────────────────────────────────────────
     pub envelopes: Vec<Envelope>,

@@ -132,6 +132,13 @@ mod account_lifecycle {
         let conn = rusqlite::Connection::open_in_memory().unwrap();
         crate::db::init_for_test(&conn).unwrap();
         upsert_account(&conn, &second_account()).unwrap();
+        crate::db::sender_routes::set(
+            &conn,
+            "work",
+            "alice@example.org",
+            crate::db::sender_routes::Route::Blocked,
+        )
+        .unwrap();
         assert!(list_accounts(&conn)
             .unwrap()
             .iter()
@@ -149,6 +156,10 @@ mod account_lifecycle {
             })
             .unwrap();
         assert_eq!(endpoints, 1, "only the seeded account endpoint remains");
+        assert_eq!(
+            crate::db::sender_routes::get(&conn, "work", "alice@example.org").unwrap(),
+            crate::db::sender_routes::Route::Screening
+        );
     }
 
     #[test]

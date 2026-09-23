@@ -180,6 +180,28 @@ impl App {
     }
 
     pub(crate) fn handle_envelopes_loaded(&mut self, envelopes: Vec<Envelope>) {
+        let envelopes = if let Some(lane) = self.triage_lane {
+            let Some(conn) = self.db.as_ref() else {
+                self.loading = false;
+                self.set_error("Triage needs the local database.");
+                return;
+            };
+            let mut matching = Vec::new();
+            for envelope in envelopes {
+                match crate::db::sender_routes::for_envelope(conn, &envelope) {
+                    Ok(route) if route == lane => matching.push(envelope),
+                    Ok(_) => {}
+                    Err(error) => {
+                        self.loading = false;
+                        self.set_error(&format!("Triage error: {error}"));
+                        return;
+                    }
+                }
+            }
+            matching
+        } else {
+            envelopes
+        };
         // Detect new mail by comparing unseen counts
         let old_unseen: usize = self.envelopes.iter().filter(|e| !e.is_seen()).count();
         let new_unseen: usize = envelopes.iter().filter(|e| !e.is_seen()).count();

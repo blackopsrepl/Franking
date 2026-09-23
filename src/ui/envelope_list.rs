@@ -24,7 +24,9 @@ pub fn render(app: &mut App, frame: &mut Frame, area: Rect) {
     };
 
     let thread_indicator = if app.threaded { " \u{2637}" } else { "" }; // ☷ trigram
-    let title = if let Some(ref q) = app.active_query {
+    let title = if let Some(lane) = app.triage_lane {
+        format!(" {} · {lane:?} · recent 200/account ", app.current_folder)
+    } else if let Some(ref q) = app.active_query {
         format!(
             " {}{} \u{2014} search: {q} ",
             app.current_folder, thread_indicator
@@ -93,7 +95,16 @@ pub fn render(app: &mut App, frame: &mut Frame, area: Rect) {
                 " "
             };
             let flag_cell = Cell::from(format!("{marker} {}", env.flag_icon())).style(base_style);
-            let from_cell = Cell::from(truncate(&env.sender_display(), 24)).style(base_style);
+            let sender = if app.is_unified_inbox() {
+                format!(
+                    "{} · {}",
+                    env.account.as_deref().unwrap_or("?"),
+                    env.sender_display()
+                )
+            } else {
+                env.sender_display()
+            };
+            let from_cell = Cell::from(truncate(&sender, 24)).style(base_style);
             let depth = depths.get(index).copied().unwrap_or(0);
             let subject = if depth > 0 {
                 format!("{}\u{21b3} {}", "  ".repeat(depth), env.subject)

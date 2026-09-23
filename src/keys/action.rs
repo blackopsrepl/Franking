@@ -48,6 +48,8 @@ pub enum Action {
     Delete,
     ToggleFlag,
     ToggleRead,
+    CycleTriageLane,
+    RouteSender(crate::db::sender_routes::Route),
     SyncFolder,
     MarkFolderRead,
     DownloadAttachments,
@@ -81,7 +83,6 @@ pub enum Action {
     MovePrev,
     MoveSubmit,
     MoveCancel,
-    // ── Crypto unlock prompt ──────────────────────────────────────────
     UnlockPrompt,
     UnlockInput(char),
     UnlockBackspace,
@@ -232,7 +233,6 @@ pub enum Action {
     SieveNameSubmit,
     SieveNameCancel,
     SieveEditorKey(crossterm::event::KeyEvent),
-    // ── Attachment list ───────────────────────────────────────────────
     OpenAttachments,
     AttachmentNext,
     AttachmentPrev,
