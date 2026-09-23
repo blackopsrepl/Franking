@@ -116,10 +116,17 @@ focused queue, a thread board, or a shared project view.
 | Security of hosted accounts | Keyring auth, OAuth, PGP, S/MIME | Hosted login, MFA, and security-key promises are provider-specific |
 | Decorative cover for previously seen mail | A preference covers previously seen Inbox mail; `V` lifts it for the session | Presentation only; delivery and follow-up are unchanged |
 
-The largest gap is the lifecycle *after* screening: reply and reference queues,
-quiet threads, resurfacing, and work across multiple messages. Those need
-durable message/thread identifiers and a source-aware cross-account UI before
-the local route lanes can become the primary mail workflow. Provider-hosted
-sharing, large-file delivery, and multi-user collaboration are separate
-service products, not features a local IMAP client can reproduce by renaming
-folders.
+Every locally owned capability in this map is implemented: account-scoped
+screening and routing, message placement, follow-up queues, quiet and loud
+conversations, resurfacing, sender bundles, workflow stages, collections,
+locally merged conversations, text clips, private notes, display-only subject
+renames, snippets, read-together, the attachment library, bypass tokens, the
+previously-seen cover, bulk reply, and focus-and-reply.
+
+The remaining approximations are named in the rows above: conversation matching
+relies on Message-ID anchors, so a deep reply whose parent is not loaded may not
+match; saved references are not yet reconciled after a server-side move; and
+notes, clips, and bundles are scoped as described. Provider-hosted sharing,
+large-file delivery, hosted-account security, an away autoresponder, and
+multi-user collaboration are separate service products, not features a local
+IMAP client can reproduce.
