@@ -96,6 +96,10 @@ pub fn render(app: &mut App, frame: &mut Frame) {
         View::MessageView => {
             message_view::render(app, frame, outer[1]);
         }
+        // A status prompt opened from the reader keeps the message behind it.
+        view if view.overlays_message() && app.message_content.is_some() => {
+            message_view::render(app, frame, outer[1]);
+        }
         View::ReadTogether => {
             read_together::render(app, frame, outer[1]);
         }

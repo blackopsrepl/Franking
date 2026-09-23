@@ -92,3 +92,13 @@ pub enum View {
     /// Naming the active search before saving it.
     SaveSearch,
 }
+
+impl View {
+    /// A status-bar prompt that should leave the reader visible behind it.
+    pub fn overlays_message(self) -> bool {
+        matches!(
+            self,
+            View::MessageNote | View::SubjectAlias | View::ClipPrompt | View::PlacePrompt
+        )
+    }
+}

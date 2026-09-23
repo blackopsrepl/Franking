@@ -131,7 +131,9 @@ impl App {
         };
         match copy_to_clipboard(&clip.body) {
             Ok(()) => self.set_status("Clip copied to the clipboard."),
-            Err(error) => self.set_error(&format!("Could not copy the clip: {error}")),
+            Err(error) => self.set_error(&format!(
+                "Could not copy the clip (install wl-clipboard): {error}"
+            )),
         }
     }
 
