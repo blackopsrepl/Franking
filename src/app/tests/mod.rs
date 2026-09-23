@@ -5,6 +5,7 @@ mod annotations;
 mod archive;
 mod attachment_library;
 mod attachment_save;
+mod clips;
 mod compose;
 mod compose_escape;
 mod conversation;

@@ -96,7 +96,7 @@ focused queue, a thread board, or a shared project view.
 | Locally join conversations without changing recipients' threads | RFC threading and collapse, not manual merge | Explicit local mapping; preserve originals and outbound reply headers |
 | Read selected messages together in one scroll | `T` reads the selected messages, or the cursor row, as one numbered scroll | Loads each message on demand; there is no combined print or export yet |
 | Search and navigate attachments independently of messages | `Ctrl+l` opens a cross-account attachment library over cached mail; Enter opens the source message | Only messages whose raw bytes are cached contribute; inline images are hidden |
-| Save small excerpts for quick retrieval | Search and copy, not excerpt storage | Text clips keyed to source account and message; deleting a clip leaves mail alone |
+| Save small excerpts for quick retrieval | `*` in the reader clips an excerpt keyed to its source account and message; `Ctrl+k` lists clips and Enter copies one to the clipboard | Clips are text only and are captured from the reader, not by arbitrary selection |
 | Add private notes to a contact, message, or conversation | Contact notes exist; `i` writes a private note on a message, shown above its body | Notes are per message, not per conversation or with files |
 | Rename a subject for local display only | `%` sets a display alias for the conversation; the wire subject is unchanged | The alias is keyed by conversation anchor |
 | Insert reusable response text | `Ctrl+n` in compose opens a snippet picker; Enter inserts at the cursor, `s` saves the current body under a name | Snippets are global, not per account |

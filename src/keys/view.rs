@@ -38,6 +38,10 @@ pub enum View {
     Snippets,
     /// Naming a snippet before saving the current compose body.
     SnippetName,
+    /// Saved text clips.
+    Clips,
+    /// Capturing an excerpt from the open message.
+    ClipPrompt,
     Search,
     Help,
     MovePrompt,

@@ -21,7 +21,9 @@ use super::resolve_prompts::{
     resolve_help, resolve_link_list, resolve_message_search, resolve_move_prompt, resolve_place,
     resolve_resurface, resolve_search, resolve_unlock_prompt,
 };
-use super::resolve_prompts::{resolve_snippet_name, resolve_snippets};
+use super::resolve_prompts::{
+    resolve_clip_prompt, resolve_clips, resolve_snippet_name, resolve_snippets,
+};
 use super::resolve_saved::{resolve_save_search, resolve_saved_searches};
 use super::resolve_sieve::{resolve_sieve_edit, resolve_sieve_name, resolve_sieve_scripts};
 use super::view::View;
@@ -48,6 +50,8 @@ pub fn resolve(view: View, key: KeyEvent) -> Action {
         View::FocusReply => return resolve_focus(key),
         View::Snippets => return resolve_snippets(key),
         View::SnippetName => return resolve_snippet_name(key),
+        View::Clips => return resolve_clips(key),
+        View::ClipPrompt => return resolve_clip_prompt(key),
         View::MessageNote | View::SubjectAlias => return resolve_annotation(key),
         View::AttachmentView => return resolve_attachment_view(key),
         View::LinkList => return resolve_link_list(key),
@@ -75,6 +79,7 @@ pub fn resolve(view: View, key: KeyEvent) -> Action {
             KeyCode::Char('r') => Action::Refresh,
             KeyCode::Char('b') => Action::OpenContacts,
             KeyCode::Char('l') => Action::OpenAttachmentLibrary,
+            KeyCode::Char('k') => Action::OpenClips,
             _ => Action::None,
         };
     }
@@ -116,6 +121,8 @@ pub fn resolve(view: View, key: KeyEvent) -> Action {
         | View::FocusReply
         | View::Snippets
         | View::SnippetName
+        | View::Clips
+        | View::ClipPrompt
         | View::AttachmentView
         | View::Keys
         | View::KeysPrompt

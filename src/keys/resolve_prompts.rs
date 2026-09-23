@@ -190,3 +190,24 @@ pub(super) fn resolve_snippet_name(key: KeyEvent) -> Action {
         _ => Action::None,
     }
 }
+
+pub(super) fn resolve_clips(key: KeyEvent) -> Action {
+    match key.code {
+        KeyCode::Char('j') | KeyCode::Down => Action::ClipsNext,
+        KeyCode::Char('k') | KeyCode::Up => Action::ClipsPrev,
+        KeyCode::Enter | KeyCode::Char('y') => Action::ClipCopy,
+        KeyCode::Char('d') => Action::ClipDelete,
+        KeyCode::Esc | KeyCode::Char('q') => Action::ClipsClose,
+        _ => Action::None,
+    }
+}
+
+pub(super) fn resolve_clip_prompt(key: KeyEvent) -> Action {
+    match key.code {
+        KeyCode::Enter => Action::ClipSubmit,
+        KeyCode::Esc => Action::ClipCancel,
+        KeyCode::Backspace => Action::ClipBackspace,
+        KeyCode::Char(c) => Action::ClipInput(c),
+        _ => Action::None,
+    }
+}

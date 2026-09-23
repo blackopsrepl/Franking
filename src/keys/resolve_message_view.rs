@@ -39,6 +39,7 @@ pub(super) fn resolve_message_view(key: KeyEvent) -> Action {
         KeyCode::Char('H') => Action::ToggleHtmlSource,
         KeyCode::Char('c') => Action::AddToPlanner,
         KeyCode::Char('s') => Action::SaveMessage,
+        KeyCode::Char('*') => Action::OpenClipPrompt,
         KeyCode::Char('z') => Action::Undo,
         KeyCode::Char('e') => Action::Archive,
         KeyCode::Char('C') => Action::CopyMessage,

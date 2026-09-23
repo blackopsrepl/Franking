@@ -29,7 +29,10 @@ impl App {
         } else {
             keys::resolve(self.view, key)
         };
-        if self.try_local_action(&action) || self.try_snippet_action(&action) {
+        if self.try_local_action(&action)
+            || self.try_snippet_action(&action)
+            || self.try_clip_action(&action)
+        {
             return;
         }
         match action {

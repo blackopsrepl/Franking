@@ -8,6 +8,7 @@ mod archive;
 mod attachment_library;
 mod attachments;
 mod autosave;
+mod clips;
 mod compose;
 mod compose_actions;
 mod compose_attachments;

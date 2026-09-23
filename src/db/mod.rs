@@ -1,6 +1,7 @@
 /*! Database module wiring. */
 
 mod connection;
+mod migration_v10_v11;
 mod migration_v1_v2;
 mod migration_v2_v3;
 mod migration_v4_v5;
@@ -13,6 +14,7 @@ mod schema;
 
 pub mod account_policy;
 pub mod annotations;
+pub mod clips;
 pub mod conversations;
 pub mod message_markers;
 pub mod message_routes;

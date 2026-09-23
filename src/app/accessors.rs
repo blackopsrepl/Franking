@@ -159,6 +159,7 @@ impl App {
             cover_revealed: false,
             covered_count: 0,
             snippets: Default::default(),
+            clips: Default::default(),
             focus: None,
             focus_reply_in_flight: false,
             envelopes: Vec::new(),

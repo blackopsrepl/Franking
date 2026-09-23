@@ -76,6 +76,8 @@ pub struct App {
 
     /// Reusable compose snippets.
     pub(crate) snippets: super::snippets::SnippetsState,
+    /// Saved text clips.
+    pub(crate) clips: super::clips::ClipsState,
 
     /// Sequential reply queue over Reply later.
     pub(crate) focus: Option<super::focus::FocusState>,

@@ -240,6 +240,16 @@ pub(super) fn create_schema(conn: &Connection) -> Result<()> {
               updated_at TEXT NOT NULL DEFAULT (datetime('now')),
               PRIMARY KEY (account, folder, uid)
          );
+         CREATE TABLE clips (
+              id         INTEGER PRIMARY KEY AUTOINCREMENT,
+              account    TEXT,
+              folder     TEXT,
+              uid        TEXT NOT NULL,
+              message_id TEXT,
+              body       TEXT NOT NULL,
+              source     TEXT NOT NULL DEFAULT '',
+              created_at TEXT NOT NULL DEFAULT (datetime('now'))
+         );
          CREATE TABLE snippets (
               name       TEXT PRIMARY KEY,
               body       TEXT NOT NULL,

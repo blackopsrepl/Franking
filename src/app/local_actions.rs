@@ -72,3 +72,24 @@ impl App {
         true
     }
 }
+
+impl App {
+    /// Handle a clip action. Returns false when it is not one.
+    pub(crate) fn try_clip_action(&mut self, action: &Action) -> bool {
+        match action {
+            Action::OpenClips => self.open_clips(),
+            Action::ClipsNext => self.clips_next(),
+            Action::ClipsPrev => self.clips_prev(),
+            Action::ClipCopy => self.copy_clip(),
+            Action::ClipDelete => self.delete_clip(),
+            Action::ClipsClose => self.close_clips(),
+            Action::OpenClipPrompt => self.open_clip_prompt(),
+            Action::ClipInput(c) => self.clip_input(*c),
+            Action::ClipBackspace => self.clip_backspace(),
+            Action::ClipSubmit => self.submit_clip(),
+            Action::ClipCancel => self.cancel_clip(),
+            _ => return false,
+        }
+        true
+    }
+}

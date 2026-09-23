@@ -150,6 +150,7 @@ pub fn render(app: &mut App, frame: &mut Frame) {
         binding("l", "Open the link list"),
         binding("n / p", "Next / previous match"),
         binding("s", "Save the message as .eml"),
+        binding("\u{002a}", "Clip an excerpt from this message"),
         binding("q / Esc", "Back to list"),
         Line::from(""),
         Line::from(Span::styled(
@@ -202,6 +203,8 @@ pub fn render(app: &mut App, frame: &mut Frame) {
         )),
         binding("Ctrl+b", "Open address book"),
         binding("Ctrl+l", "Open the cross-account attachment library"),
+        binding("Ctrl+k", "Open saved text clips"),
+        binding("Ctrl+n (compose)", "Insert a reusable snippet"),
         binding("j / k", "Navigate contacts"),
         binding("n", "New contact"),
         binding("e", "Edit selected contact"),
