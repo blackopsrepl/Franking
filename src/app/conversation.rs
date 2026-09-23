@@ -102,6 +102,16 @@ impl App {
             self.envelopes.retain(|envelope| !envelope.is_seen());
             self.covered_count = before - self.envelopes.len();
         }
+        // Collapse bundled senders after every other ordering decision.
+        let accounts: Vec<String> = self
+            .envelopes
+            .iter()
+            .filter_map(|envelope| envelope.account.clone())
+            .collect::<std::collections::HashSet<_>>()
+            .into_iter()
+            .collect();
+        self.load_bundled_senders(&accounts);
+        self.apply_bundles();
     }
 
     /// Mute or unmute the selected conversation.

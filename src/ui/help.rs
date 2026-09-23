@@ -76,6 +76,7 @@ pub fn render(app: &mut App, frame: &mut Frame) {
         binding("y / Y", "Mark reply later / save for reference"),
         binding("M", "Quiet or unquiet the selected conversation"),
         binding("+", "Always notify for the selected conversation"),
+        binding("B", "Bundle the sender into one row, expand, then unbundle"),
         binding(
             "b",
             "Resurface the conversation after a delay (blank clears)",
@@ -126,6 +127,7 @@ pub fn render(app: &mut App, frame: &mut Frame) {
         binding("y/Y", "Toggle reply later / saved on the selected message"),
         binding("M", "Quiet or unquiet the selected conversation"),
         binding("+", "Always notify for the selected conversation"),
+        binding("B", "Bundle the sender into one row, expand, then unbundle"),
         binding(
             "b",
             "Resurface the conversation after a delay (blank clears)",

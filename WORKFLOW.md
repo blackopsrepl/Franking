@@ -90,7 +90,7 @@ focused queue, a thread board, or a shared project view.
 | Keep a reference handy without owing a reply | Local Saved queue, independent of read and reply state | Reconcile moved messages whose server UID changes |
 | Resurface mail on a chosen date | `b` sets a resurface delay per conversation; due conversations float to the top of the list | The reminder lives only while mail is listed; a scheduled background sweep is not required for it to apply |
 | Suppress future updates to a conversation while retaining its history | `M` quiets a conversation; direct replies no longer notify or outrank read mail | Matching uses Message-ID and In-Reply-To anchors, so a deep reply whose immediate parent is not loaded may not match |
-| Collapse a high-volume sender into one row | Thread collapse only | Sender-scoped bundle across unrelated messages, not conversation threading |
+| Collapse a high-volume sender into one row | `B` cycles a sender through One row, expanded, and not bundled; the collapsed row shows the count | Bundling is keyed by account and sender mailbox |
 | Track a conversation through custom stages | Not available | Account-scoped stage board; thread and its later replies travel together |
 | Keep related threads together without merging them | Search and contact tags, not project collections | Named collection of distinct thread references; separate from folders and saved searches |
 | Locally join conversations without changing recipients' threads | RFC threading and collapse, not manual merge | Explicit local mapping; preserve originals and outbound reply headers |

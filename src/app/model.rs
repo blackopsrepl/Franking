@@ -80,6 +80,13 @@ pub struct App {
     /// Saved text clips.
     pub(crate) clips: super::clips::ClipsState,
 
+    /// Bundled senders for the loaded accounts, keyed by (account, sender).
+    pub(crate) bundled_senders: super::bundle_view::BundleKeys,
+    /// Bundles expanded for this session.
+    pub(crate) expanded_bundles: super::bundle_view::BundleKeys,
+    /// Collapsed bundle representative count, keyed by envelope id.
+    pub(crate) bundled_reps: std::collections::HashMap<String, usize>,
+
     /// Sequential reply queue over Reply later.
     pub(crate) focus: Option<super::focus::FocusState>,
     /// Whether the in-flight reply came from the focus queue.

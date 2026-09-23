@@ -23,6 +23,7 @@ pub enum Action {
     ToggleMarker(crate::db::message_markers::Marker),
     ToggleMuteConversation,
     ToggleLoudConversation,
+    CycleBundle,
     OpenResurface,
     ResurfaceInput(char),
     ResurfaceBackspace,

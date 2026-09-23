@@ -14,6 +14,7 @@ impl App {
             Action::ToggleMarker(marker) => self.toggle_marker(*marker),
             Action::ToggleMuteConversation => self.toggle_mute_conversation(),
             Action::ToggleLoudConversation => self.toggle_loud_conversation(),
+            Action::CycleBundle => self.cycle_bundle(),
             Action::OpenResurface => self.open_resurface_prompt(),
             Action::ResurfaceInput(c) => self.resurface_input(*c),
             Action::ResurfaceBackspace => self.resurface_backspace(),

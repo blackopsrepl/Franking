@@ -153,7 +153,10 @@ pub fn render(app: &mut App, frame: &mut Frame, area: Rect) {
                 },
                 None => subject,
             };
-            let subject = if resurfaced {
+            let bundle_count = app.bundled_reps.get(&env.id).copied().unwrap_or(0);
+            let subject = if bundle_count > 1 {
+                format!("\u{2261} {bundle_count} \u{00b7} {subject}")
+            } else if resurfaced {
                 format!("\u{25F7} resurfaced · {subject}")
             } else if loud {
                 format!("loud · {subject}")

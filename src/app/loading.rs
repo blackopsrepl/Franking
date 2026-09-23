@@ -1,5 +1,4 @@
 /*! Folder, envelope, and message loading plus item actions. */
-
 use crate::keys::View;
 use crate::mail::types::FolderRole;
 
@@ -84,6 +83,9 @@ impl App {
     }
 
     pub(crate) fn load_message(&mut self) {
+        if self.expand_bundle_at_cursor() {
+            return;
+        }
         if let Some(id) = self.selected_envelope_id().map(|s| s.to_string()) {
             self.loading = true;
             if self.current_folder_is_drafts() {
@@ -121,8 +123,6 @@ impl App {
             .iter()
             .any(|folder| folder.name == self.current_folder && folder.role == FolderRole::Drafts)
     }
-
-    // ── Mouse handling ───────────────────────────────────────────────
 
     pub(crate) fn delete(&mut self) {
         if !self.can_mutate_selected_mailbox() {

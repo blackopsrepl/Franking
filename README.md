@@ -87,6 +87,7 @@ cargo run -- --setup
 - **Snippets** - `Ctrl+n` in compose inserts reusable text; `s` saves the current body as a snippet
 - **Text clips** - `*` in the reader saves an excerpt; `Ctrl+k` lists clips, Enter copies one to the clipboard
 - **Quiet or loud threads** - `M` quiets a conversation, `+` makes it always notify; both key on the conversation's message anchors
+- **Sender bundles** - `B` collapses a high-volume sender to one counted row, expands it, or unbundles it
 - **Fast keyboard navigation** - j/k and g/G in list/message views, plus direct multiline editing in compose
 - **Smart error handling** - Typed mail diagnostics and clean user-facing errors
 - **Structured message reader** - MIME-aware message content with one canonical HTML-first render path

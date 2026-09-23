@@ -241,6 +241,11 @@ pub(super) fn create_schema(conn: &Connection) -> Result<()> {
               updated_at TEXT NOT NULL DEFAULT (datetime('now')),
               PRIMARY KEY (account, folder, uid)
          );
+         CREATE TABLE bundles (
+              account TEXT NOT NULL,
+              sender  TEXT NOT NULL,
+              PRIMARY KEY (account, sender)
+         );
          CREATE TABLE clips (
               id         INTEGER PRIMARY KEY AUTOINCREMENT,
               account    TEXT,
