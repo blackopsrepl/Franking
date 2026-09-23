@@ -6,6 +6,7 @@ mod attachment_library;
 mod attachment_list;
 mod bypass_prompt;
 mod clips;
+mod collections;
 mod compose;
 mod contact_edit;
 mod contacts;
@@ -121,6 +122,7 @@ pub fn render(app: &mut App, frame: &mut Frame) {
         View::SnippetName => snippets::render_name_prompt(app, frame, outer[2]),
         View::ClipPrompt => clips::render_prompt(app, frame, outer[2]),
         View::StageName => stages::render_name_prompt(app, frame, outer[2]),
+        View::CollectionName => collections::render_name_prompt(app, frame, outer[2]),
         View::PlacePrompt => place_prompt::render(app, frame, outer[2]),
         View::MessageNote | View::SubjectAlias => annotation_prompt::render(app, frame, outer[2]),
         View::MessageSearch => message_view::render_search_prompt(app, frame, outer[2]),
@@ -151,6 +153,9 @@ pub fn render(app: &mut App, frame: &mut Frame) {
     }
     if app.view == View::StageBoard {
         stages::render(app, frame);
+    }
+    if app.view == View::CollectionBoard {
+        collections::render(app, frame);
     }
     if app.view == View::LinkList {
         links::render(app, frame);

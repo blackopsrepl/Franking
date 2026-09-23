@@ -28,6 +28,8 @@ pub fn render(app: &mut App, frame: &mut Frame, area: Rect) {
         format!(" {} · {} ", app.current_folder, marker.label())
     } else if let Some(filter) = app.stage_filter.as_ref() {
         format!(" {} \u{00b7} stage: {filter} ", app.current_folder)
+    } else if let Some(filter) = app.collection_filter.as_ref() {
+        format!(" {} \u{00b7} collection: {filter} ", app.current_folder)
     } else if let Some(lane) = app.triage_lane {
         let cover = if app.covered_count > 0 {
             format!(" · {} covered (V)", app.covered_count)

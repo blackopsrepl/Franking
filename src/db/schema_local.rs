@@ -78,6 +78,18 @@ pub(super) fn create_local_schema(conn: &Connection) -> Result<()> {
               sender  TEXT NOT NULL,
               PRIMARY KEY (account, sender)
          );
+         CREATE TABLE collections (
+              id      INTEGER PRIMARY KEY AUTOINCREMENT,
+              account TEXT    NOT NULL,
+              name    TEXT    NOT NULL,
+              UNIQUE(account, name)
+         );
+         CREATE TABLE collection_items (
+              account       TEXT    NOT NULL,
+              collection_id INTEGER NOT NULL REFERENCES collections(id) ON DELETE CASCADE,
+              anchor        TEXT    NOT NULL,
+              PRIMARY KEY (account, collection_id, anchor)
+         );
          CREATE TABLE clips (
               id         INTEGER PRIMARY KEY AUTOINCREMENT,
               account    TEXT,

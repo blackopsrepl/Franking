@@ -11,6 +11,7 @@ mod autosave;
 mod bulk_reply;
 mod bundle_view;
 mod clips;
+mod collections;
 mod compose;
 mod compose_actions;
 mod compose_attachments;

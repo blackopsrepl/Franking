@@ -236,3 +236,27 @@ pub(super) fn resolve_stage_name(key: KeyEvent) -> Action {
         _ => Action::None,
     }
 }
+
+pub(super) fn resolve_collections(key: KeyEvent) -> Action {
+    match key.code {
+        KeyCode::Char('j') | KeyCode::Down => Action::CollectionsNext,
+        KeyCode::Char('k') | KeyCode::Up => Action::CollectionsPrev,
+        KeyCode::Enter => Action::CollectionsToggle,
+        KeyCode::Char('f') => Action::CollectionsFilter,
+        KeyCode::Char('n') => Action::CollectionsNew,
+        KeyCode::Char('r') => Action::CollectionsRename,
+        KeyCode::Char('d') => Action::CollectionsDelete,
+        KeyCode::Esc | KeyCode::Char('q') => Action::CollectionsClose,
+        _ => Action::None,
+    }
+}
+
+pub(super) fn resolve_collection_name(key: KeyEvent) -> Action {
+    match key.code {
+        KeyCode::Enter => Action::CollectionNameSubmit,
+        KeyCode::Esc => Action::CollectionNameCancel,
+        KeyCode::Backspace => Action::CollectionNameBackspace,
+        KeyCode::Char(c) => Action::CollectionNameInput(c),
+        _ => Action::None,
+    }
+}

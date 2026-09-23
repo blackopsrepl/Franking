@@ -46,6 +46,10 @@ pub enum View {
     StageBoard,
     /// Naming a workflow stage.
     StageName,
+    /// Named collections board.
+    CollectionBoard,
+    /// Naming a collection.
+    CollectionName,
     Search,
     Help,
     MovePrompt,

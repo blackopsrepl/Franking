@@ -120,3 +120,26 @@ impl App {
         true
     }
 }
+
+impl App {
+    /// Handle a collection action. Returns false when it is not one.
+    pub(crate) fn try_collection_action(&mut self, action: &Action) -> bool {
+        match action {
+            Action::OpenCollections => self.open_collections(),
+            Action::CollectionsNext => self.collections_next(),
+            Action::CollectionsPrev => self.collections_prev(),
+            Action::CollectionsToggle => self.collections_toggle(),
+            Action::CollectionsFilter => self.collections_filter(),
+            Action::CollectionsNew => self.collections_begin_new(),
+            Action::CollectionsRename => self.collections_begin_rename(),
+            Action::CollectionsDelete => self.collections_delete(),
+            Action::CollectionsClose => self.close_collections(),
+            Action::CollectionNameInput(c) => self.collection_name_input(*c),
+            Action::CollectionNameBackspace => self.collection_name_backspace(),
+            Action::CollectionNameSubmit => self.submit_collection_name(),
+            Action::CollectionNameCancel => self.cancel_collection_name(),
+            _ => return false,
+        }
+        true
+    }
+}

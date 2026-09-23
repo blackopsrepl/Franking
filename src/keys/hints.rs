@@ -132,6 +132,14 @@ pub fn hints(view: View) -> &'static [(&'static str, &'static str)] {
             ("Esc", "close"),
         ],
         View::ClipPrompt => &[("Enter", "save"), ("Esc", "cancel")],
+        View::CollectionBoard => &[
+            ("j/k", "nav"),
+            ("Enter", "add/remove"),
+            ("f", "filter"),
+            ("n", "new"),
+            ("Esc", "close"),
+        ],
+        View::CollectionName => &[("Enter", "save"), ("Esc", "cancel")],
         View::StageBoard => &[
             ("j/k", "nav"),
             ("Enter", "assign"),

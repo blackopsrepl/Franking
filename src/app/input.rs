@@ -33,6 +33,7 @@ impl App {
             || self.try_snippet_action(&action)
             || self.try_clip_action(&action)
             || self.try_stage_action(&action)
+            || self.try_collection_action(&action)
         {
             return;
         }

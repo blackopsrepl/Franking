@@ -8,6 +8,7 @@ mod attachment_save;
 mod bulk_reply;
 mod bundles;
 mod clips;
+mod collections;
 mod compose;
 mod compose_escape;
 mod conversation;

@@ -104,6 +104,7 @@ impl App {
             self.covered_count = before - self.envelopes.len();
         }
         self.load_stages_and_filter(&anchors_by_row);
+        self.load_collections_and_filter(&anchors_by_row);
         // Collapse bundled senders after every other ordering decision.
         let accounts: Vec<String> = self
             .envelopes

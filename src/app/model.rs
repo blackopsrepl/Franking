@@ -87,6 +87,12 @@ pub struct App {
     pub(crate) stage_of_anchor: HashMap<String, String>,
     /// Active stage filter by name.
     pub(crate) stage_filter: Option<String>,
+    /// Named collections and the board state.
+    pub(crate) collections: super::collections::CollectionsState,
+    /// Collections each loaded conversation anchor belongs to.
+    pub(crate) collection_of_anchor: HashMap<String, Vec<String>>,
+    /// Active collection filter by name.
+    pub(crate) collection_filter: Option<String>,
 
     /// Bundled senders for the loaded accounts, keyed by (account, sender).
     pub(crate) bundled_senders: super::bundle_view::BundleKeys,

@@ -1,5 +1,4 @@
 /*! App state accessors and message rendering helpers. */
-
 use crate::mail::types::Envelope;
 
 use std::collections::HashMap;
@@ -165,6 +164,9 @@ impl App {
             stages: Default::default(),
             stage_of_anchor: HashMap::new(),
             stage_filter: None,
+            collections: Default::default(),
+            collection_of_anchor: HashMap::new(),
+            collection_filter: None,
             bundled_senders: Default::default(),
             expanded_bundles: Default::default(),
             bundled_reps: Default::default(),
