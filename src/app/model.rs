@@ -233,4 +233,7 @@ pub struct App {
 
     /// Queued messages and send state.
     pub(crate) outbox: super::outbox::OutboxState,
+
+    /// Cross-account attachment library.
+    pub(crate) attachment_library: super::attachment_library::AttachmentLibraryState,
 }

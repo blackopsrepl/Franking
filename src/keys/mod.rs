@@ -9,6 +9,7 @@ mod resolve_compose;
 mod resolve_contacts;
 mod resolve_keys;
 mod resolve_message_view;
+mod resolve_prompts;
 mod resolve_saved;
 mod resolve_sieve;
 mod view;

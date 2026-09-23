@@ -13,6 +13,11 @@ use super::resolve_contacts::{
 };
 use super::resolve_keys::{resolve_keys, resolve_keys_prompt};
 use super::resolve_message_view::resolve_message_view;
+use super::resolve_prompts::{
+    resolve_annotation, resolve_attachment_library, resolve_attachment_list, resolve_folder_prompt,
+    resolve_help, resolve_link_list, resolve_message_search, resolve_move_prompt, resolve_place,
+    resolve_resurface, resolve_search, resolve_unlock_prompt,
+};
 use super::resolve_saved::{resolve_save_search, resolve_saved_searches};
 use super::resolve_sieve::{resolve_sieve_edit, resolve_sieve_name, resolve_sieve_scripts};
 use super::view::View;
@@ -33,6 +38,7 @@ pub fn resolve(view: View, key: KeyEvent) -> Action {
         View::SchedulePrompt => return resolve_schedule(key),
         View::ResurfacePrompt => return resolve_resurface(key),
         View::PlacePrompt => return resolve_place(key),
+        View::AttachmentLibrary => return resolve_attachment_library(key),
         View::MessageNote | View::SubjectAlias => return resolve_annotation(key),
         View::AttachmentView => return resolve_attachment_view(key),
         View::LinkList => return resolve_link_list(key),
@@ -59,6 +65,7 @@ pub fn resolve(view: View, key: KeyEvent) -> Action {
             KeyCode::Char('a') => Action::SwitchAccount,
             KeyCode::Char('r') => Action::Refresh,
             KeyCode::Char('b') => Action::OpenContacts,
+            KeyCode::Char('l') => Action::OpenAttachmentLibrary,
             _ => Action::None,
         };
     }
@@ -94,6 +101,7 @@ pub fn resolve(view: View, key: KeyEvent) -> Action {
         | View::PlacePrompt
         | View::MessageNote
         | View::SubjectAlias
+        | View::AttachmentLibrary
         | View::AttachmentView
         | View::Keys
         | View::KeysPrompt
@@ -173,125 +181,6 @@ fn resolve_folder_list(key: KeyEvent) -> Action {
         KeyCode::Char('d') => Action::FolderDelete,
         KeyCode::Char('F') => Action::OpenSieve,
         KeyCode::Char('s') => Action::FolderSubscribe,
-        _ => Action::None,
-    }
-}
-
-fn resolve_search(key: KeyEvent) -> Action {
-    match key.code {
-        KeyCode::Enter => Action::SearchSubmit,
-        KeyCode::Tab => Action::ToggleSearchScope,
-        KeyCode::Esc => Action::SearchCancel,
-        KeyCode::Backspace => Action::SearchBackspace,
-        KeyCode::Char(c) => Action::SearchInput(c),
-        _ => Action::None,
-    }
-}
-
-fn resolve_help(key: KeyEvent) -> Action {
-    match key.code {
-        KeyCode::Esc | KeyCode::Char('q') | KeyCode::Char('?') => Action::ToggleHelp,
-        KeyCode::Char('j') | KeyCode::Down => Action::ScrollDown,
-        KeyCode::Char('k') | KeyCode::Up => Action::ScrollUp,
-        KeyCode::Char('g') => Action::JumpTop,
-        KeyCode::Char('G') => Action::JumpBottom,
-        _ => Action::None,
-    }
-}
-
-fn resolve_link_list(key: KeyEvent) -> Action {
-    match key.code {
-        KeyCode::Char('j') | KeyCode::Down => Action::LinkNext,
-        KeyCode::Char('k') | KeyCode::Up => Action::LinkPrev,
-        KeyCode::Enter | KeyCode::Char('o') => Action::LinkOpen,
-        KeyCode::Esc | KeyCode::Char('q') => Action::LinkClose,
-        _ => Action::None,
-    }
-}
-
-fn resolve_message_search(key: KeyEvent) -> Action {
-    match key.code {
-        KeyCode::Enter => Action::MessageSearchSubmit,
-        KeyCode::Esc => Action::MessageSearchCancel,
-        KeyCode::Backspace => Action::MessageSearchBackspace,
-        KeyCode::Char(c) => Action::MessageSearchInput(c),
-        _ => Action::None,
-    }
-}
-
-fn resolve_folder_prompt(key: KeyEvent) -> Action {
-    match key.code {
-        KeyCode::Enter => Action::FolderPromptSubmit,
-        KeyCode::Esc => Action::FolderPromptCancel,
-        KeyCode::Backspace => Action::FolderPromptBackspace,
-        KeyCode::Char(c) => Action::FolderPromptInput(c),
-        _ => Action::None,
-    }
-}
-
-fn resolve_attachment_list(key: KeyEvent) -> Action {
-    match key.code {
-        KeyCode::Char('j') | KeyCode::Down => Action::AttachmentNext,
-        KeyCode::Char('k') | KeyCode::Up => Action::AttachmentPrev,
-        KeyCode::Enter | KeyCode::Char('o') => Action::AttachmentOpen,
-        KeyCode::Char('v') => Action::AttachmentView,
-        KeyCode::Char('s') => Action::AttachmentSave,
-        KeyCode::Char('S') => Action::AttachmentSaveAs,
-        KeyCode::Esc | KeyCode::Char('q') => Action::AttachmentClose,
-        _ => Action::None,
-    }
-}
-
-fn resolve_unlock_prompt(key: KeyEvent) -> Action {
-    match key.code {
-        KeyCode::Enter => Action::UnlockSubmit,
-        KeyCode::Esc => Action::UnlockCancel,
-        KeyCode::Backspace => Action::UnlockBackspace,
-        KeyCode::Char(c) => Action::UnlockInput(c),
-        _ => Action::None,
-    }
-}
-
-fn resolve_move_prompt(key: KeyEvent) -> Action {
-    match key.code {
-        KeyCode::Enter => Action::MoveSubmit,
-        KeyCode::Esc => Action::MoveCancel,
-        KeyCode::Backspace => Action::MoveBackspace,
-        KeyCode::Char('j') | KeyCode::Down => Action::MoveNext,
-        KeyCode::Char('k') | KeyCode::Up => Action::MovePrev,
-        KeyCode::Char(c) => Action::MoveInput(c),
-        _ => Action::None,
-    }
-}
-
-fn resolve_resurface(key: KeyEvent) -> Action {
-    match key.code {
-        KeyCode::Enter => Action::ResurfaceSubmit,
-        KeyCode::Esc => Action::ResurfaceCancel,
-        KeyCode::Backspace => Action::ResurfaceBackspace,
-        KeyCode::Char(c) => Action::ResurfaceInput(c),
-        _ => Action::None,
-    }
-}
-
-fn resolve_annotation(key: KeyEvent) -> Action {
-    match key.code {
-        KeyCode::Enter => Action::AnnotationSubmit,
-        KeyCode::Esc => Action::AnnotationCancel,
-        KeyCode::Backspace => Action::AnnotationBackspace,
-        KeyCode::Char(c) => Action::AnnotationInput(c),
-        _ => Action::None,
-    }
-}
-
-fn resolve_place(key: KeyEvent) -> Action {
-    match key.code {
-        KeyCode::Char('1') => Action::RouteMessage(crate::db::sender_routes::Route::Inbox),
-        KeyCode::Char('2') => Action::RouteMessage(crate::db::sender_routes::Route::Reading),
-        KeyCode::Char('3') => Action::RouteMessage(crate::db::sender_routes::Route::Receipts),
-        KeyCode::Char('4') => Action::RouteMessage(crate::db::sender_routes::Route::Blocked),
-        KeyCode::Char('5') => Action::RouteMessage(crate::db::sender_routes::Route::Screening),
-        KeyCode::Esc | KeyCode::Char('q') => Action::PlaceCancel,
         _ => Action::None,
     }
 }

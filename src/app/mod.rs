@@ -5,6 +5,7 @@ mod account_form;
 mod accounts;
 mod annotations;
 mod archive;
+mod attachment_library;
 mod attachments;
 mod autosave;
 mod compose;

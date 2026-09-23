@@ -3,6 +3,7 @@
 mod accounts;
 mod annotations;
 mod archive;
+mod attachment_library;
 mod attachment_save;
 mod compose;
 mod compose_escape;

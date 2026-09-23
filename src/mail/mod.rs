@@ -1,4 +1,5 @@
 pub mod account_store;
+pub mod attachment_index;
 pub mod attachments;
 pub mod autoconfig;
 pub mod calendar;

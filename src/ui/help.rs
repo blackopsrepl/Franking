@@ -192,6 +192,7 @@ pub fn render(app: &mut App, frame: &mut Frame) {
                 .add_modifier(Modifier::BOLD | Modifier::UNDERLINED),
         )),
         binding("Ctrl+b", "Open address book"),
+        binding("Ctrl+l", "Open the cross-account attachment library"),
         binding("j / k", "Navigate contacts"),
         binding("n", "New contact"),
         binding("e", "Edit selected contact"),

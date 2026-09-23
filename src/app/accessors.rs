@@ -233,6 +233,7 @@ impl App {
             account_edit_state: None,
             file_picker: None,
             outbox: Default::default(),
+            attachment_library: Default::default(),
             identity_edit_state: None,
         }
     }

@@ -80,6 +80,7 @@ cargo run -- --setup
 - **Follow-up queues** - `y` marks a message Reply later, `Y` saves it for reference; `L`/`D` open the respective account-scoped queues, including from All Inboxes
 - **Quiet conversations and resurfacing** - `M` quiets (or restores) a conversation so new replies stop demanding attention; `b` sets a delay (30m, 2h, 1d) after which the conversation floats back to the top of the list
 - **Local annotations** - `i` writes a private note shown above the message; `%` renames a subject for your eyes only, and `x` places a single message in another lane
+- **Attachment library** - `Ctrl+l` lists attachments from cached mail across accounts; Enter opens the source message
 - **Fast keyboard navigation** - j/k and g/G in list/message views, plus direct multiline editing in compose
 - **Smart error handling** - Typed mail diagnostics and clean user-facing errors
 - **Structured message reader** - MIME-aware message content with one canonical HTML-first render path

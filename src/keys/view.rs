@@ -26,6 +26,8 @@ pub enum View {
     MessageNote,
     /// Prompt to rename the selected conversation's subject locally.
     SubjectAlias,
+    /// Cross-account attachment library.
+    AttachmentLibrary,
     Search,
     Help,
     MovePrompt,

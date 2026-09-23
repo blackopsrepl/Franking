@@ -95,7 +95,7 @@ focused queue, a thread board, or a shared project view.
 | Keep related threads together without merging them | Search and contact tags, not project collections | Named collection of distinct thread references; separate from folders and saved searches |
 | Locally join conversations without changing recipients' threads | RFC threading and collapse, not manual merge | Explicit local mapping; preserve originals and outbound reply headers |
 | Read selected messages together in one scroll | Multiselect supports batch operations | Combined reader that keeps each message's account identity |
-| Search and navigate attachments independently of messages | Attachments can be opened/saved from a message | Cross-account attachment index with account, type, sender, and source-thread filters |
+| Search and navigate attachments independently of messages | `Ctrl+l` opens a cross-account attachment library over cached mail; Enter opens the source message | Only messages whose raw bytes are cached contribute; inline images are hidden |
 | Save small excerpts for quick retrieval | Search and copy, not excerpt storage | Text clips keyed to source account and message; deleting a clip leaves mail alone |
 | Add private notes to a contact, message, or conversation | Contact notes exist; `i` writes a private note on a message, shown above its body | Notes are per message, not per conversation or with files |
 | Rename a subject for local display only | `%` sets a display alias for the conversation; the wire subject is unchanged | The alias is keyed by conversation anchor |

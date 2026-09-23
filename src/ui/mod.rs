@@ -2,6 +2,7 @@ mod account_edit;
 mod account_list;
 pub mod action_bar;
 mod annotation_prompt;
+mod attachment_library;
 mod attachment_list;
 mod compose;
 mod contact_edit;
@@ -122,6 +123,9 @@ pub fn render(app: &mut App, frame: &mut Frame) {
     }
     if app.view == View::AttachmentList {
         attachment_list::render(app, frame);
+    }
+    if app.view == View::AttachmentLibrary {
+        attachment_library::render(app, frame);
     }
     if app.view == View::LinkList {
         links::render(app, frame);

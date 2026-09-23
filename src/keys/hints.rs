@@ -116,6 +116,9 @@ pub fn hints(view: View) -> Vec<(&'static str, &'static str)> {
         View::PlacePrompt => vec![("1-5", "place"), ("Esc", "cancel")],
         View::MessageNote => vec![("Enter", "save"), ("Esc", "cancel")],
         View::SubjectAlias => vec![("Enter", "rename"), ("Esc", "cancel")],
+        View::AttachmentLibrary => {
+            vec![("j/k", "nav"), ("Enter", "open message"), ("Esc", "close")]
+        }
         View::Outbox => vec![
             ("j/k", "nav"),
             ("Enter", "send now"),
