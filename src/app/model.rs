@@ -236,4 +236,8 @@ pub struct App {
 
     /// Cross-account attachment library.
     pub(crate) attachment_library: super::attachment_library::AttachmentLibraryState,
+
+    /// Messages loaded together for one scroll.
+    pub(crate) read_together: Option<Vec<MessageDocument>>,
+    pub(crate) read_together_scroll: u16,
 }

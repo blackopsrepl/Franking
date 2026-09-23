@@ -234,6 +234,8 @@ impl App {
             file_picker: None,
             outbox: Default::default(),
             attachment_library: Default::default(),
+            read_together: None,
+            read_together_scroll: 0,
             identity_edit_state: None,
         }
     }

@@ -22,6 +22,7 @@ mod outbox;
 mod passphrase_prompt;
 mod pgp_keys;
 mod place_prompt;
+mod read_together;
 mod resurface_prompt;
 mod saved_searches;
 mod search;
@@ -88,6 +89,9 @@ pub fn render(app: &mut App, frame: &mut Frame) {
     match app.view {
         View::MessageView => {
             message_view::render(app, frame, outer[1]);
+        }
+        View::ReadTogether => {
+            read_together::render(app, frame, outer[1]);
         }
         _ => {
             let main =

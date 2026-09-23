@@ -42,6 +42,7 @@ pub enum Action {
     AttachmentLibraryPrev,
     AttachmentLibraryOpen,
     AttachmentLibraryClose,
+    OpenReadTogether,
     SyncFolder,
     MarkFolderRead,
     DownloadAttachments,

@@ -85,6 +85,7 @@ pub fn render(app: &mut App, frame: &mut Frame) {
         ),
         binding("i", "Write a private note on the selected message"),
         binding("%", "Rename the subject for you only (blank restores)"),
+        binding("T", "Read the selected messages together in one scroll"),
         binding("O", "Open the outbox"),
         binding("P", "Open preferences"),
         binding("K", "Open key material"),

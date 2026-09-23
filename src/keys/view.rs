@@ -28,6 +28,8 @@ pub enum View {
     SubjectAlias,
     /// Cross-account attachment library.
     AttachmentLibrary,
+    /// Several selected messages read in one scroll.
+    ReadTogether,
     Search,
     Help,
     MovePrompt,

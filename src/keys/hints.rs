@@ -119,6 +119,7 @@ pub fn hints(view: View) -> Vec<(&'static str, &'static str)> {
         View::AttachmentLibrary => {
             vec![("j/k", "nav"), ("Enter", "open message"), ("Esc", "close")]
         }
+        View::ReadTogether => vec![("j/k", "scroll"), ("g/G", "top/end"), ("q/Esc", "back")],
         View::Outbox => vec![
             ("j/k", "nav"),
             ("Enter", "send now"),

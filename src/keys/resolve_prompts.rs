@@ -132,3 +132,14 @@ pub(super) fn resolve_place(key: KeyEvent) -> Action {
         _ => Action::None,
     }
 }
+
+pub(super) fn resolve_read_together(key: KeyEvent) -> Action {
+    match key.code {
+        KeyCode::Char('j') | KeyCode::Down => Action::ScrollDown,
+        KeyCode::Char('k') | KeyCode::Up => Action::ScrollUp,
+        KeyCode::Char('g') => Action::JumpTop,
+        KeyCode::Char('G') => Action::JumpBottom,
+        KeyCode::Esc | KeyCode::Char('q') => Action::Back,
+        _ => Action::None,
+    }
+}

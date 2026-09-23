@@ -16,6 +16,8 @@ pub enum WorkerResult {
     Folders(Result<Vec<Folder>, MailError>),
     Envelopes(Result<Vec<Envelope>, MailError>),
     Message(Box<Result<MessageDocument, MailError>>),
+    /// Several messages loaded together for one scroll.
+    ReadTogether(Result<Vec<MessageDocument>, MailError>),
     ActionDone(Result<String, MailError>),
     /// Unread count for a specific folder: (folder_name, count).
     FolderUnread(String, Result<usize, MailError>),

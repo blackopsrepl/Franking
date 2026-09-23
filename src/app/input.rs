@@ -73,6 +73,7 @@ impl App {
             Action::AttachmentLibraryPrev => self.attachment_library_prev(),
             Action::AttachmentLibraryOpen => self.open_attachment_library_item(),
             Action::AttachmentLibraryClose => self.close_attachment_library(),
+            Action::OpenReadTogether => self.open_read_together(),
             Action::SyncFolder => self.sync_folder(),
             Action::MarkFolderRead => self.mark_folder_read(),
             Action::DownloadAttachments => self.download_attachments(),

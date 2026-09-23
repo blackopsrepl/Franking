@@ -13,6 +13,7 @@ use super::resolve_contacts::{
 };
 use super::resolve_keys::{resolve_keys, resolve_keys_prompt};
 use super::resolve_message_view::resolve_message_view;
+use super::resolve_prompts::resolve_read_together;
 use super::resolve_prompts::{
     resolve_annotation, resolve_attachment_library, resolve_attachment_list, resolve_folder_prompt,
     resolve_help, resolve_link_list, resolve_message_search, resolve_move_prompt, resolve_place,
@@ -39,6 +40,7 @@ pub fn resolve(view: View, key: KeyEvent) -> Action {
         View::ResurfacePrompt => return resolve_resurface(key),
         View::PlacePrompt => return resolve_place(key),
         View::AttachmentLibrary => return resolve_attachment_library(key),
+        View::ReadTogether => return resolve_read_together(key),
         View::MessageNote | View::SubjectAlias => return resolve_annotation(key),
         View::AttachmentView => return resolve_attachment_view(key),
         View::LinkList => return resolve_link_list(key),
@@ -102,6 +104,7 @@ pub fn resolve(view: View, key: KeyEvent) -> Action {
         | View::MessageNote
         | View::SubjectAlias
         | View::AttachmentLibrary
+        | View::ReadTogether
         | View::AttachmentView
         | View::Keys
         | View::KeysPrompt
@@ -139,6 +142,7 @@ fn resolve_envelope_list(key: KeyEvent) -> Action {
         KeyCode::Char('3') => Action::RouteSender(crate::db::sender_routes::Route::Receipts),
         KeyCode::Char('4') => Action::RouteSender(crate::db::sender_routes::Route::Blocked),
         KeyCode::Char('5') => Action::RouteSender(crate::db::sender_routes::Route::Screening),
+        KeyCode::Char('T') => Action::OpenReadTogether,
         KeyCode::Char('S') => Action::SyncFolder,
         KeyCode::Char('A') => Action::MarkFolderRead,
         KeyCode::Char('/') => Action::Search,

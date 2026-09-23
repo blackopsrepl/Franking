@@ -94,7 +94,7 @@ focused queue, a thread board, or a shared project view.
 | Track a conversation through custom stages | Not available | Account-scoped stage board; thread and its later replies travel together |
 | Keep related threads together without merging them | Search and contact tags, not project collections | Named collection of distinct thread references; separate from folders and saved searches |
 | Locally join conversations without changing recipients' threads | RFC threading and collapse, not manual merge | Explicit local mapping; preserve originals and outbound reply headers |
-| Read selected messages together in one scroll | Multiselect supports batch operations | Combined reader that keeps each message's account identity |
+| Read selected messages together in one scroll | `T` reads the selected messages, or the cursor row, as one numbered scroll | Loads each message on demand; there is no combined print or export yet |
 | Search and navigate attachments independently of messages | `Ctrl+l` opens a cross-account attachment library over cached mail; Enter opens the source message | Only messages whose raw bytes are cached contribute; inline images are hidden |
 | Save small excerpts for quick retrieval | Search and copy, not excerpt storage | Text clips keyed to source account and message; deleting a clip leaves mail alone |
 | Add private notes to a contact, message, or conversation | Contact notes exist; `i` writes a private note on a message, shown above its body | Notes are per message, not per conversation or with files |

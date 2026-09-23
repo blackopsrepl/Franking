@@ -14,6 +14,9 @@ impl App {
             View::AccountList => {
                 self.view = View::EnvelopeList;
             }
+            View::ReadTogether => {
+                self.close_read_together();
+            }
             View::Contacts | View::ContactSearch => {
                 self.contact_search.clear();
                 self.contact_search_active = false;
@@ -194,6 +197,13 @@ impl App {
                     self.help_scroll = self.help_scroll.saturating_add(1).min(self.help_max_scroll);
                 } else {
                     self.help_scroll = self.help_scroll.saturating_sub(1);
+                }
+            }
+            View::ReadTogether => {
+                if delta > 0 {
+                    self.read_together_scroll = self.read_together_scroll.saturating_add(1);
+                } else {
+                    self.read_together_scroll = self.read_together_scroll.saturating_sub(1);
                 }
             }
             _ => {}

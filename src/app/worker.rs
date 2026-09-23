@@ -39,6 +39,13 @@ impl App {
                         self.set_error(&format!("Failed to read message: {e}"));
                     }
                 },
+                WorkerResult::ReadTogether(Ok(documents)) => {
+                    self.handle_read_together(documents);
+                }
+                WorkerResult::ReadTogether(Err(e)) => {
+                    self.loading = false;
+                    self.set_error(&format!("Failed to read messages: {e}"));
+                }
                 WorkerResult::ActionDone(Ok(msg)) => {
                     self.loading = false;
                     self.set_status(&msg);

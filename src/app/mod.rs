@@ -39,6 +39,7 @@ mod pgp;
 pub(crate) mod pgp_keys;
 mod placement;
 mod planner;
+mod read_together;
 mod saved_searches;
 mod search_flow;
 mod selection;
