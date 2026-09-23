@@ -21,6 +21,7 @@ use super::resolve_prompts::{
     resolve_help, resolve_link_list, resolve_message_search, resolve_move_prompt, resolve_place,
     resolve_resurface, resolve_search, resolve_unlock_prompt,
 };
+use super::resolve_prompts::{resolve_snippet_name, resolve_snippets};
 use super::resolve_saved::{resolve_save_search, resolve_saved_searches};
 use super::resolve_sieve::{resolve_sieve_edit, resolve_sieve_name, resolve_sieve_scripts};
 use super::view::View;
@@ -45,6 +46,8 @@ pub fn resolve(view: View, key: KeyEvent) -> Action {
         View::ReadTogether => return resolve_read_together(key),
         View::BypassPrompt => return resolve_bypass(key),
         View::FocusReply => return resolve_focus(key),
+        View::Snippets => return resolve_snippets(key),
+        View::SnippetName => return resolve_snippet_name(key),
         View::MessageNote | View::SubjectAlias => return resolve_annotation(key),
         View::AttachmentView => return resolve_attachment_view(key),
         View::LinkList => return resolve_link_list(key),
@@ -111,6 +114,8 @@ pub fn resolve(view: View, key: KeyEvent) -> Action {
         | View::ReadTogether
         | View::BypassPrompt
         | View::FocusReply
+        | View::Snippets
+        | View::SnippetName
         | View::AttachmentView
         | View::Keys
         | View::KeysPrompt

@@ -84,6 +84,7 @@ cargo run -- --setup
 - **Read together** - `T` reads the selected messages, or the cursor row, in one numbered scroll
 - **Bypass token and cover** - Preferences holds a per-account token that lifts screening for a trusted stranger's subject; a cover hides previously seen Inbox mail until `V`
 - **Focus & reply** - `F` works the Reply later queue one message at a time: `n`/`p` move, `r`/`R` reply, `d` done
+- **Snippets** - `Ctrl+n` in compose inserts reusable text; `s` saves the current body as a snippet
 - **Fast keyboard navigation** - j/k and g/G in list/message views, plus direct multiline editing in compose
 - **Smart error handling** - Typed mail diagnostics and clean user-facing errors
 - **Structured message reader** - MIME-aware message content with one canonical HTML-first render path

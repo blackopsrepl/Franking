@@ -74,6 +74,9 @@ pub struct App {
     /// How many seen messages the cover is hiding.
     pub(crate) covered_count: usize,
 
+    /// Reusable compose snippets.
+    pub(crate) snippets: super::snippets::SnippetsState,
+
     /// Sequential reply queue over Reply later.
     pub(crate) focus: Option<super::focus::FocusState>,
     /// Whether the in-flight reply came from the focus queue.

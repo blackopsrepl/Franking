@@ -30,6 +30,7 @@ mod saved_searches;
 mod search;
 mod settings;
 mod sieve;
+mod snippets;
 mod status_bar;
 pub mod util;
 
@@ -115,6 +116,7 @@ pub fn render(app: &mut App, frame: &mut Frame) {
         View::SchedulePrompt => outbox::render_schedule_prompt(app, frame, outer[2]),
         View::ResurfacePrompt => resurface_prompt::render(app, frame, outer[2]),
         View::BypassPrompt => bypass_prompt::render(app, frame, outer[2]),
+        View::SnippetName => snippets::render_name_prompt(app, frame, outer[2]),
         View::PlacePrompt => place_prompt::render(app, frame, outer[2]),
         View::MessageNote | View::SubjectAlias => annotation_prompt::render(app, frame, outer[2]),
         View::MessageSearch => message_view::render_search_prompt(app, frame, outer[2]),
@@ -136,6 +138,9 @@ pub fn render(app: &mut App, frame: &mut Frame) {
     }
     if app.view == View::AttachmentLibrary {
         attachment_library::render(app, frame);
+    }
+    if app.view == View::Snippets {
+        snippets::render(app, frame);
     }
     if app.view == View::LinkList {
         links::render(app, frame);

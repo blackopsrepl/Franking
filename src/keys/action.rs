@@ -1,4 +1,3 @@
-/// Actions the app can take in response to a key press.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Action {
     Quit,
@@ -56,6 +55,17 @@ pub enum Action {
     FocusDone,
     FocusReply,
     FocusReplyAll,
+    OpenSnippets,
+    SnippetsNext,
+    SnippetsPrev,
+    SnippetsInsert,
+    SnippetNew,
+    SnippetsDelete,
+    SnippetsClose,
+    SnippetNameInput(char),
+    SnippetNameBackspace,
+    SnippetNameSubmit,
+    SnippetNameCancel,
     SyncFolder,
     MarkFolderRead,
     DownloadAttachments,
@@ -64,7 +74,6 @@ pub enum Action {
     Search,
     SearchSubmit,
     SearchCancel,
-    /// Toggle searching every folder from the search prompt.
     ToggleSearchScope,
     SearchInput(char),
     SearchBackspace,
@@ -90,7 +99,6 @@ pub enum Action {
     UnlockBackspace,
     UnlockSubmit,
     UnlockCancel,
-    /// Trust the S/MIME signer certificate of the current message.
     TrustSigner,
     AccountNew,
     AccountEdit,
@@ -101,9 +109,7 @@ pub enum Action {
     AccountEditToggleDefault,
     AccountEditSave,
     AccountEditCancel,
-    /// Auto-detect provider settings for the typed login.
     AccountEditDiscover,
-    /// Cycle the contact tag filter.
     CycleContactTag,
     OpenFilePicker,
     FilePickerNext,
@@ -117,22 +123,17 @@ pub enum Action {
     OutboxSend,
     OutboxDiscard,
     OutboxClose,
-    // ── Settings ──────────────────────────────────────────────────────
     OpenSettings,
     SettingsToggleNotifications,
     SettingsNext,
     SettingsPrev,
     SettingsClose,
-    // ── Scheduled send ────────────────────────────────────────────────
     OpenSchedule,
     ScheduleInput(char),
     ScheduleBackspace,
     ScheduleSubmit,
     ScheduleCancel,
-    // ── Invitation replies ────────────────────────────────────────────
-    /// Add a message's calendar invitation to Planner123.
     AddToPlanner,
-    // ── Folder management ─────────────────────────────────────────────
     FolderNew,
     FolderRename,
     FolderDelete,
@@ -141,48 +142,31 @@ pub enum Action {
     FolderPromptBackspace,
     FolderPromptSubmit,
     FolderPromptCancel,
-    // ── Multi-select ──────────────────────────────────────────────────
     ToggleSelect,
-    /// Reverse the last destructive action.
     Undo,
-    /// Jump to the next unread message.
     NextUnread,
-    /// Jump to the previous unread message.
     PrevUnread,
-    // ── Folder incremental search ─────────────────────────────────────
     FolderJumpInput(char),
     FolderJumpBackspace,
     FolderJumpClear,
-    /// Cycle the message-list ordering.
     CycleSortOrder,
-    /// Mark every message in the cursor's thread read.
     MarkThreadRead,
-    /// Move the selection to the archive folder.
     Archive,
-    /// Make the highlighted account the default.
     SetDefaultAccount,
-    /// Delete the highlighted account.
     DeleteAccount,
-    /// Hide the replies of the cursor's thread.
     CollapseThread,
-    /// Restore a collapsed thread.
     ExpandThread,
-    /// Permanently remove every message in the current folder.
     EmptyFolder,
-    // ── Links ─────────────────────────────────────────────────────────
     OpenLinks,
     LinkNext,
     LinkPrev,
     LinkOpen,
     LinkClose,
-    /// Preview a text attachment in the attachment list.
     AttachmentView,
-    /// Save an attachment into a chosen directory.
     AttachmentSaveAs,
     PreviewScrollDown,
     PreviewScrollUp,
     PreviewClose,
-    // ── In-message search ─────────────────────────────────────────────
     SearchMessage,
     MessageSearchInput(char),
     MessageSearchBackspace,
@@ -191,7 +175,6 @@ pub enum Action {
     NextMatch,
     PrevMatch,
     ClearSelection,
-    // ── Sieve filters ─────────────────────────────────────────────────
     OpenSieve,
     OpenKeys,
     OpenSavedSearches,
@@ -240,7 +223,6 @@ pub enum Action {
     AttachmentClose,
     ScrollUp,
     ScrollDown,
-    // ── Compose editor ────────────────────────────────────────────────
     ComposeFieldNext,
     ComposeFieldPrev,
     ComposeLeaveBodyNext,
@@ -251,11 +233,8 @@ pub enum Action {
     ComposeCancelDiscard,
     ComposeInput(char),
     ComposeBackspace,
-    /// Activate the focused compose control.
     ComposeEnterInsert,
-    /// Leave the focused compose control back to the main compose flow.
     ComposeExitToNav,
-    // ── Contacts browser ──────────────────────────────────────────────
     OpenContacts,
     ContactNew,
     ContactDelete,
@@ -270,7 +249,6 @@ pub enum Action {
     ContactEditBackspace,
     ContactEditSave,
     ContactEditCancel,
-    /// Enter key on contact edit: activates focused action-button or advances field.
     ContactEditActivate,
     OpenIdentities,
     IdentityNew,
@@ -287,7 +265,6 @@ pub enum Action {
     IdentityEditToggle,
     IdentityEditSave,
     IdentityEditCancel,
-    /// Raw key event forwarded to the compose editor or focused field.
     EditorKey(crossterm::event::KeyEvent),
     None,
 }

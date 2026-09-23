@@ -63,6 +63,11 @@ impl ComposeEditor {
         self.textarea.lines().join("\n")
     }
 
+    /// Insert text at the cursor, used to drop in a snippet.
+    pub fn insert_str(&mut self, text: &str) {
+        self.textarea.insert_str(text);
+    }
+
     pub fn is_search_active(&self) -> bool {
         self.search_active
     }

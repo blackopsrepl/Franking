@@ -99,7 +99,7 @@ focused queue, a thread board, or a shared project view.
 | Save small excerpts for quick retrieval | Search and copy, not excerpt storage | Text clips keyed to source account and message; deleting a clip leaves mail alone |
 | Add private notes to a contact, message, or conversation | Contact notes exist; `i` writes a private note on a message, shown above its body | Notes are per message, not per conversation or with files |
 | Rename a subject for local display only | `%` sets a display alias for the conversation; the wire subject is unchanged | The alias is keyed by conversation anchor |
-| Insert reusable response text | Compose editor, no snippet library | User-defined reusable text for the selected identity/account |
+| Insert reusable response text | `Ctrl+n` in compose opens a snippet picker; Enter inserts at the cursor, `s` saves the current body under a name | Snippets are global, not per account |
 | Control interruption per contact or thread | Focused-Inbox notification default plus all/contacts/off preferences | Per-thread overrides and reliable change-event identity remain |
 | Avoid remote tracking pixels | HTML-to-terminal-text rendering makes no image request | No tracker detection/report; don't claim comprehensive remote-content blocking |
 | Let a trusted unknown sender bypass screening | Preferences holds a revocable per-account bypass token; a whole-word subject match lifts Screening into the Inbox only | An explicit Blocked route still wins over the token |

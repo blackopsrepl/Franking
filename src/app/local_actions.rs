@@ -51,3 +51,24 @@ impl App {
         true
     }
 }
+
+impl App {
+    /// Handle a snippet action. Returns false when it is not one.
+    pub(crate) fn try_snippet_action(&mut self, action: &Action) -> bool {
+        match action {
+            Action::OpenSnippets => self.open_snippets(),
+            Action::SnippetsNext => self.snippets_next(),
+            Action::SnippetsPrev => self.snippets_prev(),
+            Action::SnippetsInsert => self.insert_snippet(),
+            Action::SnippetNew => self.begin_save_snippet(),
+            Action::SnippetsDelete => self.delete_snippet(),
+            Action::SnippetsClose => self.snippets_close(),
+            Action::SnippetNameInput(c) => self.snippet_name_input(*c),
+            Action::SnippetNameBackspace => self.snippet_name_backspace(),
+            Action::SnippetNameSubmit => self.submit_snippet_name(),
+            Action::SnippetNameCancel => self.cancel_snippet_name(),
+            _ => return false,
+        }
+        true
+    }
+}

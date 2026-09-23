@@ -168,3 +168,25 @@ pub(super) fn resolve_focus(key: KeyEvent) -> Action {
         _ => Action::None,
     }
 }
+
+pub(super) fn resolve_snippets(key: KeyEvent) -> Action {
+    match key.code {
+        KeyCode::Char('j') | KeyCode::Down => Action::SnippetsNext,
+        KeyCode::Char('k') | KeyCode::Up => Action::SnippetsPrev,
+        KeyCode::Enter => Action::SnippetsInsert,
+        KeyCode::Char('s') => Action::SnippetNew,
+        KeyCode::Char('d') => Action::SnippetsDelete,
+        KeyCode::Esc | KeyCode::Char('q') => Action::SnippetsClose,
+        _ => Action::None,
+    }
+}
+
+pub(super) fn resolve_snippet_name(key: KeyEvent) -> Action {
+    match key.code {
+        KeyCode::Enter => Action::SnippetNameSubmit,
+        KeyCode::Esc => Action::SnippetNameCancel,
+        KeyCode::Backspace => Action::SnippetNameBackspace,
+        KeyCode::Char(c) => Action::SnippetNameInput(c),
+        _ => Action::None,
+    }
+}

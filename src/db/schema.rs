@@ -240,6 +240,11 @@ pub(super) fn create_schema(conn: &Connection) -> Result<()> {
               updated_at TEXT NOT NULL DEFAULT (datetime('now')),
               PRIMARY KEY (account, folder, uid)
          );
+         CREATE TABLE snippets (
+              name       TEXT PRIMARY KEY,
+              body       TEXT NOT NULL,
+              updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+         );
          CREATE TABLE account_policy (
               account      TEXT PRIMARY KEY,
               bypass_token TEXT

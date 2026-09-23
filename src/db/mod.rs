@@ -8,6 +8,7 @@ mod migration_v5_v6;
 mod migration_v6_v7;
 mod migration_v7_v8;
 mod migration_v8_v9;
+mod migration_v9_v10;
 mod schema;
 
 pub mod account_policy;
@@ -19,6 +20,7 @@ pub mod preferences;
 pub mod saved_searches;
 mod schema_migrations;
 pub mod sender_routes;
+pub mod snippets;
 
 pub use connection::{db_path, init_for_test, open, schema_version, CURRENT_SCHEMA_VERSION};
 

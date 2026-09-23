@@ -29,6 +29,7 @@ pub fn resolve_compose_with_context(key: KeyEvent, ctx: ComposeKeyContext) -> Ac
     if key.modifiers.contains(KeyModifiers::CONTROL) {
         return match key.code {
             KeyCode::Char('c') | KeyCode::Char('q') => Action::ComposeDiscard,
+            KeyCode::Char('n') => Action::OpenSnippets,
             _ => Action::EditorKey(key),
         };
     }

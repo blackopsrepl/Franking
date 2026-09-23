@@ -34,6 +34,10 @@ pub enum View {
     BypassPrompt,
     /// Sequential reply queue over the Reply later pile.
     FocusReply,
+    /// Reusable snippet picker.
+    Snippets,
+    /// Naming a snippet before saving the current compose body.
+    SnippetName,
     Search,
     Help,
     MovePrompt,
