@@ -25,11 +25,13 @@ impl App {
         let Some(conn) = self.db.as_ref() else {
             return;
         };
+        // Resolve every row's anchors with one Message-ID index.
+        let anchors_by_row = conversations::anchors_for_list(&self.envelopes);
         // Load each account's rules once instead of a query per row.
         let mut rules: HashMap<String, HashMap<String, conversations::Rule>> = HashMap::new();
         let mut aliases: HashMap<String, HashMap<String, String>> = HashMap::new();
         for (index, envelope) in self.envelopes.iter().enumerate() {
-            let anchors = conversations::anchors_with_root(&self.envelopes, index);
+            let anchors = &anchors_by_row[index];
             let Some(account) = envelope
                 .account
                 .clone()
@@ -46,7 +48,7 @@ impl App {
             });
             let mut muted = false;
             let mut due = false;
-            for anchor in &anchors {
+            for anchor in anchors {
                 if let Some(rule) = account_rules.get(anchor) {
                     muted |= rule.muted;
                     due |= rule
@@ -67,7 +69,7 @@ impl App {
                 self.resurfaced_ids.insert(envelope.id.clone());
             }
             self.conversation_anchors
-                .insert(envelope.id.clone(), anchors);
+                .insert(envelope.id.clone(), anchors.clone());
         }
         // Keep the visible order stable: resurfaced, ordinary, then quieted.
         let muted = &self.muted_ids;

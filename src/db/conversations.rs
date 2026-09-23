@@ -28,24 +28,36 @@ pub fn anchors(envelope: &Envelope) -> Vec<String> {
     anchors
 }
 
-/// Anchors plus the conversation root resolved within the loaded list.
-pub fn anchors_with_root(envelopes: &[Envelope], index: usize) -> Vec<String> {
-    let mut anchors = anchors(&envelopes[index]);
-    if let Some(root) = resolved_root(envelopes, index) {
-        if !anchors.contains(&root) {
-            anchors.push(root);
-        }
-    }
-    anchors
-}
-
-/// Follow In-Reply-To within the loaded page to the top-most ancestor.
-fn resolved_root(envelopes: &[Envelope], index: usize) -> Option<String> {
+/// Anchors for every envelope, resolving roots against one shared index.
+///
+/// Building the Message-ID index once keeps a full-page load linear instead of
+/// rebuilding it for each row.
+pub fn anchors_for_list(envelopes: &[Envelope]) -> Vec<Vec<String>> {
     let by_id: std::collections::HashMap<&str, usize> = envelopes
         .iter()
         .enumerate()
         .filter_map(|(i, envelope)| envelope.message_id.as_deref().map(|id| (id, i)))
         .collect();
+    envelopes
+        .iter()
+        .enumerate()
+        .map(|(index, envelope)| {
+            let mut anchors = anchors(envelope);
+            if let Some(root) = resolved_root_with(&by_id, envelopes, index) {
+                if !anchors.contains(&root) {
+                    anchors.push(root);
+                }
+            }
+            anchors
+        })
+        .collect()
+}
+
+fn resolved_root_with(
+    by_id: &std::collections::HashMap<&str, usize>,
+    envelopes: &[Envelope],
+    index: usize,
+) -> Option<String> {
     let mut current = index;
     let mut hops = 0;
     while hops < 8 {
