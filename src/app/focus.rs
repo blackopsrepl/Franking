@@ -80,6 +80,8 @@ impl App {
             Ok(document) => {
                 focus.document = Some(document);
                 focus.scroll = 0;
+                self.status_message.clear();
+                self.status_is_error = false;
             }
             Err(error) => {
                 focus.document = None;
