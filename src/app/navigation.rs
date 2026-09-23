@@ -122,7 +122,7 @@ impl App {
                 self.message_scroll = lines.saturating_sub(5);
             }
             View::Help => {
-                self.help_scroll = 100; // will be clamped in render
+                self.help_scroll = self.help_max_scroll;
             }
             _ => {}
         }
@@ -191,7 +191,7 @@ impl App {
             }
             View::Help => {
                 if delta > 0 {
-                    self.help_scroll = self.help_scroll.saturating_add(1);
+                    self.help_scroll = self.help_scroll.saturating_add(1).min(self.help_max_scroll);
                 } else {
                     self.help_scroll = self.help_scroll.saturating_sub(1);
                 }

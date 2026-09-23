@@ -87,30 +87,40 @@ fn render_header_bar(app: &App, state: &ComposeState, frame: &mut Frame, area: R
         .unwrap_or("?");
 
     let title = format!(" \u{2709} compose \u{00B7} {mode_label} ");
-    let acct = format!(" [{account_label}] ");
-    let fill_len = area
-        .width
-        .saturating_sub(title.chars().count() as u16 + acct.chars().count() as u16)
-        as usize;
-
-    let spans = vec![
-        Span::styled(title, t.header()),
-        // A status message owns the fill: an action taken from compose (a
-        // saved draft, a failed send) would otherwise be invisible here.
-        if app.status_message.is_empty() {
-            Span::styled(" ".repeat(fill_len), t.header())
-        } else {
-            let style = if app.status_is_error {
-                t.error()
-            } else {
-                t.accent_style()
-            };
-            Span::styled(format!(" {} ", app.status_message), style)
-        },
-        Span::styled(acct, t.header().add_modifier(Modifier::BOLD)),
-    ];
-
-    frame.render_widget(Paragraph::new(Line::from(spans)), area);
+    let right = format!(" F1 Help  [{account_label}] ");
+    let right_width = right.chars().count().min(area.width as usize) as u16;
+    let left_width = area.width.saturating_sub(right_width);
+    let left = Rect {
+        width: left_width,
+        ..area
+    };
+    let right_area = Rect {
+        x: area.x + left_width,
+        width: right_width,
+        ..area
+    };
+    let status = if app.status_message.is_empty() {
+        String::new()
+    } else {
+        format!(" {}", app.status_message)
+    };
+    let status_style = if app.status_is_error {
+        t.error()
+    } else {
+        t.accent_style()
+    };
+    frame.render_widget(
+        Paragraph::new(Line::from(vec![
+            Span::styled(title, t.header()),
+            Span::styled(status, status_style),
+        ]))
+        .style(t.header()),
+        left,
+    );
+    frame.render_widget(
+        Paragraph::new(right).style(t.header().add_modifier(Modifier::BOLD)),
+        right_area,
+    );
 }
 
 // ── Header fields ─────────────────────────────────────────────────────────────

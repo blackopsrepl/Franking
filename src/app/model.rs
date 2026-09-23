@@ -128,6 +128,7 @@ pub struct App {
 
     // ── Help scroll ─────────────────────────────────────────────────
     pub help_scroll: u16,
+    pub(crate) help_max_scroll: u16,
 
     // ── Status / loading ────────────────────────────────────────────
     pub status_message: String,

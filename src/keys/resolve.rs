@@ -181,6 +181,8 @@ fn resolve_help(key: KeyEvent) -> Action {
         KeyCode::Esc | KeyCode::Char('q') | KeyCode::Char('?') => Action::ToggleHelp,
         KeyCode::Char('j') | KeyCode::Down => Action::ScrollDown,
         KeyCode::Char('k') | KeyCode::Up => Action::ScrollUp,
+        KeyCode::Char('g') => Action::JumpTop,
+        KeyCode::Char('G') => Action::JumpBottom,
         _ => Action::None,
     }
 }

@@ -106,6 +106,7 @@ cargo run -- --setup
 - `Ctrl+a` - Switch account
 - `Ctrl+r` - Refresh
 - `?` - Help
+- `F1` - Help from any view (including compose); `g`/`G` jump to the start/end
 
 ### Envelope List
 - `j`/`k` - Navigate up/down

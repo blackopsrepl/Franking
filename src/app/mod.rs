@@ -9,6 +9,7 @@ mod autosave;
 mod compose;
 mod compose_actions;
 mod compose_attachments;
+mod compose_context;
 mod contact_harvest;
 mod contacts;
 mod crypto;

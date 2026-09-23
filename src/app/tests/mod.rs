@@ -9,6 +9,7 @@ mod copy_move;
 mod crypto;
 mod folder_jump;
 mod followup;
+mod help;
 mod keys;
 mod mail_ui;
 mod message_search;

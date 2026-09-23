@@ -185,6 +185,7 @@ impl App {
             message_match_index: 0,
             link_index: 0,
             help_scroll: 0,
+            help_max_scroll: 0,
             status_message: String::new(),
             status_is_error: false,
             loading: false,

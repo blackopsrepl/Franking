@@ -10,6 +10,7 @@ mod file_picker;
 mod folder_list;
 mod folder_prompt;
 mod help;
+mod help_wrap;
 mod identity_edit;
 mod identity_list;
 mod links;
