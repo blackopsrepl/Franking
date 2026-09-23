@@ -121,6 +121,10 @@ impl App {
 impl App {
     /// Mark every message in the cursor's thread read.
     pub(crate) fn mark_thread_read(&mut self) {
+        if self.is_unified_inbox() {
+            self.set_status("Switch to an account to mark a thread read.");
+            return;
+        }
         if !self.threaded {
             self.set_status("Threading is off (press t).");
             return;

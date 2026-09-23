@@ -123,6 +123,9 @@ impl App {
     // ── Mouse handling ───────────────────────────────────────────────
 
     pub(crate) fn delete(&mut self) {
+        if !self.can_mutate_selected_mailbox() {
+            return;
+        }
         let ids = self.target_ids();
         let Some(id) = ids.first().cloned() else {
             return;
@@ -170,6 +173,10 @@ impl App {
     }
 
     pub(crate) fn sync_folder(&mut self) {
+        if self.is_unified_inbox() {
+            self.set_status("All Inboxes is not a mailbox to sync.");
+            return;
+        }
         self.loading = true;
         self.set_status("Caching folder for offline use...");
         self.worker
@@ -177,6 +184,9 @@ impl App {
     }
 
     pub(crate) fn toggle_read(&mut self) {
+        if !self.can_mutate_selected_mailbox() {
+            return;
+        }
         let ids = self.target_ids();
         let Some(id) = ids.first().cloned() else {
             return;
@@ -211,6 +221,9 @@ impl App {
     }
 
     pub(crate) fn toggle_flag(&mut self) {
+        if !self.can_mutate_selected_mailbox() {
+            return;
+        }
         let ids = self.target_ids();
         let Some(id) = ids.first().cloned() else {
             return;

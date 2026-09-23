@@ -155,6 +155,7 @@ impl App {
                     self.current_folder = folder.name.clone();
                     self.triage_lane = None;
                     self.followup_lane = None;
+                    self.selected.clear();
                     self.page = 1;
                     self.active_query = None;
                     self.view = View::EnvelopeList;
@@ -164,9 +165,11 @@ impl App {
             View::AccountList => {
                 if let Some(account) = self.accounts.get(self.account_index) {
                     self.account_name = Some(account.name.clone());
+                    self.pending_undo = None;
                     self.current_folder = "INBOX".to_string();
                     self.triage_lane = None;
                     self.followup_lane = None;
+                    self.selected.clear();
                     self.page = 1;
                     self.active_query = None;
                     self.view = View::EnvelopeList;

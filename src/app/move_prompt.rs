@@ -15,6 +15,9 @@ impl App {
     }
 
     fn open_folder_picker(&mut self, copy: bool) {
+        if !self.can_mutate_selected_mailbox() {
+            return;
+        }
         if self.selected_envelope_id().is_some() {
             self.move_target.clear();
             self.move_index = 0;
@@ -30,6 +33,7 @@ impl App {
             .iter()
             .map(|folder| folder.name.clone())
             .filter(|name| !name.eq_ignore_ascii_case(&self.current_folder))
+            .filter(|name| name != super::model::UNIFIED_INBOX)
             .filter(|name| filter.is_empty() || name.to_ascii_lowercase().contains(&filter))
             .collect()
     }

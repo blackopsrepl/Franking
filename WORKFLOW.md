@@ -35,6 +35,8 @@ INBOX event. Users can choose all mail, contacts only, or off instead.
   This is not yet true for every mutation: archive and generic move/copy still
   use the selected account or its folder list. Do not treat mixed-account batch
   actions as source-aware until those paths are repaired.
+  The UI refuses mixed-account mailbox mutations and batch selection in All
+  Inboxes rather than sending them to the wrong account.
 - The local test account follows the same policy; the app does not depend on
   any particular provider's folders, rules, or extensions.
 - Server mailboxes remain accessible. Triage is a local presentation and

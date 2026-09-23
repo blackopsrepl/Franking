@@ -90,3 +90,21 @@ fn focused_inbox_groups_new_mail_before_seen_mail() {
     assert_eq!(app.envelopes[0].id, "older");
     assert_eq!(app.envelopes[1].id, "newest");
 }
+
+#[test]
+fn combined_rows_cannot_mutate_the_wrong_account() {
+    let mut app = App::new(Some("personal".into()));
+    app.current_folder = "All Inboxes".into();
+    app.handle_envelopes_loaded(vec![envelope("work", "7", "alice@example.org")]);
+    app.delete();
+    assert!(!app.loading);
+    assert!(app.status_message.contains("Switch to"));
+    app.enter_move_prompt();
+    assert_eq!(app.view, crate::keys::View::EnvelopeList);
+    app.toggle_read();
+    assert!(!app.loading);
+    app.toggle_select();
+    assert!(app.selected.is_empty());
+    app.empty_folder();
+    assert!(app.pending_empty_folder.is_none());
+}

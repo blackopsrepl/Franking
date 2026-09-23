@@ -22,6 +22,9 @@ impl App {
 
     /// Move the selection (or cursor row) to the archive folder.
     pub(crate) fn archive(&mut self) {
+        if !self.can_mutate_selected_mailbox() {
+            return;
+        }
         let Some(target) = self.archive_folder() else {
             self.set_status("This account has no archive folder.");
             return;

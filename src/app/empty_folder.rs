@@ -7,6 +7,10 @@ use super::model::App;
 impl App {
     /// Empty the current folder; requires a second press to confirm.
     pub(crate) fn empty_folder(&mut self) {
+        if self.is_unified_inbox() {
+            self.set_status("All Inboxes is not a mailbox to empty.");
+            return;
+        }
         let folder = self.current_folder.clone();
         if self.pending_empty_folder.as_deref() != Some(folder.as_str()) {
             self.pending_empty_folder = Some(folder.clone());
