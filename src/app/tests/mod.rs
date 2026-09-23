@@ -29,6 +29,7 @@ mod settings;
 mod sieve;
 mod sieve_settings;
 mod snippets;
+mod stages;
 mod triage;
 mod undo;
 mod unread;

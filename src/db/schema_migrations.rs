@@ -17,6 +17,7 @@ pub(super) fn migrate(conn: &Connection, from: u32) -> Result<()> {
         10 => super::migration_v10_v11::apply(conn),
         11 => super::migration_v11_v12::apply(conn),
         12 => super::migration_v12_v13::apply(conn),
+        13 => super::migration_v13_v14::apply(conn),
         _ => anyhow::bail!("no migration from schema version {from}"),
     }
 }

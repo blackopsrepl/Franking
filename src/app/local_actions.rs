@@ -95,3 +95,27 @@ impl App {
         true
     }
 }
+
+impl App {
+    /// Handle a stage action. Returns false when it is not one.
+    pub(crate) fn try_stage_action(&mut self, action: &Action) -> bool {
+        match action {
+            Action::OpenStages => self.open_stages(),
+            Action::StagesNext => self.stages_next(),
+            Action::StagesPrev => self.stages_prev(),
+            Action::StagesAssign => self.stages_assign(),
+            Action::StagesUnassign => self.stages_unassign(),
+            Action::StagesFilter => self.stages_filter(),
+            Action::StagesNew => self.stages_begin_new(),
+            Action::StagesRename => self.stages_begin_rename(),
+            Action::StagesDelete => self.stages_delete(),
+            Action::StagesClose => self.close_stages(),
+            Action::StageNameInput(c) => self.stage_name_input(*c),
+            Action::StageNameBackspace => self.stage_name_backspace(),
+            Action::StageNameSubmit => self.submit_stage_name(),
+            Action::StageNameCancel => self.cancel_stage_name(),
+            _ => return false,
+        }
+        true
+    }
+}

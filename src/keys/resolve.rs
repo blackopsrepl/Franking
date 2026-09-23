@@ -22,7 +22,8 @@ use super::resolve_prompts::{
     resolve_resurface, resolve_search, resolve_unlock_prompt,
 };
 use super::resolve_prompts::{
-    resolve_clip_prompt, resolve_clips, resolve_snippet_name, resolve_snippets,
+    resolve_clip_prompt, resolve_clips, resolve_snippet_name, resolve_snippets, resolve_stage_name,
+    resolve_stages,
 };
 use super::resolve_saved::{resolve_save_search, resolve_saved_searches};
 use super::resolve_sieve::{resolve_sieve_edit, resolve_sieve_name, resolve_sieve_scripts};
@@ -52,6 +53,8 @@ pub fn resolve(view: View, key: KeyEvent) -> Action {
         View::SnippetName => return resolve_snippet_name(key),
         View::Clips => return resolve_clips(key),
         View::ClipPrompt => return resolve_clip_prompt(key),
+        View::StageBoard => return resolve_stages(key),
+        View::StageName => return resolve_stage_name(key),
         View::MessageNote | View::SubjectAlias => return resolve_annotation(key),
         View::AttachmentView => return resolve_attachment_view(key),
         View::LinkList => return resolve_link_list(key),
@@ -80,6 +83,7 @@ pub fn resolve(view: View, key: KeyEvent) -> Action {
             KeyCode::Char('b') => Action::OpenContacts,
             KeyCode::Char('l') => Action::OpenAttachmentLibrary,
             KeyCode::Char('k') => Action::OpenClips,
+            KeyCode::Char('g') => Action::OpenStages,
             _ => Action::None,
         };
     }
@@ -123,6 +127,8 @@ pub fn resolve(view: View, key: KeyEvent) -> Action {
         | View::SnippetName
         | View::Clips
         | View::ClipPrompt
+        | View::StageBoard
+        | View::StageName
         | View::AttachmentView
         | View::Keys
         | View::KeysPrompt

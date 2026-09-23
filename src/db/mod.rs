@@ -4,6 +4,7 @@ mod connection;
 mod migration_v10_v11;
 mod migration_v11_v12;
 mod migration_v12_v13;
+mod migration_v13_v14;
 mod migration_v1_v2;
 mod migration_v2_v3;
 mod migration_v4_v5;
@@ -13,6 +14,7 @@ mod migration_v7_v8;
 mod migration_v8_v9;
 mod migration_v9_v10;
 mod schema;
+mod schema_local;
 
 pub mod account_policy;
 pub mod annotations;
@@ -26,6 +28,7 @@ pub mod saved_searches;
 mod schema_migrations;
 pub mod sender_routes;
 pub mod snippets;
+pub mod stages;
 
 pub use connection::{db_path, init_for_test, open, schema_version, CURRENT_SCHEMA_VERSION};
 

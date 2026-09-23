@@ -208,6 +208,10 @@ pub fn render(app: &mut App, frame: &mut Frame) {
         binding("Ctrl+b", "Open address book"),
         binding("Ctrl+l", "Open the cross-account attachment library"),
         binding("Ctrl+k", "Open saved text clips"),
+        binding(
+            "Ctrl+g",
+            "Workflow stages: assign the conversation, filter by stage",
+        ),
         binding("Ctrl+n (compose)", "Insert a reusable snippet"),
         binding("j / k", "Navigate contacts"),
         binding("n", "New contact"),

@@ -79,6 +79,12 @@ pub struct App {
     pub(crate) snippets: super::snippets::SnippetsState,
     /// Saved text clips.
     pub(crate) clips: super::clips::ClipsState,
+    /// Workflow stages and the board state.
+    pub(crate) stages: super::stages::StagesState,
+    /// Stage each loaded conversation anchor belongs to.
+    pub(crate) stage_of_anchor: HashMap<String, String>,
+    /// Active stage filter by name.
+    pub(crate) stage_filter: Option<String>,
 
     /// Bundled senders for the loaded accounts, keyed by (account, sender).
     pub(crate) bundled_senders: super::bundle_view::BundleKeys,

@@ -88,6 +88,7 @@ cargo run -- --setup
 - **Text clips** - `*` in the reader saves an excerpt; `Ctrl+k` lists clips, Enter copies one to the clipboard
 - **Quiet or loud threads** - `M` quiets a conversation, `+` makes it always notify; both key on the conversation's message anchors
 - **Sender bundles** - `B` collapses a high-volume sender to one counted row, expands it, or unbundles it
+- **Workflow stages** - `Ctrl+g` assigns a conversation to an account-scoped stage and can filter the list by stage
 - **Fast keyboard navigation** - j/k and g/G in list/message views, plus direct multiline editing in compose
 - **Smart error handling** - Typed mail diagnostics and clean user-facing errors
 - **Structured message reader** - MIME-aware message content with one canonical HTML-first render path

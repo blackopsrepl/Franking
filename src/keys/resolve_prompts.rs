@@ -211,3 +211,28 @@ pub(super) fn resolve_clip_prompt(key: KeyEvent) -> Action {
         _ => Action::None,
     }
 }
+
+pub(super) fn resolve_stages(key: KeyEvent) -> Action {
+    match key.code {
+        KeyCode::Char('j') | KeyCode::Down => Action::StagesNext,
+        KeyCode::Char('k') | KeyCode::Up => Action::StagesPrev,
+        KeyCode::Enter => Action::StagesAssign,
+        KeyCode::Char('u') => Action::StagesUnassign,
+        KeyCode::Char('f') => Action::StagesFilter,
+        KeyCode::Char('n') => Action::StagesNew,
+        KeyCode::Char('r') => Action::StagesRename,
+        KeyCode::Char('d') => Action::StagesDelete,
+        KeyCode::Esc | KeyCode::Char('q') => Action::StagesClose,
+        _ => Action::None,
+    }
+}
+
+pub(super) fn resolve_stage_name(key: KeyEvent) -> Action {
+    match key.code {
+        KeyCode::Enter => Action::StageNameSubmit,
+        KeyCode::Esc => Action::StageNameCancel,
+        KeyCode::Backspace => Action::StageNameBackspace,
+        KeyCode::Char(c) => Action::StageNameInput(c),
+        _ => Action::None,
+    }
+}

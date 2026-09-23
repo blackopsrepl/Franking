@@ -130,6 +130,15 @@ pub fn hints(view: View) -> &'static [(&'static str, &'static str)] {
             ("Esc", "close"),
         ],
         View::ClipPrompt => &[("Enter", "save"), ("Esc", "cancel")],
+        View::StageBoard => &[
+            ("j/k", "nav"),
+            ("Enter", "assign"),
+            ("f", "filter"),
+            ("n", "new"),
+            ("u", "unstage"),
+            ("Esc", "close"),
+        ],
+        View::StageName => &[("Enter", "save"), ("Esc", "cancel")],
         View::Snippets => &[
             ("j/k", "nav"),
             ("Enter", "insert"),

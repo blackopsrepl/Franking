@@ -21,6 +21,7 @@ impl App {
         self.muted_ids.clear();
         self.resurfaced_ids.clear();
         self.loud_ids.clear();
+        self.stage_of_anchor.clear();
         self.subject_aliases.clear();
         let now = now_utc();
         let Some(conn) = self.db.as_ref() else {
@@ -102,6 +103,7 @@ impl App {
             self.envelopes.retain(|envelope| !envelope.is_seen());
             self.covered_count = before - self.envelopes.len();
         }
+        self.load_stages_and_filter(&anchors_by_row);
         // Collapse bundled senders after every other ordering decision.
         let accounts: Vec<String> = self
             .envelopes

@@ -32,6 +32,7 @@ impl App {
         if self.try_local_action(&action)
             || self.try_snippet_action(&action)
             || self.try_clip_action(&action)
+            || self.try_stage_action(&action)
         {
             return;
         }

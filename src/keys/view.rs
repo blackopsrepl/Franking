@@ -42,6 +42,10 @@ pub enum View {
     Clips,
     /// Capturing an excerpt from the open message.
     ClipPrompt,
+    /// Workflow stage board.
+    StageBoard,
+    /// Naming a workflow stage.
+    StageName,
     Search,
     Help,
     MovePrompt,

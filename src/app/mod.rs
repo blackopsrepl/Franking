@@ -55,6 +55,7 @@ mod sieve_actions;
 mod smime;
 mod snippets;
 mod sort_order;
+mod stages;
 mod threads;
 mod triage;
 mod undo;
