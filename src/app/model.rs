@@ -54,6 +54,7 @@ pub struct App {
     pub(crate) conversation_anchors: HashMap<String, Vec<String>>,
     pub(crate) muted_ids: std::collections::HashSet<String>,
     pub(crate) resurfaced_ids: std::collections::HashSet<String>,
+    pub(crate) loud_ids: std::collections::HashSet<String>,
     /// Buffered resurface delay input.
     pub(crate) resurface_input: String,
     /// Display aliases for the loaded list, keyed by envelope id.

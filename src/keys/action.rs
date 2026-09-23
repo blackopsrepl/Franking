@@ -22,6 +22,7 @@ pub enum Action {
     OpenFollowup(crate::db::message_markers::Marker),
     ToggleMarker(crate::db::message_markers::Marker),
     ToggleMuteConversation,
+    ToggleLoudConversation,
     OpenResurface,
     ResurfaceInput(char),
     ResurfaceBackspace,

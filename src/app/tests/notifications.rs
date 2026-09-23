@@ -65,4 +65,15 @@ fn focused_notifications_ignore_screening_reading_and_other_accounts() {
     assert!(!app.notify_for_new_mail(None, "INBOX", Some(&no_account)));
     app.notification_rule = NotificationRule::All;
     assert!(app.notify_for_new_mail(Some("work"), "INBOX", Some(&unknown)));
+
+    // A loud conversation notifies even when the rule is off.
+    app.notification_rule = NotificationRule::Off;
+    crate::db::conversations::set_loud(
+        app.db.as_ref().unwrap(),
+        "work",
+        &crate::db::conversations::anchors(&unknown),
+        true,
+    )
+    .unwrap();
+    assert!(app.notify_for_new_mail(Some("work"), "INBOX", Some(&unknown)));
 }

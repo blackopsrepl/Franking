@@ -211,6 +211,7 @@ pub(super) fn create_schema(conn: &Connection) -> Result<()> {
               account      TEXT    NOT NULL,
               anchor       TEXT    NOT NULL,
               muted        INTEGER NOT NULL DEFAULT 0 CHECK(muted IN (0, 1)),
+              loud         INTEGER NOT NULL DEFAULT 0 CHECK(loud IN (0, 1)),
               resurface_at TEXT,
               created_at   TEXT    NOT NULL DEFAULT (datetime('now')),
               UNIQUE(account, anchor)

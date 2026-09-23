@@ -77,6 +77,7 @@ fn resolved_root_with(
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Rule {
     pub muted: bool,
+    pub loud: bool,
     pub resurface_at: Option<String>,
 }
 
@@ -88,22 +89,25 @@ pub fn rules_for_account(
     conn: &Connection,
     account: &str,
 ) -> Result<std::collections::HashMap<String, Rule>> {
-    let mut stmt = conn
-        .prepare("SELECT anchor, muted, resurface_at FROM conversation_rules WHERE account = ?1")?;
+    let mut stmt = conn.prepare(
+        "SELECT anchor, muted, loud, resurface_at FROM conversation_rules WHERE account = ?1",
+    )?;
     let rows = stmt.query_map([account], |row| {
         Ok((
             row.get::<_, String>(0)?,
             row.get::<_, i64>(1)? != 0,
-            row.get::<_, Option<String>>(2)?,
+            row.get::<_, i64>(2)? != 0,
+            row.get::<_, Option<String>>(3)?,
         ))
     })?;
     let mut rules = std::collections::HashMap::new();
     for row in rows {
-        let (anchor, muted, resurface_at) = row?;
+        let (anchor, muted, loud, resurface_at) = row?;
         rules.insert(
             anchor,
             Rule {
                 muted,
+                loud,
                 resurface_at,
             },
         );
@@ -143,6 +147,39 @@ pub fn set_muted(conn: &Connection, account: &str, anchors: &[String], muted: bo
         delete_empty(conn, account, anchors)?;
     }
     Ok(())
+}
+
+/// Set or clear the always-notify flag on every anchor of a conversation.
+pub fn set_loud(conn: &Connection, account: &str, anchors: &[String], loud: bool) -> Result<()> {
+    for anchor in anchors {
+        conn.execute(
+            "INSERT INTO conversation_rules (account, anchor, loud) VALUES (?1, ?2, ?3)
+             ON CONFLICT(account, anchor) DO UPDATE SET loud = excluded.loud",
+            params![account, anchor, if loud { 1 } else { 0 }],
+        )?;
+    }
+    if !loud {
+        delete_empty(conn, account, anchors)?;
+    }
+    Ok(())
+}
+
+/// Whether any anchor of the conversation asks to always notify.
+pub fn is_loud(conn: &Connection, account: &str, anchors: &[String]) -> Result<bool> {
+    for anchor in anchors {
+        let loud: bool = conn
+            .query_row(
+                "SELECT loud FROM conversation_rules WHERE account = ?1 AND anchor = ?2",
+                params![account, anchor],
+                |row| row.get::<_, i64>(0),
+            )
+            .optional()?
+            .is_some_and(|value| value != 0);
+        if loud {
+            return Ok(true);
+        }
+    }
+    Ok(false)
 }
 
 /// The earliest resurface time recorded for the conversation, if any.
@@ -193,7 +230,7 @@ fn delete_empty(conn: &Connection, account: &str, anchors: &[String]) -> Result<
     for anchor in anchors {
         conn.execute(
             "DELETE FROM conversation_rules
-             WHERE account = ?1 AND anchor = ?2 AND muted = 0 AND resurface_at IS NULL",
+             WHERE account = ?1 AND anchor = ?2 AND muted = 0 AND loud = 0 AND resurface_at IS NULL",
             params![account, anchor],
         )?;
     }
@@ -206,77 +243,4 @@ pub fn is_due(conn: &Connection, account: &str, anchors: &[String], now: &str) -
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::mail::types::Sender;
-
-    pub(super) fn envelope(
-        id: &str,
-        message_id: Option<&str>,
-        in_reply_to: Option<&str>,
-    ) -> Envelope {
-        Envelope {
-            id: id.into(),
-            flags: Vec::new(),
-            subject: "s".into(),
-            sender: Sender::Plain("a@example.org".into()),
-            date: "2026-09-23".into(),
-            message_id: message_id.map(str::to_string),
-            in_reply_to: in_reply_to.map(str::to_string),
-            account: Some("work".into()),
-            folder: Some("INBOX".into()),
-        }
-    }
-
-    #[test]
-    fn muting_a_root_quiets_its_direct_reply() {
-        let conn = Connection::open_in_memory().unwrap();
-        crate::db::init_for_test(&conn).unwrap();
-        let root = envelope("1", Some("root@x"), None);
-        set_muted(&conn, "work", &anchors(&root), true).unwrap();
-        let reply = envelope("2", Some("reply@x"), Some("root@x"));
-        assert!(is_muted(&conn, "work", &anchors(&reply)).unwrap());
-        assert!(!is_muted(&conn, "personal", &anchors(&reply)).unwrap());
-    }
-
-    #[test]
-    fn unmuting_forgets_a_rule_that_carries_no_other_decision() {
-        let conn = Connection::open_in_memory().unwrap();
-        crate::db::init_for_test(&conn).unwrap();
-        let root = envelope("1", Some("root@x"), None);
-        set_muted(&conn, "work", &anchors(&root), true).unwrap();
-        set_muted(&conn, "work", &anchors(&root), false).unwrap();
-        assert!(!is_muted(&conn, "work", &anchors(&root)).unwrap());
-        let rows: i64 = conn
-            .query_row("SELECT COUNT(*) FROM conversation_rules", [], |row| {
-                row.get(0)
-            })
-            .unwrap();
-        assert_eq!(rows, 0);
-    }
-
-    #[test]
-    fn resurfacing_is_due_only_after_its_time() {
-        let conn = Connection::open_in_memory().unwrap();
-        crate::db::init_for_test(&conn).unwrap();
-        let root = envelope("1", Some("root@x"), None);
-        let anchors = anchors(&root);
-        set_resurface(&conn, "work", &anchors, Some("2026-09-23T12:00:00Z")).unwrap();
-        assert!(!is_due(&conn, "work", &anchors, "2026-09-23T11:00:00Z").unwrap());
-        assert!(is_due(&conn, "work", &anchors, "2026-09-23T13:00:00Z").unwrap());
-        set_resurface(&conn, "work", &anchors, None).unwrap();
-        assert!(!is_due(&conn, "work", &anchors, "2026-09-23T13:00:00Z").unwrap());
-    }
-
-    #[test]
-    fn a_uid_anchor_keeps_messages_without_a_message_id_distinct() {
-        let conn = Connection::open_in_memory().unwrap();
-        crate::db::init_for_test(&conn).unwrap();
-        let first = envelope("7", None, None);
-        let second = envelope("8", None, None);
-        assert_ne!(anchors(&first), anchors(&second));
-        set_muted(&conn, "work", &anchors(&first), true).unwrap();
-        assert!(is_muted(&conn, "work", &anchors(&first)).unwrap());
-        assert!(!is_muted(&conn, "work", &anchors(&second)).unwrap());
-    }
-}
+mod tests;

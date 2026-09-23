@@ -93,6 +93,9 @@ impl App {
             let owner = envelope.account.as_deref().or(account).unwrap_or_default();
             if !owner.is_empty() {
                 let anchors = crate::db::conversations::anchors(envelope);
+                if crate::db::conversations::is_loud(conn, owner, &anchors).unwrap_or(false) {
+                    return true;
+                }
                 if crate::db::conversations::is_muted(conn, owner, &anchors).unwrap_or(false) {
                     return false;
                 }

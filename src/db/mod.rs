@@ -2,6 +2,7 @@
 
 mod connection;
 mod migration_v10_v11;
+mod migration_v11_v12;
 mod migration_v1_v2;
 mod migration_v2_v3;
 mod migration_v4_v5;

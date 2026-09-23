@@ -96,6 +96,7 @@ pub fn render(app: &mut App, frame: &mut Frame, area: Rect) {
                 )
             );
             let muted = app.muted_ids.contains(&env.id);
+            let loud = app.loud_ids.contains(&env.id);
             let resurfaced = app.resurfaced_ids.contains(&env.id);
             let base_style = if muted {
                 t.dimmed()
@@ -154,6 +155,8 @@ pub fn render(app: &mut App, frame: &mut Frame, area: Rect) {
             };
             let subject = if resurfaced {
                 format!("\u{25F7} resurfaced · {subject}")
+            } else if loud {
+                format!("loud · {subject}")
             } else if muted {
                 format!("quiet · {subject}")
             } else {

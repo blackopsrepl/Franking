@@ -100,7 +100,7 @@ focused queue, a thread board, or a shared project view.
 | Add private notes to a contact, message, or conversation | Contact notes exist; `i` writes a private note on a message, shown above its body | Notes are per message, not per conversation or with files |
 | Rename a subject for local display only | `%` sets a display alias for the conversation; the wire subject is unchanged | The alias is keyed by conversation anchor |
 | Insert reusable response text | `Ctrl+n` in compose opens a snippet picker; Enter inserts at the cursor, `s` saves the current body under a name | Snippets are global, not per account |
-| Control interruption per contact or thread | Focused-Inbox notification default plus all/contacts/off preferences | Per-thread overrides and reliable change-event identity remain |
+| Control interruption per contact or thread | Focused-Inbox default, all/contacts/off preferences, `M` to quiet a conversation and `+` to make it always notify | Overrides key on Message-ID anchors, so a deep reply whose parent is not loaded may not match |
 | Avoid remote tracking pixels | HTML-to-terminal-text rendering makes no image request | No tracker detection/report; don't claim comprehensive remote-content blocking |
 | Let a trusted unknown sender bypass screening | Preferences holds a revocable per-account bypass token; a whole-word subject match lifts Screening into the Inbox only | An explicit Blocked route still wins over the token |
 | Identify spam separately from screening | Provider junk mailbox and Sieve controls | A blocked sender is an attention decision, not spam training or SMTP rejection |

@@ -20,6 +20,7 @@ impl App {
         self.conversation_anchors.clear();
         self.muted_ids.clear();
         self.resurfaced_ids.clear();
+        self.loud_ids.clear();
         self.subject_aliases.clear();
         let now = now_utc();
         let Some(conn) = self.db.as_ref() else {
@@ -47,10 +48,12 @@ impl App {
                 crate::db::annotations::aliases_for_account(conn, &account).unwrap_or_default()
             });
             let mut muted = false;
+            let mut loud = false;
             let mut due = false;
             for anchor in anchors {
                 if let Some(rule) = account_rules.get(anchor) {
                     muted |= rule.muted;
+                    loud |= rule.loud;
                     due |= rule
                         .resurface_at
                         .as_deref()
@@ -67,6 +70,9 @@ impl App {
             }
             if due {
                 self.resurfaced_ids.insert(envelope.id.clone());
+            }
+            if loud {
+                self.loud_ids.insert(envelope.id.clone());
             }
             self.conversation_anchors
                 .insert(envelope.id.clone(), anchors.clone());
@@ -124,6 +130,39 @@ impl App {
                     "Conversation is loud again."
                 } else {
                     "Conversation quieted; new replies stay out of the way."
+                });
+                self.load_envelopes();
+            }
+            Err(error) => self.set_error(&format!("Could not change the conversation: {error}")),
+        }
+    }
+
+    /// Ask the selected conversation to notify regardless of the rule.
+    pub(crate) fn toggle_loud_conversation(&mut self) {
+        let Some(envelope) = self.selected_envelope().cloned() else {
+            return;
+        };
+        let anchors = self
+            .conversation_anchors
+            .get(&envelope.id)
+            .cloned()
+            .unwrap_or_else(|| conversations::anchors(&envelope));
+        let account = envelope
+            .account
+            .clone()
+            .or_else(|| self.acct_owned())
+            .unwrap_or_default();
+        let Some(conn) = self.db.as_ref() else {
+            self.set_error("Local database is unavailable.");
+            return;
+        };
+        let loud = self.loud_ids.contains(&envelope.id);
+        match conversations::set_loud(conn, &account, &anchors, !loud) {
+            Ok(()) => {
+                self.set_status(if loud {
+                    "Conversation follows the notification rule again."
+                } else {
+                    "Conversation will always notify."
                 });
                 self.load_envelopes();
             }

@@ -149,6 +149,7 @@ impl App {
             conversation_anchors: HashMap::new(),
             muted_ids: std::collections::HashSet::new(),
             resurfaced_ids: std::collections::HashSet::new(),
+            loud_ids: std::collections::HashSet::new(),
             resurface_input: String::new(),
             subject_aliases: HashMap::new(),
             annotation_input: String::new(),

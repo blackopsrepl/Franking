@@ -22,6 +22,7 @@ pub(super) fn resolve_message_view(key: KeyEvent) -> Action {
         KeyCode::Char('y') => Action::ToggleMarker(crate::db::message_markers::Marker::ReplyLater),
         KeyCode::Char('Y') => Action::ToggleMarker(crate::db::message_markers::Marker::Saved),
         KeyCode::Char('M') => Action::ToggleMuteConversation,
+        KeyCode::Char('+') => Action::ToggleLoudConversation,
         KeyCode::Char('b') => Action::OpenResurface,
         KeyCode::Char('x') => Action::OpenPlacePrompt,
         KeyCode::Char('i') => Action::OpenNote,
