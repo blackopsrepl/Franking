@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [2.2.2](https://github.com/blackopsrepl/Franking/compare/v2.2.1...v2.2.2) (2026-09-23)
+
+
+### Bug Fixes
+
+* **ui:** keep the reader behind in-reader prompts 4b3ab9b
+
 ## [2.2.1](https://github.com/blackopsrepl/Franking/compare/v2.2.0...v2.2.1) (2026-09-23)
 
 
