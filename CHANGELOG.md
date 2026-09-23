@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [2.1.1](https://github.com/blackopsrepl/Franking/compare/v2.1.0...v2.1.1) (2026-09-23)
+
+
+### Performance Improvements
+
+* **mail:** cut per-row queries and scan caches off the UI thread 076806d
+* **mail:** resolve conversation roots with one index 3012b85
+* **ui:** stop rebuilding the hint list every frame df4bc32
+
 ## [2.1.0](https://github.com/blackopsrepl/Franking/compare/v2.0.1...v2.1.0) (2026-09-23)
 
 
