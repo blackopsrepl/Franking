@@ -86,6 +86,10 @@ pub fn render(app: &mut App, frame: &mut Frame) {
         binding("i", "Write a private note on the selected message"),
         binding("%", "Rename the subject for you only (blank restores)"),
         binding("T", "Read the selected messages together in one scroll"),
+        binding(
+            "V",
+            "Lift or replace the cover over previously seen Inbox mail",
+        ),
         binding("O", "Open the outbox"),
         binding("P", "Open preferences"),
         binding("K", "Open key material"),

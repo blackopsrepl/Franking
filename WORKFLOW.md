@@ -102,7 +102,7 @@ focused queue, a thread board, or a shared project view.
 | Insert reusable response text | Compose editor, no snippet library | User-defined reusable text for the selected identity/account |
 | Control interruption per contact or thread | Focused-Inbox notification default plus all/contacts/off preferences | Per-thread overrides and reliable change-event identity remain |
 | Avoid remote tracking pixels | HTML-to-terminal-text rendering makes no image request | No tracker detection/report; don't claim comprehensive remote-content blocking |
-| Let a trusted unknown sender bypass screening | Not available | Revocable per-account bypass token, validated without silently approving other senders |
+| Let a trusted unknown sender bypass screening | Preferences holds a revocable per-account bypass token; a whole-word subject match lifts Screening into the Inbox only | An explicit Blocked route still wins over the token |
 | Identify spam separately from screening | Provider junk mailbox and Sieve controls | A blocked sender is an attention decision, not spam training or SMTP rejection |
 | Combine accounts or focus on one | All Inboxes, account picker, scoped search | Unified rows need source-aware mutations and complete per-account paging |
 | Send from multiple addresses | Per-account identities with From selection | Identity, signatures, and Sent mailbox stay tied to their transport account |
@@ -114,7 +114,7 @@ focused queue, a thread board, or a shared project view.
 | Collaborate with comments and shared mailboxes | Local personal accounts and mail UI | Multi-user service, permissions, and shared conversation history |
 | Calendar and private journal | Invitation handoff to Planner123 | Planner123 integration is not an in-client calendar or journal |
 | Security of hosted accounts | Keyring auth, OAuth, PGP, S/MIME | Hosted login, MFA, and security-key promises are provider-specific |
-| Decorative cover for previously seen mail | Not available | Optional presentation, independent of delivery and follow-up semantics |
+| Decorative cover for previously seen mail | A preference covers previously seen Inbox mail; `V` lifts it for the session | Presentation only; delivery and follow-up are unchanged |
 
 The largest gap is the lifecycle *after* screening: reply and reference queues,
 quiet threads, resurfacing, and work across multiple messages. Those need

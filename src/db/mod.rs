@@ -7,8 +7,10 @@ mod migration_v4_v5;
 mod migration_v5_v6;
 mod migration_v6_v7;
 mod migration_v7_v8;
+mod migration_v8_v9;
 mod schema;
 
+pub mod account_policy;
 pub mod annotations;
 pub mod conversations;
 pub mod message_markers;

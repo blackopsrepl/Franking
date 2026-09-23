@@ -169,6 +169,7 @@ impl App {
                 if let Some(account) = self.accounts.get(self.account_index) {
                     self.account_name = Some(account.name.clone());
                     self.pending_undo = None;
+                    self.refresh_bypass_token();
                     self.current_folder = "INBOX".to_string();
                     self.triage_lane = None;
                     self.followup_lane = None;

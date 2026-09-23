@@ -4,6 +4,7 @@ pub mod action_bar;
 mod annotation_prompt;
 mod attachment_library;
 mod attachment_list;
+mod bypass_prompt;
 mod compose;
 mod contact_edit;
 mod contacts;
@@ -109,6 +110,7 @@ pub fn render(app: &mut App, frame: &mut Frame) {
         View::FolderPrompt => folder_prompt::render(app, frame, outer[2]),
         View::SchedulePrompt => outbox::render_schedule_prompt(app, frame, outer[2]),
         View::ResurfacePrompt => resurface_prompt::render(app, frame, outer[2]),
+        View::BypassPrompt => bypass_prompt::render(app, frame, outer[2]),
         View::PlacePrompt => place_prompt::render(app, frame, outer[2]),
         View::MessageNote | View::SubjectAlias => annotation_prompt::render(app, frame, outer[2]),
         View::MessageSearch => message_view::render_search_prompt(app, frame, outer[2]),

@@ -30,6 +30,8 @@ pub enum View {
     AttachmentLibrary,
     /// Several selected messages read in one scroll.
     ReadTogether,
+    /// Prompt to set, regenerate, or clear the screening bypass token.
+    BypassPrompt,
     Search,
     Help,
     MovePrompt,

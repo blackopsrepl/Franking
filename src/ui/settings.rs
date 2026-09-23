@@ -8,7 +8,7 @@ use crate::ui::util::centered_rect;
 /// Render the preferences overlay.
 pub fn render(app: &App, frame: &mut Frame) {
     let t = theme();
-    let popup = centered_rect(60, 40, frame.area());
+    let popup = centered_rect(60, 50, frame.area());
     frame.render_widget(Clear, popup);
 
     let block = Block::default()
@@ -39,6 +39,16 @@ pub fn render(app: &App, frame: &mut Frame) {
         ),
         ("Page size".to_string(), app.page_size.to_string()),
         ("Compose autosave".to_string(), autosave),
+        (
+            "Cover previously seen".to_string(),
+            toggle_label(app.cover_seen),
+        ),
+        (
+            "Bypass token".to_string(),
+            app.bypass_token
+                .clone()
+                .unwrap_or_else(|| "(none)".to_string()),
+        ),
     ];
 
     let mut lines = Vec::new();

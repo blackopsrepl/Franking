@@ -86,6 +86,16 @@ impl App {
             };
             rank(left).cmp(&rank(right))
         });
+        // Cover previously seen Inbox mail until the user lifts it.
+        self.covered_count = 0;
+        if self.cover_seen
+            && !self.cover_revealed
+            && self.triage_lane == Some(crate::db::sender_routes::Route::Inbox)
+        {
+            let before = self.envelopes.len();
+            self.envelopes.retain(|envelope| !envelope.is_seen());
+            self.covered_count = before - self.envelopes.len();
+        }
     }
 
     /// Mute or unmute the selected conversation.

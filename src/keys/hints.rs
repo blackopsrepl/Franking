@@ -118,6 +118,7 @@ pub fn hints(view: View) -> &'static [(&'static str, &'static str)] {
         View::SubjectAlias => &[("Enter", "rename"), ("Esc", "cancel")],
         View::AttachmentLibrary => &[("j/k", "nav"), ("Enter", "open message"), ("Esc", "close")],
         View::ReadTogether => &[("j/k", "scroll"), ("g/G", "top/end"), ("q/Esc", "back")],
+        View::BypassPrompt => &[("Enter", "save"), ("Tab", "generate"), ("Esc", "cancel")],
         View::Outbox => &[
             ("j/k", "nav"),
             ("Enter", "send now"),

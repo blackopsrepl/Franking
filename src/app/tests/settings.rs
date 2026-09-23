@@ -3,6 +3,7 @@
 #[test]
 fn settings_cycle_between_preferences() {
     use crate::app::App;
+    use crate::keys::View;
 
     let conn = rusqlite::Connection::open_in_memory().unwrap();
     crate::db::init_for_test(&conn).unwrap();
@@ -55,9 +56,22 @@ fn settings_cycle_between_preferences() {
     assert!(app.status_message.contains("every 60s"));
 
     app.settings_move(1);
+    assert_eq!(app.settings_index, 5);
+    assert!(!app.cover_seen);
+    app.settings_toggle();
+    assert!(app.cover_seen);
+    assert!(app.status_message.contains("press V"));
+
+    app.settings_move(1);
+    assert_eq!(app.settings_index, 6);
+    app.settings_toggle();
+    assert_eq!(app.view, View::BypassPrompt, "the token prompt opens");
+    app.cancel_bypass();
+
+    app.settings_move(1);
     assert_eq!(app.settings_index, 0, "wraps around");
     app.settings_move(-1);
-    assert_eq!(app.settings_index, 4);
+    assert_eq!(app.settings_index, 6);
 
     // The stored values come back on the next start.
     let mut reloaded = App::new(None);
@@ -66,6 +80,7 @@ fn settings_cycle_between_preferences() {
     assert_eq!(reloaded.page_size, 100);
     assert_eq!(reloaded.autosave_seconds, 60);
     assert!(reloaded.encrypt_drafts, "the choice comes back");
+    assert!(reloaded.cover_seen, "the cover choice comes back");
 }
 
 #[test]

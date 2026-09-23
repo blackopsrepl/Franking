@@ -143,3 +143,14 @@ pub(super) fn resolve_read_together(key: KeyEvent) -> Action {
         _ => Action::None,
     }
 }
+
+pub(super) fn resolve_bypass(key: KeyEvent) -> Action {
+    match key.code {
+        KeyCode::Enter => Action::BypassSubmit,
+        KeyCode::Esc => Action::BypassCancel,
+        KeyCode::Backspace => Action::BypassBackspace,
+        KeyCode::Tab => Action::BypassGenerate,
+        KeyCode::Char(c) => Action::BypassInput(c),
+        _ => Action::None,
+    }
+}

@@ -118,10 +118,21 @@ impl App {
                     let Some(owner) = envelope.account.as_deref().or(account) else {
                         return false;
                     };
-                    self.db
+                    let bypassed = self
+                        .db
                         .as_ref()
-                        .and_then(|conn| crate::db::sender_routes::get(conn, owner, &sender).ok())
-                        == Some(crate::db::sender_routes::Route::Inbox)
+                        .and_then(|conn| {
+                            crate::db::account_policy::bypass_token(conn, owner)
+                                .ok()
+                                .flatten()
+                        })
+                        .is_some_and(|token| {
+                            crate::db::account_policy::subject_has_token(&envelope.subject, &token)
+                        });
+                    bypassed
+                        || self.db.as_ref().and_then(|conn| {
+                            crate::db::sender_routes::get(conn, owner, &sender).ok()
+                        }) == Some(crate::db::sender_routes::Route::Inbox)
                 } else {
                     let sender = crate::db::sender_routes::sender_address(&envelope.sender)
                         .unwrap_or_default();

@@ -19,6 +19,7 @@ mod message_search;
 mod move_prompt;
 mod notifications;
 mod placement;
+mod policy;
 mod read_together;
 mod saved_searches;
 mod settings;

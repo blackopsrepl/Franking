@@ -14,6 +14,8 @@ const MARK_READ_ON_OPEN: &str = "mark_read_on_open";
 /// Preference keys for the page size and autosave interval.
 const PAGE_SIZE: &str = "page_size";
 const AUTOSAVE_SECONDS: &str = "autosave_seconds";
+/// Preference key for covering previously seen mail in the Inbox lane.
+const COVER_SEEN: &str = "cover_seen";
 
 /// Page sizes offered in the preferences overlay.
 const PAGE_SIZES: [usize; 4] = [25, 50, 100, 200];
@@ -21,7 +23,7 @@ const PAGE_SIZES: [usize; 4] = [25, 50, 100, 200];
 const AUTOSAVE_CHOICES: [u64; 4] = [15, 30, 60, 0];
 
 /// Number of rows in the preferences overlay.
-pub(crate) const SETTINGS_ROWS: usize = 5;
+pub(crate) const SETTINGS_ROWS: usize = 7;
 
 impl App {
     /// Load persisted preferences (called during startup).
@@ -45,7 +47,11 @@ impl App {
             if let Ok(enabled) = preferences::get(conn, ENCRYPT_DRAFTS, false) {
                 self.encrypt_drafts = enabled;
             }
+            if let Ok(enabled) = preferences::get(conn, COVER_SEEN, false) {
+                self.cover_seen = enabled;
+            }
         }
+        self.refresh_bypass_token();
     }
 
     pub(crate) fn open_settings(&mut self) {
@@ -75,7 +81,7 @@ impl App {
                 self.set_status(&format!("Page size: {}.", self.page_size));
             }
             3 => self.toggle_encrypt_drafts(),
-            _ => {
+            4 => {
                 let index = AUTOSAVE_CHOICES
                     .iter()
                     .position(|seconds| *seconds == self.autosave_seconds)
@@ -90,6 +96,8 @@ impl App {
                 };
                 self.set_status(&message);
             }
+            5 => self.toggle_cover_seen(),
+            _ => self.open_bypass_prompt(),
         }
     }
 
@@ -102,6 +110,25 @@ impl App {
 
     pub(crate) fn close_settings(&mut self) {
         self.view = View::EnvelopeList;
+    }
+}
+
+impl App {
+    /// Toggle covering previously seen mail and remember the choice.
+    pub(crate) fn toggle_cover_seen(&mut self) {
+        self.cover_seen = !self.cover_seen;
+        self.cover_revealed = false;
+        if let Some(conn) = self.db.as_ref() {
+            if let Err(error) = preferences::set(conn, COVER_SEEN, self.cover_seen) {
+                self.set_error(&format!("Could not save the preference: {error}"));
+                return;
+            }
+        }
+        self.set_status(if self.cover_seen {
+            "Previously seen mail is covered; press V to lift it."
+        } else {
+            "Previously seen mail is shown."
+        });
     }
 }
 

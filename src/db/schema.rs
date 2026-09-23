@@ -240,6 +240,10 @@ pub(super) fn create_schema(conn: &Connection) -> Result<()> {
               updated_at TEXT NOT NULL DEFAULT (datetime('now')),
               PRIMARY KEY (account, folder, uid)
          );
+         CREATE TABLE account_policy (
+              account      TEXT PRIMARY KEY,
+              bypass_token TEXT
+         );
          CREATE TABLE subject_aliases (
               account    TEXT NOT NULL,
               anchor     TEXT NOT NULL,
