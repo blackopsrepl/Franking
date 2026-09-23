@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [2.2.0](https://github.com/blackopsrepl/Franking/compare/v2.1.1...v2.2.0) (2026-09-23)
+
+
+### Features
+
+* **mail:** account-scoped workflow stages ab728e2
+* **mail:** bulk reply and a reading stream 8f54d4a
+* **mail:** bundle a high-volume sender into one row 686eff1
+* **mail:** focus and reply through the response queue 2faf5d5
+* **mail:** merge conversations locally cb0db73
+* **mail:** named collections of conversations feabd5b
+* **mail:** per-conversation always-notify alongside quieting bb29535
+* **mail:** reusable compose snippets 750f49b
+* **mail:** save and retrieve text clips 0016b68
+* **mail:** screen bypass token and a previously-seen cover f84e787
+
+
+### Bug Fixes
+
+* **mail:** show the focus queue's hints once a message loads d3e5356
+
 ## [2.1.1](https://github.com/blackopsrepl/Franking/compare/v2.1.0...v2.1.1) (2026-09-23)
 
 
