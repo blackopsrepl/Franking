@@ -114,6 +114,10 @@ pub fn render(app: &mut App, frame: &mut Frame) {
             "Resurface the conversation after a delay (blank clears)",
         ),
         binding(
+            "x",
+            "Place one message in a lane, overriding its sender's route",
+        ),
+        binding(
             "1/2/3/4/5",
             "Route sender: Inbox/Reading/Receipts/Blocked/Screening",
         ),

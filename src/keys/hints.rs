@@ -109,6 +109,7 @@ pub fn hints(view: View) -> Vec<(&'static str, &'static str)> {
         View::Settings => vec![("space", "toggle"), ("Esc", "close")],
         View::SchedulePrompt => vec![("Enter", "schedule"), ("Esc", "cancel")],
         View::ResurfacePrompt => vec![("Enter", "resurface"), ("Esc", "cancel")],
+        View::PlacePrompt => vec![("1-5", "place"), ("Esc", "cancel")],
         View::Outbox => vec![
             ("j/k", "nav"),
             ("Enter", "send now"),

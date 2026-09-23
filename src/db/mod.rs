@@ -5,10 +5,12 @@ mod migration_v1_v2;
 mod migration_v2_v3;
 mod migration_v4_v5;
 mod migration_v5_v6;
+mod migration_v6_v7;
 mod schema;
 
 pub mod conversations;
 pub mod message_markers;
+pub mod message_routes;
 pub mod preferences;
 pub mod saved_searches;
 mod schema_migrations;

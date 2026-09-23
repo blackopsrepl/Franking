@@ -20,6 +20,8 @@ pub enum View {
     SchedulePrompt,
     /// Prompt for a resurface delay on a conversation.
     ResurfacePrompt,
+    /// Prompt to place one message in a lane, overriding its sender's route.
+    PlacePrompt,
     Search,
     Help,
     MovePrompt,

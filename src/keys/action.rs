@@ -58,6 +58,9 @@ pub enum Action {
     ResurfaceBackspace,
     ResurfaceSubmit,
     ResurfaceCancel,
+    OpenPlacePrompt,
+    RouteMessage(crate::db::sender_routes::Route),
+    PlaceCancel,
     SyncFolder,
     MarkFolderRead,
     DownloadAttachments,
@@ -73,13 +76,9 @@ pub enum Action {
     Refresh,
     SwitchAccount,
     ToggleHelp,
-    /// Show every raw header in the message view.
     ToggleHeaders,
-    /// Collapse quoted lines in the message view.
     ToggleQuotes,
-    /// Show the raw HTML source instead of the rendered text.
     ToggleHtmlSource,
-    /// Save the loaded message as an .eml file.
     SaveMessage,
     FocusFolders,
     FocusEnvelopes,

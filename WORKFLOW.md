@@ -82,7 +82,7 @@ focused queue, a thread board, or a shared project view.
 | --- | --- | --- |
 | Decide whether a new sender gets attention; reconsider a refusal | Local Screening and Blocked lanes | Per receiving account and sender mailbox; mail is still delivered to the provider |
 | Route accepted correspondence, reading, and transactions | Local Inbox, Reading, Receipts lanes | Sender policy per receiving account; only the latest 200 inbox messages per account are listed |
-| Override one message without changing future sender delivery | Not available | Message-scoped exception to the sender policy |
+| Override one message without changing future sender delivery | `x` places one message in a lane, overriding its sender's route | The override is keyed by account, folder, and UID with a Message-ID guard |
 | Separate new correspondence from previously seen threads | Inbox lane groups new before seen by message flag | Thread-level promotion after a fresh reply still needs coherent conversation state |
 | Process multiple new messages in one uninterrupted pass | One-message reader | Session over selected new messages with decisions between reads |
 | Read newsletters as an already-open scrollable stream | Reading list of envelopes | A distinct reading surface, not just another inbox list |

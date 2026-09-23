@@ -16,6 +16,7 @@ mod mail_ui;
 mod message_search;
 mod move_prompt;
 mod notifications;
+mod placement;
 mod saved_searches;
 mod settings;
 mod sieve;

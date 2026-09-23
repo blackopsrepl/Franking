@@ -35,6 +35,7 @@ mod notification_rules;
 mod outbox;
 mod pgp;
 pub(crate) mod pgp_keys;
+mod placement;
 mod planner;
 mod saved_searches;
 mod search_flow;

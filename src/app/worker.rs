@@ -193,7 +193,12 @@ impl App {
             };
             let mut matching = Vec::new();
             for envelope in envelopes {
-                match crate::db::sender_routes::for_envelope(conn, &envelope) {
+                let effective = match crate::db::message_routes::get(conn, &envelope) {
+                    Ok(Some(route)) => Ok(route),
+                    Ok(None) => crate::db::sender_routes::for_envelope(conn, &envelope),
+                    Err(error) => Err(error),
+                };
+                match effective {
                     Ok(route) if route == lane => matching.push(envelope),
                     Ok(_) => {}
                     Err(error) => {

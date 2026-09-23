@@ -220,6 +220,17 @@ pub(super) fn create_schema(conn: &Connection) -> Result<()> {
          CREATE INDEX idx_conversation_rules_resurface
               ON conversation_rules(account, resurface_at);
 
+         CREATE TABLE message_routes (
+              account    TEXT NOT NULL,
+              folder     TEXT NOT NULL,
+              uid        TEXT NOT NULL,
+              message_id TEXT,
+              route      TEXT NOT NULL,
+              PRIMARY KEY (account, folder, uid)
+         );
+         CREATE INDEX idx_message_routes_account
+              ON message_routes(account);
+
          CREATE TABLE sync_state (
              account        TEXT    NOT NULL,
              folder         TEXT    NOT NULL,
