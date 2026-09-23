@@ -53,6 +53,8 @@ impl App {
         }
         self.read_together = Some(documents);
         self.read_together_scroll = 0;
+        self.status_message.clear();
+        self.status_is_error = false;
         self.view = View::ReadTogether;
     }
 
