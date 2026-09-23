@@ -30,6 +30,31 @@ fn a_note_is_saved_and_cleared_through_the_prompt() {
 }
 
 #[test]
+fn an_alias_works_from_the_reader_without_precomputed_anchors() {
+    let conn = rusqlite::Connection::open_in_memory().unwrap();
+    crate::db::init_for_test(&conn).unwrap();
+    let mut app = App::new(Some("work".into()));
+    app.db = Some(conn);
+    let mut mail = envelope("work", "7", "alice@example.org");
+    mail.message_id = Some("root@x".into());
+    app.handle_envelopes_loaded(vec![mail.clone()]);
+    // The reader can reach the prompt before anchors were recomputed.
+    app.conversation_anchors.clear();
+    app.view = View::MessageView;
+    app.open_subject_alias_prompt();
+    for c in "Alpha".chars() {
+        app.annotation_input(c);
+    }
+    app.submit_annotation();
+    assert_eq!(
+        annotations::alias(app.db.as_ref().unwrap(), "work", &["root@x".to_string()])
+            .unwrap()
+            .as_deref(),
+        Some("Alpha")
+    );
+}
+
+#[test]
 fn a_subject_alias_is_applied_to_the_list_only() {
     let conn = rusqlite::Connection::open_in_memory().unwrap();
     crate::db::init_for_test(&conn).unwrap();

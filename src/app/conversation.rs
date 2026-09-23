@@ -65,10 +65,11 @@ impl App {
         let Some(envelope) = self.selected_envelope().cloned() else {
             return;
         };
-        let Some(anchors) = self.conversation_anchors.get(&envelope.id).cloned() else {
-            self.set_error("This message has no conversation identity.");
-            return;
-        };
+        let anchors = self
+            .conversation_anchors
+            .get(&envelope.id)
+            .cloned()
+            .unwrap_or_else(|| conversations::anchors(&envelope));
         let account = envelope
             .account
             .clone()
@@ -122,10 +123,11 @@ impl App {
             self.cancel_resurface();
             return;
         };
-        let Some(anchors) = self.conversation_anchors.get(&envelope.id).cloned() else {
-            self.set_error("This message has no conversation identity.");
-            return;
-        };
+        let anchors = self
+            .conversation_anchors
+            .get(&envelope.id)
+            .cloned()
+            .unwrap_or_else(|| conversations::anchors(&envelope));
         let account = envelope
             .account
             .clone()

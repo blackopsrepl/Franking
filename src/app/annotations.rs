@@ -29,7 +29,7 @@ impl App {
             .conversation_anchors
             .get(&envelope.id)
             .cloned()
-            .unwrap_or_default();
+            .unwrap_or_else(|| crate::db::conversations::anchors(&envelope));
         let account = envelope
             .account
             .clone()
@@ -68,7 +68,7 @@ impl App {
             .conversation_anchors
             .get(&envelope.id)
             .cloned()
-            .unwrap_or_default();
+            .unwrap_or_else(|| crate::db::conversations::anchors(&envelope));
         let account = envelope
             .account
             .clone()

@@ -77,6 +77,9 @@ pub fn alias(conn: &Connection, account: &str, anchors: &[String]) -> Result<Opt
 /// Set or clear a display alias for every anchor of a conversation.
 pub fn set_alias(conn: &Connection, account: &str, anchors: &[String], alias: &str) -> Result<()> {
     let trimmed = alias.trim();
+    if anchors.is_empty() {
+        anyhow::bail!("A subject alias needs a conversation identity");
+    }
     if trimmed.is_empty() {
         for anchor in anchors {
             conn.execute(
