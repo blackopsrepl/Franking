@@ -14,10 +14,15 @@ fn opening_the_library_lists_cached_attachments() {
         rusqlite::params![raw.to_vec()],
     )
     .unwrap();
+
+    let items = crate::mail::attachment_index::list(&conn, 50).unwrap();
     let mut app = App::new(Some("work".into()));
     app.db = Some(conn);
     app.open_attachment_library();
     assert_eq!(app.view, View::AttachmentLibrary);
+    assert!(app.loading, "the scan runs off the UI thread");
+    app.handle_attachment_library(Ok(items));
+    assert!(!app.loading);
     assert_eq!(app.attachment_library.items.len(), 1);
     assert_eq!(app.attachment_library.items[0].file_name, "report.pdf");
 }

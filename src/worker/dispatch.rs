@@ -18,6 +18,8 @@ pub enum WorkerResult {
     Message(Box<Result<MessageDocument, MailError>>),
     /// Several messages loaded together for one scroll.
     ReadTogether(Result<Vec<MessageDocument>, MailError>),
+    /// Attachments indexed from cached mail.
+    AttachmentLibrary(Result<Vec<crate::mail::attachment_index::IndexedAttachment>, MailError>),
     ActionDone(Result<String, MailError>),
     /// Unread count for a specific folder: (folder_name, count).
     FolderUnread(String, Result<usize, MailError>),

@@ -1,7 +1,10 @@
 /*! Quiet conversations and resurfacing over the loaded message list. */
 
+use std::collections::HashMap;
+
 use crate::db::conversations;
 use crate::keys::View;
+use crate::mail::types::Envelope;
 
 use super::model::App;
 
@@ -22,41 +25,64 @@ impl App {
         let Some(conn) = self.db.as_ref() else {
             return;
         };
+        // Load each account's rules once instead of a query per row.
+        let mut rules: HashMap<String, HashMap<String, conversations::Rule>> = HashMap::new();
+        let mut aliases: HashMap<String, HashMap<String, String>> = HashMap::new();
         for (index, envelope) in self.envelopes.iter().enumerate() {
             let anchors = conversations::anchors_with_root(&self.envelopes, index);
-            let account = envelope
+            let Some(account) = envelope
                 .account
                 .clone()
                 .or_else(|| self.account_name.clone())
-                .unwrap_or_default();
-            if account.is_empty() {
+                .filter(|account| !account.is_empty())
+            else {
                 continue;
+            };
+            let account_rules = rules.entry(account.clone()).or_insert_with(|| {
+                conversations::rules_for_account(conn, &account).unwrap_or_default()
+            });
+            let account_aliases = aliases.entry(account.clone()).or_insert_with(|| {
+                crate::db::annotations::aliases_for_account(conn, &account).unwrap_or_default()
+            });
+            let mut muted = false;
+            let mut due = false;
+            for anchor in &anchors {
+                if let Some(rule) = account_rules.get(anchor) {
+                    muted |= rule.muted;
+                    due |= rule
+                        .resurface_at
+                        .as_deref()
+                        .is_some_and(|at| at <= now.as_str());
+                }
+                if let Some(alias) = account_aliases.get(anchor) {
+                    self.subject_aliases
+                        .entry(envelope.id.clone())
+                        .or_insert_with(|| alias.clone());
+                }
             }
-            let muted = conversations::is_muted(conn, &account, &anchors).unwrap_or(false);
-            let due = conversations::is_due(conn, &account, &anchors, &now).unwrap_or(false);
             if muted {
                 self.muted_ids.insert(envelope.id.clone());
             }
             if due {
                 self.resurfaced_ids.insert(envelope.id.clone());
             }
-            if let Ok(Some(alias)) = crate::db::annotations::alias(conn, &account, &anchors) {
-                self.subject_aliases.insert(envelope.id.clone(), alias);
-            }
             self.conversation_anchors
                 .insert(envelope.id.clone(), anchors);
         }
         // Keep the visible order stable: resurfaced, ordinary, then quieted.
-        let resurfaced = self.resurfaced_ids.clone();
-        let muted = self.muted_ids.clone();
-        self.envelopes.sort_by_key(|envelope| {
-            if resurfaced.contains(&envelope.id) {
-                0
-            } else if muted.contains(&envelope.id) {
-                2
-            } else {
-                1
-            }
+        let muted = &self.muted_ids;
+        let resurfaced = &self.resurfaced_ids;
+        self.envelopes.sort_by(|left, right| {
+            let rank = |envelope: &Envelope| {
+                if resurfaced.contains(&envelope.id) {
+                    0
+                } else if muted.contains(&envelope.id) {
+                    2
+                } else {
+                    1
+                }
+            };
+            rank(left).cmp(&rank(right))
         });
     }
 

@@ -111,19 +111,17 @@ impl App {
                     return false;
                 };
                 if self.notification_rule == NotificationRule::Focused {
-                    if crate::db::sender_routes::sender_address(&envelope.sender).is_none() {
+                    let Some(sender) = crate::db::sender_routes::sender_address(&envelope.sender)
+                    else {
                         return false;
-                    }
-                    let mut envelope = envelope.clone();
-                    if envelope.account.is_none() {
-                        envelope.account = account.map(str::to_owned);
-                    }
-                    if envelope.account.is_none() {
+                    };
+                    let Some(owner) = envelope.account.as_deref().or(account) else {
                         return false;
-                    }
-                    self.db.as_ref().and_then(|conn| {
-                        crate::db::sender_routes::for_envelope(conn, &envelope).ok()
-                    }) == Some(crate::db::sender_routes::Route::Inbox)
+                    };
+                    self.db
+                        .as_ref()
+                        .and_then(|conn| crate::db::sender_routes::get(conn, owner, &sender).ok())
+                        == Some(crate::db::sender_routes::Route::Inbox)
                 } else {
                     let sender = crate::db::sender_routes::sender_address(&envelope.sender)
                         .unwrap_or_default();

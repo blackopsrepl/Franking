@@ -9,40 +9,45 @@ use super::model::App;
 impl App {
     /// Load the selected messages (or the cursor row) as one document stream.
     pub(crate) fn open_read_together(&mut self) {
-        let envelopes: Vec<Envelope> = if self.selected.is_empty() {
-            self.selected_envelope().cloned().into_iter().collect()
+        // Build targets by borrowing, so no full envelope is cloned.
+        let mut targets: Vec<(String, String, String)> = Vec::new();
+        if self.selected.is_empty() {
+            if let Some(envelope) = self.selected_envelope() {
+                targets.push(self.target_for(envelope));
+            }
         } else {
-            self.envelopes
+            for envelope in self
+                .envelopes
                 .iter()
                 .filter(|envelope| self.selected.contains(&envelope.id))
-                .cloned()
-                .collect()
-        };
-        if envelopes.is_empty() {
+            {
+                targets.push(self.target_for(envelope));
+            }
+        }
+        if targets.is_empty() {
             self.set_status("Select one or more messages to read together.");
             return;
         }
-        let targets: Vec<(String, String, String)> = envelopes
-            .iter()
-            .map(|envelope| {
-                (
-                    envelope
-                        .account
-                        .clone()
-                        .or_else(|| self.acct_owned())
-                        .unwrap_or_default(),
-                    envelope
-                        .folder
-                        .clone()
-                        .unwrap_or_else(|| self.current_folder.clone()),
-                    envelope.id.clone(),
-                )
-            })
-            .collect();
         self.selected.clear();
         self.loading = true;
         self.set_status(&format!("Reading {} messages...", targets.len()));
         self.worker.fetch_read_together(targets);
+    }
+
+    /// Account, folder, and id for one message, defaulting to the current view.
+    fn target_for(&self, envelope: &Envelope) -> (String, String, String) {
+        (
+            envelope
+                .account
+                .clone()
+                .or_else(|| self.acct_owned())
+                .unwrap_or_default(),
+            envelope
+                .folder
+                .clone()
+                .unwrap_or_else(|| self.current_folder.clone()),
+            envelope.id.clone(),
+        )
     }
 
     pub(crate) fn handle_read_together(&mut self, documents: Vec<MessageDocument>) {

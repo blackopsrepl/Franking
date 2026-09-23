@@ -1,5 +1,7 @@
 /*! Background worker result polling and handlers. */
 
+use std::collections::HashMap;
+
 use crate::compose::populate_from_template;
 use crate::keys::View;
 use crate::mail::types::*;
@@ -45,6 +47,9 @@ impl App {
                 WorkerResult::ReadTogether(Err(e)) => {
                     self.loading = false;
                     self.set_error(&format!("Failed to read messages: {e}"));
+                }
+                WorkerResult::AttachmentLibrary(result) => {
+                    self.handle_attachment_library(result);
                 }
                 WorkerResult::ActionDone(Ok(msg)) => {
                     self.loading = false;
@@ -198,21 +203,45 @@ impl App {
                 self.set_error("Triage needs the local database.");
                 return;
             };
+            // Load each account's routes once instead of a query per row.
+            let mut placements: HashMap<String, crate::db::message_routes::PlacementMap> =
+                HashMap::new();
+            let mut senders: HashMap<String, HashMap<String, crate::db::sender_routes::Route>> =
+                HashMap::new();
             let mut matching = Vec::new();
             for envelope in envelopes {
-                let effective = match crate::db::message_routes::get(conn, &envelope) {
-                    Ok(Some(route)) => Ok(route),
-                    Ok(None) => crate::db::sender_routes::for_envelope(conn, &envelope),
-                    Err(error) => Err(error),
+                let Some(account) = envelope
+                    .account
+                    .clone()
+                    .or_else(|| self.account_name.clone())
+                    .filter(|account| !account.is_empty())
+                else {
+                    continue;
                 };
-                match effective {
-                    Ok(route) if route == lane => matching.push(envelope),
-                    Ok(_) => {}
-                    Err(error) => {
-                        self.loading = false;
-                        self.set_error(&format!("Triage error: {error}"));
-                        return;
+                let account_placements = placements.entry(account.clone()).or_insert_with(|| {
+                    crate::db::message_routes::overrides_for_account(conn, &account)
+                        .unwrap_or_default()
+                });
+                let account_senders = senders.entry(account.clone()).or_insert_with(|| {
+                    crate::db::sender_routes::routes_for_account(conn, &account).unwrap_or_default()
+                });
+                let folder = envelope.folder.clone().unwrap_or_default();
+                let placement = account_placements
+                    .get(&(folder, envelope.id.clone()))
+                    .filter(|(message_id, _)| *message_id == envelope.message_id)
+                    .map(|(_, route)| *route);
+                let effective = placement.unwrap_or_else(|| {
+                    match crate::db::sender_routes::sender_address(&envelope.sender) {
+                        Some(sender) => account_senders
+                            .get(&sender)
+                            .copied()
+                            .unwrap_or(crate::db::sender_routes::Route::Screening),
+                        // An unparseable sender stays visible for manual handling.
+                        None => crate::db::sender_routes::Route::Inbox,
                     }
+                });
+                if effective == lane {
+                    matching.push(envelope);
                 }
             }
             matching

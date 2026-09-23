@@ -61,6 +61,44 @@ fn resolved_root(envelopes: &[Envelope], index: usize) -> Option<String> {
     envelopes[current].message_id.clone()
 }
 
+/// A conversation's local decisions.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Rule {
+    pub muted: bool,
+    pub resurface_at: Option<String>,
+}
+
+/// Every conversation rule for one account, keyed by anchor.
+///
+/// A list evaluates muted/resurface per envelope; loading the account's rules
+/// once avoids three queries per row on every refresh.
+pub fn rules_for_account(
+    conn: &Connection,
+    account: &str,
+) -> Result<std::collections::HashMap<String, Rule>> {
+    let mut stmt = conn
+        .prepare("SELECT anchor, muted, resurface_at FROM conversation_rules WHERE account = ?1")?;
+    let rows = stmt.query_map([account], |row| {
+        Ok((
+            row.get::<_, String>(0)?,
+            row.get::<_, i64>(1)? != 0,
+            row.get::<_, Option<String>>(2)?,
+        ))
+    })?;
+    let mut rules = std::collections::HashMap::new();
+    for row in rows {
+        let (anchor, muted, resurface_at) = row?;
+        rules.insert(
+            anchor,
+            Rule {
+                muted,
+                resurface_at,
+            },
+        );
+    }
+    Ok(rules)
+}
+
 /// Whether any anchor of the conversation is muted.
 pub fn is_muted(conn: &Connection, account: &str, anchors: &[String]) -> Result<bool> {
     for anchor in anchors {

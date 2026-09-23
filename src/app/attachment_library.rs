@@ -17,16 +17,33 @@ pub struct AttachmentLibraryState {
 
 impl App {
     pub(crate) fn open_attachment_library(&mut self) {
-        let items = self
-            .db
-            .as_ref()
-            .and_then(|conn| crate::mail::attachment_index::list(conn, SCAN_LIMIT).ok())
-            .unwrap_or_default();
-        self.attachment_library.items = items;
+        self.attachment_library.items.clear();
         self.attachment_library.index = 0;
         self.view = View::AttachmentLibrary;
-        if self.attachment_library.items.is_empty() {
-            self.set_status("No cached attachments yet. Open a message with attachments first.");
+        self.loading = true;
+        self.set_status("Indexing cached attachments...");
+        self.worker.fetch_attachment_library(SCAN_LIMIT);
+    }
+
+    /// Fill the overlay once the background scan finishes.
+    pub(crate) fn handle_attachment_library(
+        &mut self,
+        result: Result<Vec<IndexedAttachment>, crate::mail::MailError>,
+    ) {
+        self.loading = false;
+        match result {
+            Ok(items) => {
+                self.attachment_library.items = items;
+                self.attachment_library.index = 0;
+                if self.attachment_library.items.is_empty() {
+                    self.set_status(
+                        "No cached attachments yet. Open a message with attachments first.",
+                    );
+                } else {
+                    self.status_message.clear();
+                }
+            }
+            Err(error) => self.set_error(&format!("Could not index attachments: {error}")),
         }
     }
 

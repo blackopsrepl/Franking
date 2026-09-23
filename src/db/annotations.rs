@@ -57,6 +57,23 @@ pub fn set_note(conn: &Connection, envelope: &Envelope, body: &str) -> Result<()
     Ok(())
 }
 
+/// Every display alias for one account, keyed by conversation anchor.
+pub fn aliases_for_account(
+    conn: &Connection,
+    account: &str,
+) -> Result<std::collections::HashMap<String, String>> {
+    let mut stmt = conn.prepare("SELECT anchor, alias FROM subject_aliases WHERE account = ?1")?;
+    let rows = stmt.query_map([account], |row| {
+        Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+    })?;
+    let mut aliases = std::collections::HashMap::new();
+    for row in rows {
+        let (anchor, alias) = row?;
+        aliases.insert(anchor, alias);
+    }
+    Ok(aliases)
+}
+
 /// Read the display alias for a conversation anchor, if any.
 pub fn alias(conn: &Connection, account: &str, anchors: &[String]) -> Result<Option<String>> {
     for anchor in anchors {

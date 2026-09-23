@@ -30,6 +30,32 @@ fn parse(value: &str) -> Option<Route> {
     }
 }
 
+/// Account placements keyed by `(folder, uid)`, with the Message-ID guard.
+pub type PlacementMap = std::collections::HashMap<(String, String), (Option<String>, Route)>;
+
+/// Every placement for one account, keyed by `(folder, uid)` with the
+/// Message-ID guard. Loading them once avoids a query per listed row.
+pub fn overrides_for_account(conn: &Connection, account: &str) -> Result<PlacementMap> {
+    let mut stmt = conn
+        .prepare("SELECT folder, uid, message_id, route FROM message_routes WHERE account = ?1")?;
+    let rows = stmt.query_map([account], |row| {
+        Ok((
+            row.get::<_, String>(0)?,
+            row.get::<_, String>(1)?,
+            row.get::<_, Option<String>>(2)?,
+            row.get::<_, String>(3)?,
+        ))
+    })?;
+    let mut routes = std::collections::HashMap::new();
+    for row in rows {
+        let (folder, uid, message_id, route) = row?;
+        if let Some(route) = parse(&route) {
+            routes.insert((folder, uid), (message_id, route));
+        }
+    }
+    Ok(routes)
+}
+
 /// The stored override for an envelope, if any.
 pub fn get(conn: &Connection, envelope: &Envelope) -> Result<Option<Route>> {
     let (Some(account), Some(folder)) = (envelope.account.as_deref(), envelope.folder.as_deref())

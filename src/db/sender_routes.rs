@@ -87,6 +87,26 @@ pub fn set(conn: &Connection, account: &str, sender: &str, route: Route) -> Resu
     Ok(())
 }
 
+/// Every decision for one account, keyed by normalized sender mailbox.
+///
+/// Listing a page evaluates a route per envelope; loading them once avoids a
+/// query per row.
+pub fn routes_for_account(
+    conn: &Connection,
+    account: &str,
+) -> Result<std::collections::HashMap<String, Route>> {
+    let mut stmt = conn.prepare("SELECT sender, route FROM sender_routes WHERE account = ?1")?;
+    let rows = stmt.query_map([account], |row| {
+        Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+    })?;
+    let mut routes = std::collections::HashMap::new();
+    for row in rows {
+        let (sender, route) = row?;
+        routes.insert(sender, Route::from_stored(&route));
+    }
+    Ok(routes)
+}
+
 pub fn for_envelope(conn: &Connection, envelope: &Envelope) -> Result<Route> {
     let (Some(account), Some(sender)) = (
         envelope.account.as_deref(),
