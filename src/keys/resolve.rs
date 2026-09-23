@@ -159,6 +159,7 @@ fn resolve_envelope_list(key: KeyEvent) -> Action {
         KeyCode::Char('M') => Action::ToggleMuteConversation,
         KeyCode::Char('+') => Action::ToggleLoudConversation,
         KeyCode::Char('B') => Action::CycleBundle,
+        KeyCode::Char('R') => Action::BulkReply,
         KeyCode::Char('b') => Action::OpenResurface,
         KeyCode::Char('x') => Action::OpenPlacePrompt,
         KeyCode::Char('i') => Action::OpenNote,

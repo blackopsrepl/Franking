@@ -146,6 +146,7 @@ impl App {
             triage_lane: None,
             followup_lane: None,
             pending_reply_marker: None,
+            pending_bulk_to: None,
             conversation_anchors: HashMap::new(),
             muted_ids: std::collections::HashSet::new(),
             resurfaced_ids: std::collections::HashSet::new(),

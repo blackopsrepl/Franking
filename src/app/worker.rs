@@ -152,6 +152,9 @@ impl App {
     pub(crate) fn handle_template_loaded(&mut self, raw: String) {
         if let Some(ref mut cs) = self.compose_state {
             populate_from_template(cs, &raw);
+            if let Some(to) = self.pending_bulk_to.take() {
+                cs.to = to;
+            }
             self.view = View::Compose;
         }
     }

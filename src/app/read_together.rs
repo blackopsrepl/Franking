@@ -11,7 +11,15 @@ impl App {
     pub(crate) fn open_read_together(&mut self) {
         // Build targets by borrowing, so no full envelope is cloned.
         let mut targets: Vec<(String, String, String)> = Vec::new();
-        if self.selected.is_empty() {
+        let streaming = self.selected.is_empty()
+            && self.triage_lane == Some(crate::db::sender_routes::Route::Reading)
+            && self.envelopes.len() > 1;
+        if streaming {
+            // Reading behaves as an already-open stream, not a single message.
+            for envelope in &self.envelopes {
+                targets.push(self.target_for(envelope));
+            }
+        } else if self.selected.is_empty() {
             if let Some(envelope) = self.selected_envelope() {
                 targets.push(self.target_for(envelope));
             }

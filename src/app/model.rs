@@ -50,6 +50,8 @@ pub struct App {
     pub(crate) triage_lane: Option<crate::db::sender_routes::Route>,
     pub(crate) followup_lane: Option<crate::db::message_markers::Marker>,
     pub(crate) pending_reply_marker: Option<Envelope>,
+    /// Recipients a bulk reply fills in once its template loads.
+    pub(crate) pending_bulk_to: Option<String>,
     /// Conversation anchors and decisions for the loaded list, keyed by envelope id.
     pub(crate) conversation_anchors: HashMap<String, Vec<String>>,
     pub(crate) muted_ids: std::collections::HashSet<String>,

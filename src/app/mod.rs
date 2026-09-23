@@ -8,6 +8,7 @@ mod archive;
 mod attachment_library;
 mod attachments;
 mod autosave;
+mod bulk_reply;
 mod bundle_view;
 mod clips;
 mod compose;

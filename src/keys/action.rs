@@ -24,6 +24,7 @@ pub enum Action {
     ToggleMuteConversation,
     ToggleLoudConversation,
     CycleBundle,
+    BulkReply,
     OpenResurface,
     ResurfaceInput(char),
     ResurfaceBackspace,

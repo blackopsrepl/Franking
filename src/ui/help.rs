@@ -77,6 +77,7 @@ pub fn render(app: &mut App, frame: &mut Frame) {
         binding("M", "Quiet or unquiet the selected conversation"),
         binding("+", "Always notify for the selected conversation"),
         binding("B", "Bundle the sender into one row, expand, then unbundle"),
+        binding("R", "Reply once to every selected sender"),
         binding(
             "b",
             "Resurface the conversation after a delay (blank clears)",
@@ -128,6 +129,7 @@ pub fn render(app: &mut App, frame: &mut Frame) {
         binding("M", "Quiet or unquiet the selected conversation"),
         binding("+", "Always notify for the selected conversation"),
         binding("B", "Bundle the sender into one row, expand, then unbundle"),
+        binding("R", "Reply once to every selected sender"),
         binding(
             "b",
             "Resurface the conversation after a delay (blank clears)",
