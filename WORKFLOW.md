@@ -6,7 +6,7 @@ personal address and unwanted at a work address. Decisions are keyed by the
 receiving account and the sender's normalized email address, never by contact
 name, domain, or the currently selected account in the UI.
 
-## Intent
+## Attention model
 
 Separate three questions that traditional inboxes collapse:
 
@@ -30,8 +30,10 @@ Notifications should follow the attention policy, not every server INBOX event.
 
 - **All accounts** combines the same lane across accounts and labels each row
   with its source account. Per-account views remain available for focus.
-- Every action on a combined row uses that row's source account and source
-  folder, including reading, replying, and updating its sender's decision.
+- Reading, replying, and routing use the row's source account and folder.
+  This is not yet true for every mutation: archive and generic move/copy still
+  use the selected account or its folder list. Do not treat mixed-account batch
+  actions as source-aware until those paths are repaired.
 - The local test account follows the same policy; the app does not depend on
   any particular provider's folders, rules, or extensions.
 - Server mailboxes remain accessible. Triage is a local presentation and
@@ -40,8 +42,8 @@ Notifications should follow the attention policy, not every server INBOX event.
 - An address without a trustworthy mailbox in the envelope is left visible for
   manual handling rather than silently grouped by its display name.
 - Pagination, offline cache, and account failure must not make a lane falsely
-  appear complete. A cross-account lane needs explicit per-account loading
-  errors and consistent paging before it can replace the existing inbox.
+  appear complete. Cross-account loading fails visibly if any account fails,
+  but consistent paging remains necessary before a lane can replace a mailbox.
 
 The workflow uses additive, reversible local state. Existing accounts,
 mailboxes, and cached messages must survive upgrades. Sender decisions can be
@@ -58,8 +60,54 @@ it does not move mail on the server. The lane title says "recent 200/account"
 because the current fetch is bounded per account. Other server folders and
 search are available independently.
 
-## Further workflow work
+## Capability map
 
-The response queue, saved shelf, message-specific override, complete paging,
-and attention-aware notifications described above are design targets. They do
-not yet have controls in the application.
+This map distinguishes an available Franking behavior from a partial analogue.
+An ordinary IMAP folder, flag, or contact tag does not by itself implement a
+focused queue, a thread board, or a shared project view.
+
+| User job | Franking today | Ownership or missing behavior |
+| --- | --- | --- |
+| Decide whether a new sender gets attention; reconsider a refusal | Local Screening and Blocked lanes | Per receiving account and sender mailbox; mail is still delivered to the provider |
+| Route accepted correspondence, reading, and transactions | Local Inbox, Reading, Receipts lanes | Sender policy per receiving account; only the latest 200 inbox messages per account are listed |
+| Override one message without changing future sender delivery | Not available | Message-scoped exception to the sender policy |
+| Separate new correspondence from previously seen threads | Unread flags and sorting only | Thread returns to new when a fresh reply arrives; independent of reading/receipts |
+| Process multiple new messages in one uninterrupted pass | One-message reader | Session over selected new messages with decisions between reads |
+| Read newsletters as an already-open scrollable stream | Reading list of envelopes | A distinct reading surface, not just another inbox list |
+| Defer a required reply, then work only that queue | No reply queue | Persistent message/thread follow-up state; successful reply clears it |
+| Keep a reference handy without owing a reply | Flags and folders only | A separate saved-reference shelf, independent of unread and reply state |
+| Resurface mail on a chosen date | Scheduled **sending** exists | A separate incoming-mail reminder, not the outgoing schedule |
+| Suppress future updates to a conversation while retaining its history | Not available | Account-scoped quiet-thread rule keyed to stable conversation identity |
+| Collapse a high-volume sender into one row | Thread collapse only | Sender-scoped bundle across unrelated messages, not conversation threading |
+| Track a conversation through custom stages | Not available | Account-scoped stage board; thread and its later replies travel together |
+| Keep related threads together without merging them | Search and contact tags, not project collections | Named collection of distinct thread references; separate from folders and saved searches |
+| Locally join conversations without changing recipients' threads | RFC threading and collapse, not manual merge | Explicit local mapping; preserve originals and outbound reply headers |
+| Read selected messages together in one scroll | Multiselect supports batch operations | Combined reader that keeps each message's account identity |
+| Search and navigate attachments independently of messages | Attachments can be opened/saved from a message | Cross-account attachment index with account, type, sender, and source-thread filters |
+| Save small excerpts for quick retrieval | Search and copy, not excerpt storage | Text clips keyed to source account and message; deleting a clip leaves mail alone |
+| Add private notes to a contact, message, or conversation | Contact notes exist | Message annotations and thread notes/files remain separate concepts |
+| Rename a subject for local display only | Not available | Keep the original RFC subject for sending and threading |
+| Insert reusable response text | Compose editor, no snippet library | User-defined reusable text for the selected identity/account |
+| Control interruption per contact or thread | Off/all/contacts notifications; all is default | Route- and thread-aware quiet default; existing rule is not equivalent |
+| Avoid remote tracking pixels | HTML-to-terminal-text rendering makes no image request | No tracker detection/report; don't claim comprehensive remote-content blocking |
+| Let a trusted unknown sender bypass screening | Not available | Revocable per-account bypass token, validated without silently approving other senders |
+| Identify spam separately from screening | Provider junk mailbox and Sieve controls | A blocked sender is an attention decision, not spam training or SMTP rejection |
+| Combine accounts or focus on one | All Inboxes, account picker, scoped search | Unified rows need source-aware mutations and complete per-account paging |
+| Send from multiple addresses | Per-account identities with From selection | Identity, signatures, and Sent mailbox stay tied to their transport account |
+| Compose, reply, forward, attach, draft, and schedule send | Available | Outgoing controls are separate from incoming triage |
+| Send one response to many unrelated messages | Reply-all is for one conversation | Explicit bulk-reply operation with per-recipient review |
+| Send oversized files by hosted download link | Ordinary SMTP attachments | Requires external file hosting and lifecycle, not larger MIME payloads |
+| Auto-reply when away | Not available in the TUI | Provider-side rule or an always-running service, per account |
+| Publish mail or share live threads/projects by link | Save a message as `.eml`, not publishing | Requires hosting, access control, revocation, and redaction |
+| Collaborate with comments and shared mailboxes | Local personal accounts and mail UI | Multi-user service, permissions, and shared conversation history |
+| Calendar and private journal | Invitation handoff to Planner123 | Planner123 integration is not an in-client calendar or journal |
+| Security of hosted accounts | Keyring auth, OAuth, PGP, S/MIME | Hosted login, MFA, and security-key promises are provider-specific |
+| Decorative cover for previously seen mail | Not available | Optional presentation, independent of delivery and follow-up semantics |
+
+The largest gap is the lifecycle *after* screening: reply and reference queues,
+quiet threads, resurfacing, and work across multiple messages. Those need
+durable message/thread identifiers and a source-aware cross-account UI before
+the local route lanes can become the primary mail workflow. Provider-hosted
+sharing, large-file delivery, and multi-user collaboration are separate
+service products, not features a local IMAP client can reproduce by renaming
+folders.
