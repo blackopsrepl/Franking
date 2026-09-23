@@ -6,6 +6,8 @@
 # Part of SolverForge Linux — https://solverforge.com
 #
 
+SHELL := /bin/bash
+
 # ── Colors & Symbols ─────────────────────────────────────────────────────────
 
 GREEN    := \033[92m
@@ -70,7 +72,7 @@ release: deps-check ## Build optimized release binary
 	@printf "$(CYAN)$(BOLD)║          Release Build               ║$(RESET)\n"
 	@printf "$(CYAN)$(BOLD)╚══════════════════════════════════════╝$(RESET)\n\n"
 	@printf "$(PROGRESS) Building release binary...\n"
-	@cargo build --locked --release 2>&1 | sed 's/^/    /' && \
+	@set -o pipefail; cargo build --locked --release 2>&1 | sed 's/^/    /' && \
 		printf "$(GREEN)$(CHECK) Release build successful$(RESET)\n\n" || \
 		(printf "$(RED)$(CROSS) Release build failed$(RESET)\n\n" && exit 1)
 
@@ -78,13 +80,13 @@ build: release ## Alias for release
 
 debug: ## Build debug binary
 	@printf "$(PROGRESS) Building debug binary...\n"
-	@cargo build --locked 2>&1 | sed 's/^/    /' && \
+	@set -o pipefail; cargo build --locked 2>&1 | sed 's/^/    /' && \
 		printf "$(GREEN)$(CHECK) Debug build successful$(RESET)\n" || \
 		(printf "$(RED)$(CROSS) Debug build failed$(RESET)\n" && exit 1)
 
 check: ## Type-check without codegen (fast)
 	@printf "$(PROGRESS) Type checking...\n"
-	@cargo check --locked 2>&1 | sed 's/^/    /' && \
+	@set -o pipefail; cargo check --locked 2>&1 | sed 's/^/    /' && \
 		printf "$(GREEN)$(CHECK) Type check passed$(RESET)\n" || \
 		(printf "$(RED)$(CROSS) Type check failed$(RESET)\n" && exit 1)
 
@@ -94,7 +96,7 @@ check: ## Type-check without codegen (fast)
 
 clippy: ## Run clippy lints
 	@printf "$(PROGRESS) Running clippy...\n"
-	@cargo clippy --locked --all-targets -- -D warnings 2>&1 | sed 's/^/    /' && \
+	@set -o pipefail; cargo clippy --locked --all-targets -- -D warnings 2>&1 | sed 's/^/    /' && \
 		printf "$(GREEN)$(CHECK) Clippy passed$(RESET)\n" || \
 		(printf "$(RED)$(CROSS) Clippy warnings found$(RESET)\n" && exit 1)
 
@@ -114,7 +116,7 @@ test: ## Run all tests
 	@printf "$(CYAN)$(BOLD)║           Full Test Suite            ║$(RESET)\n"
 	@printf "$(CYAN)$(BOLD)╚══════════════════════════════════════╝$(RESET)\n\n"
 	@printf "$(PROGRESS) Running all tests...\n"
-	@cargo test --locked 2>&1 | sed 's/^/    /' && \
+	@set -o pipefail; cargo test --locked 2>&1 | sed 's/^/    /' && \
 		printf "\n$(GREEN)$(CHECK) All tests passed$(RESET)\n\n" || \
 		(printf "\n$(RED)$(CROSS) Tests failed$(RESET)\n\n" && exit 1)
 
