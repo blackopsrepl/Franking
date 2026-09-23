@@ -10,6 +10,7 @@ mod contact_edit;
 mod contacts;
 mod envelope_list;
 mod file_picker;
+mod focus;
 mod folder_list;
 mod folder_prompt;
 mod help;
@@ -93,6 +94,9 @@ pub fn render(app: &mut App, frame: &mut Frame) {
         }
         View::ReadTogether => {
             read_together::render(app, frame, outer[1]);
+        }
+        View::FocusReply => {
+            focus::render(app, frame, outer[1]);
         }
         _ => {
             let main =

@@ -17,6 +17,9 @@ impl App {
             View::ReadTogether => {
                 self.close_read_together();
             }
+            View::FocusReply => {
+                self.close_focus();
+            }
             View::Contacts | View::ContactSearch => {
                 self.contact_search.clear();
                 self.contact_search_active = false;
@@ -207,6 +210,7 @@ impl App {
                     self.read_together_scroll = self.read_together_scroll.saturating_sub(1);
                 }
             }
+            View::FocusReply => self.focus_scroll(delta),
             _ => {}
         }
     }

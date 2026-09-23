@@ -154,3 +154,17 @@ pub(super) fn resolve_bypass(key: KeyEvent) -> Action {
         _ => Action::None,
     }
 }
+
+pub(super) fn resolve_focus(key: KeyEvent) -> Action {
+    match key.code {
+        KeyCode::Char('j') | KeyCode::Down => Action::ScrollDown,
+        KeyCode::Char('k') | KeyCode::Up => Action::ScrollUp,
+        KeyCode::Char('n') | KeyCode::Char('>') => Action::FocusNext,
+        KeyCode::Char('p') | KeyCode::Char('<') => Action::FocusPrev,
+        KeyCode::Char('r') => Action::FocusReply,
+        KeyCode::Char('R') => Action::FocusReplyAll,
+        KeyCode::Char('d') => Action::FocusDone,
+        KeyCode::Esc | KeyCode::Char('q') => Action::Back,
+        _ => Action::None,
+    }
+}

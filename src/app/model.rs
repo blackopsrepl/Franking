@@ -74,6 +74,11 @@ pub struct App {
     /// How many seen messages the cover is hiding.
     pub(crate) covered_count: usize,
 
+    /// Sequential reply queue over Reply later.
+    pub(crate) focus: Option<super::focus::FocusState>,
+    /// Whether the in-flight reply came from the focus queue.
+    pub(crate) focus_reply_in_flight: bool,
+
     // ── Envelope state ──────────────────────────────────────────────
     pub envelopes: Vec<Envelope>,
     pub envelope_state: TableState,

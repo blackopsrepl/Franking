@@ -90,6 +90,10 @@ pub fn render(app: &mut App, frame: &mut Frame) {
             "V",
             "Lift or replace the cover over previously seen Inbox mail",
         ),
+        binding(
+            "F",
+            "Focus & reply: work the Reply later queue one message at a time",
+        ),
         binding("O", "Open the outbox"),
         binding("P", "Open preferences"),
         binding("K", "Open key material"),

@@ -29,6 +29,9 @@ impl App {
         } else {
             keys::resolve(self.view, key)
         };
+        if self.try_local_action(&action) {
+            return;
+        }
         match action {
             Action::Quit => self.running = false,
             Action::Back => self.go_back(),
@@ -50,37 +53,7 @@ impl App {
             Action::ToggleFlag => self.toggle_flag(),
             Action::ToggleRead => self.toggle_read(),
             Action::CycleTriageLane => self.cycle_triage_lane(),
-            Action::RouteSender(route) => self.route_selected_sender(route),
-            Action::OpenFollowup(marker) => self.open_followup(marker),
-            Action::ToggleMarker(marker) => self.toggle_marker(marker),
-            Action::ToggleMuteConversation => self.toggle_mute_conversation(),
-            Action::OpenResurface => self.open_resurface_prompt(),
-            Action::ResurfaceInput(c) => self.resurface_input(c),
-            Action::ResurfaceBackspace => self.resurface_backspace(),
-            Action::ResurfaceSubmit => self.submit_resurface(),
-            Action::ResurfaceCancel => self.cancel_resurface(),
-            Action::OpenPlacePrompt => self.open_place_prompt(),
-            Action::RouteMessage(route) => self.place_message(route),
-            Action::PlaceCancel => self.cancel_place(),
-            Action::OpenNote => self.open_note_prompt(),
-            Action::OpenSubjectAlias => self.open_subject_alias_prompt(),
-            Action::AnnotationInput(c) => self.annotation_input(c),
-            Action::AnnotationBackspace => self.annotation_backspace(),
-            Action::AnnotationSubmit => self.submit_annotation(),
-            Action::AnnotationCancel => self.cancel_annotation(),
-            Action::OpenAttachmentLibrary => self.open_attachment_library(),
-            Action::AttachmentLibraryNext => self.attachment_library_next(),
-            Action::AttachmentLibraryPrev => self.attachment_library_prev(),
-            Action::AttachmentLibraryOpen => self.open_attachment_library_item(),
-            Action::AttachmentLibraryClose => self.close_attachment_library(),
-            Action::OpenReadTogether => self.open_read_together(),
-            Action::OpenBypassPrompt => self.open_bypass_prompt(),
-            Action::BypassInput(c) => self.bypass_input(c),
-            Action::BypassBackspace => self.bypass_backspace(),
-            Action::BypassSubmit => self.submit_bypass(),
-            Action::BypassGenerate => self.bypass_generate(),
-            Action::BypassCancel => self.cancel_bypass(),
-            Action::ToggleCoverReveal => self.toggle_cover_reveal(),
+            // Local workflow actions are dispatched in `local_actions`.
             Action::SyncFolder => self.sync_folder(),
             Action::MarkFolderRead => self.mark_folder_read(),
             Action::DownloadAttachments => self.download_attachments(),
@@ -289,7 +262,7 @@ impl App {
             Action::IdentityEditSave => self.identity_edit_save(),
             Action::IdentityEditCancel => self.identity_edit_cancel(),
 
-            Action::None => {}
+            _ => {}
         }
     }
 

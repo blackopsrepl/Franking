@@ -31,26 +31,32 @@ impl App {
     }
 
     pub(crate) fn reply(&mut self, all: bool) {
-        if let Some(id) = self.selected_envelope_id().map(|s| s.to_string()) {
-            self.pending_reply_marker = self.selected_envelope().cloned();
-            let mode = if all {
-                ComposeMode::ReplyAll
-            } else {
-                ComposeMode::Reply
-            };
-            let mut cs = ComposeState::new(mode, self.selected_account());
-            cs.reply_to_id = Some(id.clone());
-            cs.reply_to_folder = Some(self.selected_folder());
-            self.load_identities_into(&mut cs);
-            self.compose_state = Some(cs);
-            self.loading = true;
-            self.worker.fetch_template_reply(
-                self.selected_account(),
-                self.selected_folder(),
-                id,
-                all,
-            );
+        if let Some(envelope) = self.selected_envelope().cloned() {
+            self.reply_to(envelope, all);
         }
+    }
+
+    /// Reply to an explicit envelope, used by the sequential reply queue.
+    pub(crate) fn reply_to(&mut self, envelope: crate::mail::types::Envelope, all: bool) {
+        let id = envelope.id.clone();
+        let account = envelope.account.clone().or_else(|| self.acct_owned());
+        let folder = envelope
+            .folder
+            .clone()
+            .unwrap_or_else(|| self.current_folder.clone());
+        self.pending_reply_marker = Some(envelope);
+        let mode = if all {
+            ComposeMode::ReplyAll
+        } else {
+            ComposeMode::Reply
+        };
+        let mut cs = ComposeState::new(mode, account.clone());
+        cs.reply_to_id = Some(id.clone());
+        cs.reply_to_folder = Some(folder.clone());
+        self.load_identities_into(&mut cs);
+        self.compose_state = Some(cs);
+        self.loading = true;
+        self.worker.fetch_template_reply(account, folder, id, all);
     }
 
     pub(crate) fn forward(&mut self) {

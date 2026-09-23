@@ -10,6 +10,7 @@ mod compose_escape;
 mod conversation;
 mod copy_move;
 mod crypto;
+mod focus;
 mod folder_jump;
 mod followup;
 mod help;

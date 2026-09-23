@@ -84,9 +84,9 @@ focused queue, a thread board, or a shared project view.
 | Route accepted correspondence, reading, and transactions | Local Inbox, Reading, Receipts lanes | Sender policy per receiving account; a lane loads a growing per-account window rather than the whole mailbox at once |
 | Override one message without changing future sender delivery | `x` places one message in a lane, overriding its sender's route | The override is keyed by account, folder, and UID with a Message-ID guard |
 | Separate new correspondence from previously seen threads | Inbox lane groups new before seen by message flag | Thread-level promotion after a fresh reply still needs coherent conversation state |
-| Process multiple new messages in one uninterrupted pass | One-message reader | Session over selected new messages with decisions between reads |
+| Process multiple new messages in one uninterrupted pass | `T` reads selected messages together; `F` steps a reply queue one message at a time | Decisions between reads are limited to reply, done, and navigation |
 | Read newsletters as an already-open scrollable stream | Reading list of envelopes | A distinct reading surface, not just another inbox list |
-| Defer a required reply, then work only that queue | Local Reply later queue with direct-reply completion | Sequential focus reader and source reconciliation remain |
+| Defer a required reply, then work only that queue | `L` lists the queue; `F` opens focus & reply, which shows one message at a time with reply, done, and navigation | Completing a reply advances the queue; source reconciliation after a server-side move remains |
 | Keep a reference handy without owing a reply | Local Saved queue, independent of read and reply state | Reconcile moved messages whose server UID changes |
 | Resurface mail on a chosen date | `b` sets a resurface delay per conversation; due conversations float to the top of the list | The reminder lives only while mail is listed; a scheduled background sweep is not required for it to apply |
 | Suppress future updates to a conversation while retaining its history | `M` quiets a conversation; direct replies no longer notify or outrank read mail | Matching uses Message-ID and In-Reply-To anchors, so a deep reply whose immediate parent is not loaded may not match |

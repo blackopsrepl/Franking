@@ -32,6 +32,8 @@ pub enum View {
     ReadTogether,
     /// Prompt to set, regenerate, or clear the screening bypass token.
     BypassPrompt,
+    /// Sequential reply queue over the Reply later pile.
+    FocusReply,
     Search,
     Help,
     MovePrompt,

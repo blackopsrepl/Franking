@@ -158,6 +158,8 @@ impl App {
             cover_seen: false,
             cover_revealed: false,
             covered_count: 0,
+            focus: None,
+            focus_reply_in_flight: false,
             envelopes: Vec::new(),
             envelope_state: TableState::default(),
             page: 1,

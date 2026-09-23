@@ -39,6 +39,7 @@ impl App {
                         self.set_error(&format!("Failed to read message: {e}"));
                     }
                 },
+                WorkerResult::FocusMessage(result) => self.handle_focus_message(*result),
                 WorkerResult::ReadTogether(Ok(documents)) => {
                     self.handle_read_together(documents);
                 }
@@ -107,12 +108,17 @@ impl App {
                     let marker_error = self.complete_reply_marker().err();
                     self.clear_autosave();
                     self.compose_state = None;
-                    self.view = View::EnvelopeList;
-                    if let Some((account, folder, id)) = self.pending_draft.take() {
-                        self.worker.delete_message(account, folder, id);
+                    if self.focus.is_some() && self.focus_reply_in_flight {
+                        self.set_status(&msg);
+                        self.focus_advance_after_send();
+                    } else {
+                        self.view = View::EnvelopeList;
+                        if let Some((account, folder, id)) = self.pending_draft.take() {
+                            self.worker.delete_message(account, folder, id);
+                        }
+                        self.set_status(&msg);
+                        self.refresh_envelopes();
                     }
-                    self.set_status(&msg);
-                    self.refresh_envelopes();
                     if let Some(error) = marker_error {
                         self.set_error(&format!(
                             "Message sent, but reply queue update failed: {error}"

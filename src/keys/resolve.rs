@@ -14,6 +14,7 @@ use super::resolve_contacts::{
 use super::resolve_keys::{resolve_keys, resolve_keys_prompt};
 use super::resolve_message_view::resolve_message_view;
 use super::resolve_prompts::resolve_bypass;
+use super::resolve_prompts::resolve_focus;
 use super::resolve_prompts::resolve_read_together;
 use super::resolve_prompts::{
     resolve_annotation, resolve_attachment_library, resolve_attachment_list, resolve_folder_prompt,
@@ -43,6 +44,7 @@ pub fn resolve(view: View, key: KeyEvent) -> Action {
         View::AttachmentLibrary => return resolve_attachment_library(key),
         View::ReadTogether => return resolve_read_together(key),
         View::BypassPrompt => return resolve_bypass(key),
+        View::FocusReply => return resolve_focus(key),
         View::MessageNote | View::SubjectAlias => return resolve_annotation(key),
         View::AttachmentView => return resolve_attachment_view(key),
         View::LinkList => return resolve_link_list(key),
@@ -108,6 +110,7 @@ pub fn resolve(view: View, key: KeyEvent) -> Action {
         | View::AttachmentLibrary
         | View::ReadTogether
         | View::BypassPrompt
+        | View::FocusReply
         | View::AttachmentView
         | View::Keys
         | View::KeysPrompt
@@ -147,6 +150,7 @@ fn resolve_envelope_list(key: KeyEvent) -> Action {
         KeyCode::Char('5') => Action::RouteSender(crate::db::sender_routes::Route::Screening),
         KeyCode::Char('T') => Action::OpenReadTogether,
         KeyCode::Char('V') => Action::ToggleCoverReveal,
+        KeyCode::Char('F') => Action::OpenFocusReply,
         KeyCode::Char('S') => Action::SyncFolder,
         KeyCode::Char('A') => Action::MarkFolderRead,
         KeyCode::Char('/') => Action::Search,

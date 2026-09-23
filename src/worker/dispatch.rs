@@ -18,6 +18,8 @@ pub enum WorkerResult {
     Message(Box<Result<MessageDocument, MailError>>),
     /// Several messages loaded together for one scroll.
     ReadTogether(Result<Vec<MessageDocument>, MailError>),
+    /// One message requested by the sequential reply queue.
+    FocusMessage(Box<Result<MessageDocument, MailError>>),
     /// Attachments indexed from cached mail.
     AttachmentLibrary(Result<Vec<crate::mail::attachment_index::IndexedAttachment>, MailError>),
     ActionDone(Result<String, MailError>),
