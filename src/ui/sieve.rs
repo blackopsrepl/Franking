@@ -140,7 +140,7 @@ fn render_status(app: &App, frame: &mut Frame, area: Rect) {
     if app.status_message.is_empty() {
         let pairs = hints(app.view);
         let mut spans = Vec::new();
-        for (key, desc) in pairs {
+        for &(key, desc) in pairs {
             spans.push(Span::styled(format!(" {key} "), t.status_key()));
             spans.push(Span::styled(desc, t.status_desc()));
         }

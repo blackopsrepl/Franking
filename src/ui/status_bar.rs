@@ -69,7 +69,7 @@ fn hint_line(view: keys::View, width: usize) -> Line<'static> {
     let mut used = 0;
     let mut shown = 0;
     let mut spans = Vec::new();
-    for &(key, description) in &hints {
+    for &(key, description) in hints {
         let key_span = format!(" {key} ");
         let needed = key_span.width() + description.width() + if shown > 0 { 2 } else { 0 };
         if used + needed + reserve > width {
@@ -79,7 +79,7 @@ fn hint_line(view: keys::View, width: usize) -> Line<'static> {
             spans.push(Span::styled("  ", t.status_bar()));
         }
         spans.push(Span::styled(key_span, t.status_key()));
-        spans.push(Span::styled(description.to_string(), t.status_desc()));
+        spans.push(Span::styled(description, t.status_desc()));
         used += needed;
         shown += 1;
     }

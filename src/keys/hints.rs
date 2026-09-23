@@ -2,9 +2,9 @@
 
 use super::view::View;
 
-pub fn hints(view: View) -> Vec<(&'static str, &'static str)> {
+pub fn hints(view: View) -> &'static [(&'static str, &'static str)] {
     match view {
-        View::EnvelopeList => vec![
+        View::EnvelopeList => &[
             ("j/k", "nav"),
             ("Enter", "read"),
             ("v", "triage lane"),
@@ -36,7 +36,7 @@ pub fn hints(view: View) -> Vec<(&'static str, &'static str)> {
             ("Ctrl+b", "contacts"),
             ("?", "help"),
         ],
-        View::MessageView => vec![
+        View::MessageView => &[
             ("j/k", "scroll"),
             ("1-5", "route sender"),
             ("L/D", "reply/saved"),
@@ -68,7 +68,7 @@ pub fn hints(view: View) -> Vec<(&'static str, &'static str)> {
             ("q", "back"),
             ("?", "help"),
         ],
-        View::FolderList => vec![
+        View::FolderList => &[
             ("j/k", "nav"),
             ("Enter", "select"),
             ("Tab", "emails"),
@@ -79,10 +79,10 @@ pub fn hints(view: View) -> Vec<(&'static str, &'static str)> {
             ("F", "filters"),
             ("?", "help"),
         ],
-        View::FolderPrompt => vec![("Enter", "confirm"), ("Esc", "cancel")],
-        View::MessageSearch => vec![("Enter", "find"), ("Esc", "cancel")],
-        View::LinkList => vec![("j/k", "nav"), ("Enter", "open"), ("Esc", "close")],
-        View::SieveScripts => vec![
+        View::FolderPrompt => &[("Enter", "confirm"), ("Esc", "cancel")],
+        View::MessageSearch => &[("Enter", "find"), ("Esc", "cancel")],
+        View::LinkList => &[("j/k", "nav"), ("Enter", "open"), ("Esc", "close")],
+        View::SieveScripts => &[
             ("j/k", "nav"),
             ("Enter", "activate"),
             ("e", "edit"),
@@ -92,8 +92,8 @@ pub fn hints(view: View) -> Vec<(&'static str, &'static str)> {
             ("x", "none active"),
             ("Esc", "close"),
         ],
-        View::SieveName => vec![("Enter", "create"), ("Esc", "cancel")],
-        View::Keys => vec![
+        View::SieveName => &[("Enter", "create"), ("Esc", "cancel")],
+        View::Keys => &[
             ("j/k", "nav"),
             ("i", "import"),
             ("g", "generate"),
@@ -101,59 +101,57 @@ pub fn hints(view: View) -> Vec<(&'static str, &'static str)> {
             ("d", "delete"),
             ("Esc", "close"),
         ],
-        View::KeysPrompt => vec![("Enter", "confirm"), ("Esc", "cancel")],
-        View::SaveSearch => vec![("Enter", "save"), ("Esc", "cancel")],
-        View::SavedSearches => vec![
+        View::KeysPrompt => &[("Enter", "confirm"), ("Esc", "cancel")],
+        View::SaveSearch => &[("Enter", "save"), ("Esc", "cancel")],
+        View::SavedSearches => &[
             ("j/k", "nav"),
             ("Enter", "run"),
             ("d", "delete"),
             ("Esc", "close"),
         ],
-        View::SieveEdit => vec![("Ctrl+s", "save"), ("Esc", "back")],
-        View::Settings => vec![("space", "toggle"), ("Esc", "close")],
-        View::SchedulePrompt => vec![("Enter", "schedule"), ("Esc", "cancel")],
-        View::ResurfacePrompt => vec![("Enter", "resurface"), ("Esc", "cancel")],
-        View::PlacePrompt => vec![("1-5", "place"), ("Esc", "cancel")],
-        View::MessageNote => vec![("Enter", "save"), ("Esc", "cancel")],
-        View::SubjectAlias => vec![("Enter", "rename"), ("Esc", "cancel")],
-        View::AttachmentLibrary => {
-            vec![("j/k", "nav"), ("Enter", "open message"), ("Esc", "close")]
-        }
-        View::ReadTogether => vec![("j/k", "scroll"), ("g/G", "top/end"), ("q/Esc", "back")],
-        View::Outbox => vec![
+        View::SieveEdit => &[("Ctrl+s", "save"), ("Esc", "back")],
+        View::Settings => &[("space", "toggle"), ("Esc", "close")],
+        View::SchedulePrompt => &[("Enter", "schedule"), ("Esc", "cancel")],
+        View::ResurfacePrompt => &[("Enter", "resurface"), ("Esc", "cancel")],
+        View::PlacePrompt => &[("1-5", "place"), ("Esc", "cancel")],
+        View::MessageNote => &[("Enter", "save"), ("Esc", "cancel")],
+        View::SubjectAlias => &[("Enter", "rename"), ("Esc", "cancel")],
+        View::AttachmentLibrary => &[("j/k", "nav"), ("Enter", "open message"), ("Esc", "close")],
+        View::ReadTogether => &[("j/k", "scroll"), ("g/G", "top/end"), ("q/Esc", "back")],
+        View::Outbox => &[
             ("j/k", "nav"),
             ("Enter", "send now"),
             ("d", "discard"),
             ("Esc", "close"),
         ],
-        View::FilePicker => vec![
+        View::FilePicker => &[
             ("Enter", "open/attach"),
             ("Backspace", "up"),
             ("Esc", "cancel"),
         ],
-        View::AccountEdit => vec![
+        View::AccountEdit => &[
             ("Tab", "field"),
             ("Ctrl+d", "detect"),
             ("Enter", "save"),
             ("Esc", "cancel"),
         ],
-        View::AccountList => vec![
+        View::AccountList => &[
             ("j/k", "nav"),
             ("Enter", "select"),
             ("s", "default"),
             ("d", "delete"),
             ("Esc", "cancel"),
         ],
-        View::Search => vec![
+        View::Search => &[
             ("Enter", "search"),
             ("Tab", "all folders"),
             ("Esc", "cancel"),
         ],
-        View::Help => vec![("j/k", "scroll"), ("g/G", "top/end"), ("q/?/Esc", "close")],
-        View::MovePrompt => vec![("Enter", "move"), ("Esc", "cancel")],
-        View::PassphrasePrompt => vec![("Enter", "unlock"), ("Esc", "cancel")],
-        View::AttachmentView => vec![("j/k", "scroll"), ("Esc", "close")],
-        View::AttachmentList => vec![
+        View::Help => &[("j/k", "scroll"), ("g/G", "top/end"), ("q/?/Esc", "close")],
+        View::MovePrompt => &[("Enter", "move"), ("Esc", "cancel")],
+        View::PassphrasePrompt => &[("Enter", "unlock"), ("Esc", "cancel")],
+        View::AttachmentView => &[("j/k", "scroll"), ("Esc", "close")],
+        View::AttachmentList => &[
             ("j/k", "nav"),
             ("Enter", "open"),
             ("v", "view"),
@@ -161,12 +159,12 @@ pub fn hints(view: View) -> Vec<(&'static str, &'static str)> {
             ("S", "save to…"),
             ("Esc", "close"),
         ],
-        View::Compose => vec![
+        View::Compose => &[
             ("Tab/j/k", "nav"),
             ("Enter", "insert"),
             ("Esc", "nav/discard"),
         ],
-        View::Contacts => vec![
+        View::Contacts => &[
             ("t", "tag filter"),
             ("j/k", "nav"),
             ("n", "new"),
@@ -175,13 +173,13 @@ pub fn hints(view: View) -> Vec<(&'static str, &'static str)> {
             ("/", "search"),
             ("q", "close"),
         ],
-        View::ContactSearch => vec![("Enter", "confirm"), ("Esc", "cancel")],
-        View::ContactEdit => vec![
+        View::ContactSearch => &[("Enter", "confirm"), ("Esc", "cancel")],
+        View::ContactEdit => &[
             ("Tab/Enter", "next field"),
             ("Tab→Save→Enter", "save"),
             ("Esc", "cancel"),
         ],
-        View::IdentityList => vec![
+        View::IdentityList => &[
             ("j/k", "nav"),
             ("n", "new"),
             ("e", "edit"),
@@ -189,7 +187,7 @@ pub fn hints(view: View) -> Vec<(&'static str, &'static str)> {
             ("s", "set default"),
             ("q/Esc", "close"),
         ],
-        View::IdentityEdit => vec![
+        View::IdentityEdit => &[
             ("Tab/Enter", "next field"),
             ("Space", "toggle"),
             ("Tab→Save→Enter", "save"),
