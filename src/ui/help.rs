@@ -79,6 +79,8 @@ pub fn render(app: &App, frame: &mut Frame) {
         binding("d", "Delete"),
         binding("e", "Archive"),
         binding("v", "Cycle inbox triage lanes (recent 200 per account)"),
+        binding("L/D", "Open Reply later / Saved (again to close)"),
+        binding("y/Y", "Toggle reply later / saved on the selected message"),
         binding(
             "1/2/3/4/5",
             "Route sender: Inbox/Reading/Receipts/Blocked/Screening",

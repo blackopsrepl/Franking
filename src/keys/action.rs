@@ -50,6 +50,8 @@ pub enum Action {
     ToggleRead,
     CycleTriageLane,
     RouteSender(crate::db::sender_routes::Route),
+    OpenFollowup(crate::db::message_markers::Marker),
+    ToggleMarker(crate::db::message_markers::Marker),
     SyncFolder,
     MarkFolderRead,
     DownloadAttachments,
@@ -90,7 +92,6 @@ pub enum Action {
     UnlockCancel,
     /// Trust the S/MIME signer certificate of the current message.
     TrustSigner,
-    // ── Account management ────────────────────────────────────────────
     AccountNew,
     AccountEdit,
     AccountEditFieldNext,
@@ -104,14 +105,12 @@ pub enum Action {
     AccountEditDiscover,
     /// Cycle the contact tag filter.
     CycleContactTag,
-    // ── File picker ───────────────────────────────────────────────────
     OpenFilePicker,
     FilePickerNext,
     FilePickerPrev,
     FilePickerEnter,
     FilePickerUp,
     FilePickerClose,
-    // ── Outbox ────────────────────────────────────────────────────────
     OpenOutbox,
     OutboxNext,
     OutboxPrev,

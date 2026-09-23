@@ -264,3 +264,34 @@ fn file_backed_upgrade_survives_process_restart() {
     }
     std::fs::remove_file(path).unwrap();
 }
+
+#[test]
+fn v4_upgrade_adds_followup_without_losing_sender_decisions() {
+    let conn = Connection::open_in_memory().unwrap();
+    init_for_test(&conn).unwrap();
+    conn.execute_batch(
+        "UPDATE meta SET value = '4' WHERE key = 'schema_version'; DROP TABLE message_markers;",
+    )
+    .unwrap();
+    super::sender_routes::set(
+        &conn,
+        "work",
+        "alice@example.org",
+        super::sender_routes::Route::Reading,
+    )
+    .unwrap();
+    init_for_test(&conn).unwrap();
+    assert_eq!(schema_version(&conn), CURRENT_SCHEMA_VERSION);
+    assert_eq!(
+        super::sender_routes::get(&conn, "work", "alice@example.org").unwrap(),
+        super::sender_routes::Route::Reading
+    );
+    let exists: bool = conn
+        .query_row(
+            "SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE name = 'message_markers')",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert!(exists);
+}

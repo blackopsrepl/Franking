@@ -135,6 +135,8 @@ impl App {
             folder_index: 0,
             current_folder: "INBOX".to_string(),
             triage_lane: None,
+            followup_lane: None,
+            pending_reply_marker: None,
             envelopes: Vec::new(),
             envelope_state: TableState::default(),
             page: 1,

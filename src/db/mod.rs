@@ -3,8 +3,10 @@
 mod connection;
 mod migration_v1_v2;
 mod migration_v2_v3;
+mod migration_v4_v5;
 mod schema;
 
+pub mod message_markers;
 pub mod preferences;
 pub mod saved_searches;
 mod schema_migrations;

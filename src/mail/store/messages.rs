@@ -11,11 +11,12 @@ use super::queries::{fts_query, row_to_message, searched_columns, SELECT_COLUMNS
 pub fn upsert_envelope(conn: &Connection, message: &StoredMessage) -> Result<()> {
     conn.execute(
         "INSERT INTO messages (
-             account, folder, uid, subject, from_display, from_email,
+             account, folder, uid, message_id, subject, from_display, from_email,
              to_display, date_epoch, flags, updated_at
-         ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, datetime('now'))
-         ON CONFLICT(account, folder, uid) DO UPDATE SET
-             subject = excluded.subject,
+          ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, datetime('now'))
+          ON CONFLICT(account, folder, uid) DO UPDATE SET
+              message_id = COALESCE(excluded.message_id, messages.message_id),
+              subject = excluded.subject,
              from_display = excluded.from_display,
              from_email = excluded.from_email,
              to_display = excluded.to_display,
@@ -26,6 +27,7 @@ pub fn upsert_envelope(conn: &Connection, message: &StoredMessage) -> Result<()>
             &message.account,
             &message.folder,
             &message.uid,
+            &message.message_id,
             &message.subject,
             &message.from_display,
             &message.from_email,

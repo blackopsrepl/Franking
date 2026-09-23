@@ -9,6 +9,8 @@ pub fn hints(view: View) -> Vec<(&'static str, &'static str)> {
             ("Enter", "read"),
             ("v", "triage lane"),
             ("1-5", "route sender"),
+            ("L/D", "reply/saved"),
+            ("y/Y", "mark reply/save"),
             ("c", "compose"),
             ("d", "del"),
             ("e", "archive"),
@@ -33,6 +35,8 @@ pub fn hints(view: View) -> Vec<(&'static str, &'static str)> {
         View::MessageView => vec![
             ("j/k", "scroll"),
             ("1-5", "route sender"),
+            ("L/D", "reply/saved"),
+            ("y/Y", "mark reply/save"),
             ("r", "reply"),
             ("R", "all"),
             ("f", "fwd"),

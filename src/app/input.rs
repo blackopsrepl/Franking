@@ -77,6 +77,8 @@ impl App {
             Action::ToggleRead => self.toggle_read(),
             Action::CycleTriageLane => self.cycle_triage_lane(),
             Action::RouteSender(route) => self.route_selected_sender(route),
+            Action::OpenFollowup(marker) => self.open_followup(marker),
+            Action::ToggleMarker(marker) => self.toggle_marker(marker),
             Action::SyncFolder => self.sync_folder(),
             Action::MarkFolderRead => self.mark_folder_read(),
             Action::DownloadAttachments => self.download_attachments(),

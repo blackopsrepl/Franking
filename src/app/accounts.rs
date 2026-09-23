@@ -50,6 +50,7 @@ impl App {
                     self.account_name = None;
                     self.current_folder = "INBOX".to_string();
                     self.triage_lane = None;
+                    self.followup_lane = None;
                 }
                 self.load_accounts();
                 self.set_status(&format!("Deleted account {name}."));

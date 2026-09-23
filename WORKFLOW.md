@@ -60,6 +60,15 @@ it does not move mail on the server. The lane title says "recent 200/account"
 because the current fetch is bounded per account. Other server folders and
 search are available independently.
 
+Use `y` to add or remove a message from **Reply later**, and `Y` for **Saved**.
+`L` opens the reply queue, `D` opens saved mail; press the same key again to
+return to the inbox. In All Inboxes these queues include every account and
+retain each message's source account and folder. A successful direct reply
+removes the message from Reply later; marking it Saved is independent.
+References use account, source folder, and UID, guarded by Message-ID where
+available. A server-side move that changes the UID does not automatically
+retarget a saved reference, so source reconciliation is still required.
+
 ## Capability map
 
 This map distinguishes an available Franking behavior from a partial analogue.
@@ -74,8 +83,8 @@ focused queue, a thread board, or a shared project view.
 | Separate new correspondence from previously seen threads | Unread flags and sorting only | Thread returns to new when a fresh reply arrives; independent of reading/receipts |
 | Process multiple new messages in one uninterrupted pass | One-message reader | Session over selected new messages with decisions between reads |
 | Read newsletters as an already-open scrollable stream | Reading list of envelopes | A distinct reading surface, not just another inbox list |
-| Defer a required reply, then work only that queue | No reply queue | Persistent message/thread follow-up state; successful reply clears it |
-| Keep a reference handy without owing a reply | Flags and folders only | A separate saved-reference shelf, independent of unread and reply state |
+| Defer a required reply, then work only that queue | Local Reply later queue with direct-reply completion | Sequential focus reader and source reconciliation remain |
+| Keep a reference handy without owing a reply | Local Saved queue, independent of read and reply state | Reconcile moved messages whose server UID changes |
 | Resurface mail on a chosen date | Scheduled **sending** exists | A separate incoming-mail reminder, not the outgoing schedule |
 | Suppress future updates to a conversation while retaining its history | Not available | Account-scoped quiet-thread rule keyed to stable conversation identity |
 | Collapse a high-volume sender into one row | Thread collapse only | Sender-scoped bundle across unrelated messages, not conversation threading |

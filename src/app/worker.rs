@@ -3,7 +3,6 @@
 use crate::compose::populate_from_template;
 use crate::keys::View;
 use crate::mail::types::*;
-use crate::mail::MessageDocument;
 use crate::worker::WorkerResult;
 
 use super::model::App;
@@ -95,14 +94,20 @@ impl App {
                 }
                 WorkerResult::SendDone(Ok(msg)) => {
                     self.loading = false;
+                    let marker_error = self.complete_reply_marker().err();
                     self.clear_autosave();
                     self.compose_state = None;
                     self.view = View::EnvelopeList;
-                    if let Some((folder, id)) = self.pending_draft.take() {
-                        self.worker.delete_message(self.acct_owned(), folder, id);
+                    if let Some((account, folder, id)) = self.pending_draft.take() {
+                        self.worker.delete_message(account, folder, id);
                     }
                     self.set_status(&msg);
                     self.refresh_envelopes();
+                    if let Some(error) = marker_error {
+                        self.set_error(&format!(
+                            "Message sent, but reply queue update failed: {error}"
+                        ));
+                    }
                 }
                 WorkerResult::SendDone(Err(e)) => {
                     self.loading = false;
@@ -244,44 +249,4 @@ impl App {
             self.status_message.clear();
         }
     }
-
-    /// Parse From/To/Cc/Reply-To addresses from message headers and upsert them
-    /// into the contacts DB. Errors are silently ignored (harvest is
-    /// best-effort).
-    pub(crate) fn harvest_contacts_from_message(&mut self, message: &MessageDocument) {
-        if self.db.is_none() {
-            return;
-        }
-
-        let mut addrs: Vec<(Option<String>, String)> = Vec::new();
-
-        for header in message.header_fields() {
-            let is_addr_header = header.name.eq_ignore_ascii_case("from")
-                || header.name.eq_ignore_ascii_case("to")
-                || header.name.eq_ignore_ascii_case("cc")
-                || header.name.eq_ignore_ascii_case("reply-to");
-            if is_addr_header {
-                addrs.extend(crate::contacts::parse_address_list(&header.value));
-            }
-        }
-
-        // Also harvest the envelope sender directly from the already-parsed list row.
-        // Collect separately to avoid holding a borrow on self while calling upsert.
-        let sender_str = self
-            .selected_envelope()
-            .map(|e| e.sender.display())
-            .unwrap_or_default();
-        if !sender_str.is_empty() {
-            addrs.extend(crate::contacts::parse_address_list(&sender_str));
-        }
-
-        // Now borrow the connection and upsert all collected addresses.
-        if let Some(ref conn) = self.db {
-            for (name, email) in addrs {
-                let _ = crate::contacts::upsert_harvested(conn, name.as_deref(), &email);
-            }
-        }
-    }
-
-    // ── Data loading (dispatches to worker) ─────────────────────────
 }

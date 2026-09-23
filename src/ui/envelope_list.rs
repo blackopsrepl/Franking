@@ -24,7 +24,9 @@ pub fn render(app: &mut App, frame: &mut Frame, area: Rect) {
     };
 
     let thread_indicator = if app.threaded { " \u{2637}" } else { "" }; // ☷ trigram
-    let title = if let Some(lane) = app.triage_lane {
+    let title = if let Some(marker) = app.followup_lane {
+        format!(" {} · {} ", app.current_folder, marker.label())
+    } else if let Some(lane) = app.triage_lane {
         format!(" {} · {lane:?} · recent 200/account ", app.current_folder)
     } else if let Some(ref q) = app.active_query {
         format!(

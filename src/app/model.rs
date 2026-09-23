@@ -48,6 +48,8 @@ pub struct App {
     pub current_folder: String,
     /// Optional local triage lane over the current account's INBOX.
     pub(crate) triage_lane: Option<crate::db::sender_routes::Route>,
+    pub(crate) followup_lane: Option<crate::db::message_markers::Marker>,
+    pub(crate) pending_reply_marker: Option<Envelope>,
 
     // ── Envelope state ──────────────────────────────────────────────
     pub envelopes: Vec<Envelope>,
@@ -164,7 +166,7 @@ pub struct App {
     // ── Pending state for message view after background load ────────
     pub(crate) pending_message_id: Option<String>,
 
-    pub(crate) pending_draft: Option<(String, String)>,
+    pub(crate) pending_draft: Option<(Option<String>, String, String)>,
 
     pub(crate) pending_return_to_list: bool,
     pub(crate) pending_refresh_after_action: bool,

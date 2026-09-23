@@ -22,6 +22,7 @@ impl App {
     }
 
     pub(crate) fn compose(&mut self) {
+        self.pending_reply_marker = None;
         let mut cs = ComposeState::new(ComposeMode::New, self.acct_owned());
         self.load_identities_into(&mut cs);
         self.compose_state = Some(cs);
@@ -31,6 +32,7 @@ impl App {
 
     pub(crate) fn reply(&mut self, all: bool) {
         if let Some(id) = self.selected_envelope_id().map(|s| s.to_string()) {
+            self.pending_reply_marker = self.selected_envelope().cloned();
             let mode = if all {
                 ComposeMode::ReplyAll
             } else {
@@ -53,6 +55,7 @@ impl App {
 
     pub(crate) fn forward(&mut self) {
         if let Some(id) = self.selected_envelope_id().map(|s| s.to_string()) {
+            self.pending_reply_marker = None;
             let mut cs = ComposeState::new(ComposeMode::Forward, self.selected_account());
             cs.reply_to_id = Some(id.clone());
             cs.reply_to_folder = Some(self.selected_folder());

@@ -4,7 +4,7 @@ use crate::app::App;
 use crate::db::sender_routes::{self, Route};
 use crate::mail::types::{Envelope, Sender};
 
-fn envelope(account: &str, id: &str, sender: &str) -> Envelope {
+pub(super) fn envelope(account: &str, id: &str, sender: &str) -> Envelope {
     Envelope {
         id: id.into(),
         flags: Vec::new(),

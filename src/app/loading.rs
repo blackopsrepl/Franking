@@ -19,6 +19,29 @@ impl App {
 
     pub(crate) fn load_envelopes(&mut self) {
         self.loading = true;
+        if let Some(marker) = self.followup_lane {
+            let result = self
+                .db
+                .as_ref()
+                .ok_or_else(|| anyhow::anyhow!("local database is unavailable"))
+                .and_then(|conn| {
+                    crate::db::message_markers::list(
+                        conn,
+                        (self.current_folder != super::model::UNIFIED_INBOX)
+                            .then_some(self.account_name.as_deref())
+                            .flatten(),
+                        marker,
+                    )
+                });
+            match result {
+                Ok(envelopes) => self.handle_envelopes_loaded(envelopes),
+                Err(error) => {
+                    self.loading = false;
+                    self.set_error(&format!("Could not open {}: {error}", marker.label()));
+                }
+            }
+            return;
+        }
         if self.current_folder == super::model::UNIFIED_INBOX {
             self.worker.fetch_all_inboxes("INBOX".to_string());
             return;
@@ -62,7 +85,8 @@ impl App {
         if let Some(id) = self.selected_envelope_id().map(|s| s.to_string()) {
             self.loading = true;
             if self.current_folder_is_drafts() {
-                self.pending_draft = Some((self.selected_folder(), id.clone()));
+                self.pending_draft =
+                    Some((self.selected_account(), self.selected_folder(), id.clone()));
                 self.worker.fetch_draft_template(
                     self.selected_account(),
                     self.selected_folder(),

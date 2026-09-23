@@ -77,6 +77,7 @@ cargo run -- --setup
 - **Mouse support** - Click to select, scroll wheel works
 - **Multi-account** - Switch with Ctrl+a; an "All Inboxes" folder merges every account's inbox when more than one account is configured
 - **Account-scoped mail triage** - In an inbox, `v` cycles Screening, Inbox, Reading, Receipts, Blocked, then the unfiltered server view. `1`-`5` routes the selected sender for the receiving account; see [mail workflow](WORKFLOW.md).
+- **Follow-up queues** - `y` marks a message Reply later, `Y` saves it for reference; `L`/`D` open the respective account-scoped queues, including from All Inboxes
 - **Fast keyboard navigation** - j/k and g/G in list/message views, plus direct multiline editing in compose
 - **Smart error handling** - Typed mail diagnostics and clean user-facing errors
 - **Structured message reader** - MIME-aware message content with one canonical HTML-first render path

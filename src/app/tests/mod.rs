@@ -8,6 +8,7 @@ mod compose_escape;
 mod copy_move;
 mod crypto;
 mod folder_jump;
+mod followup;
 mod keys;
 mod mail_ui;
 mod message_search;

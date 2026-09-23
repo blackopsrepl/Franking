@@ -21,6 +21,7 @@ impl App {
             Some(Route::Receipts) => Some(Route::Blocked),
             Some(Route::Blocked) => None,
         };
+        self.followup_lane = None;
         self.page = 1;
         self.envelopes.clear();
         self.envelope_state.select(None);

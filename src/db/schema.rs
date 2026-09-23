@@ -192,7 +192,19 @@ pub(super) fn create_schema(conn: &Connection) -> Result<()> {
               sender  TEXT NOT NULL,
               route   TEXT NOT NULL CHECK(route IN ('inbox', 'reading', 'receipts', 'blocked')),
               PRIMARY KEY (account, sender)
+          );
+
+         CREATE TABLE message_markers (
+              account TEXT NOT NULL,
+              folder TEXT NOT NULL,
+              uid TEXT NOT NULL,
+              message_id TEXT,
+              reply_later INTEGER NOT NULL DEFAULT 0 CHECK(reply_later IN (0, 1)),
+              saved INTEGER NOT NULL DEFAULT 0 CHECK(saved IN (0, 1)),
+              PRIMARY KEY (account, folder, uid)
          );
+         CREATE INDEX idx_message_markers_account
+              ON message_markers(account, reply_later, saved);
 
          CREATE TABLE sync_state (
              account        TEXT    NOT NULL,

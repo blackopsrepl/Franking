@@ -232,6 +232,7 @@ pub fn delete_account(conn: &Connection, name: &str) -> Result<()> {
         "DELETE FROM sync_state WHERE account = ?1",
         "DELETE FROM identities WHERE account = ?1",
         "DELETE FROM sender_routes WHERE account = ?1",
+        "DELETE FROM message_markers WHERE account = ?1",
     ] {
         tx.execute(statement, params![name])?;
     }
