@@ -2,6 +2,32 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [2.1.0](https://github.com/blackopsrepl/Franking/compare/v2.0.1...v2.1.0) (2026-09-23)
+
+
+### Features
+
+* **mail:** add private notes and display-only subject aliases c48062d
+* **mail:** index attachments across cached accounts 8a41e7c
+* **mail:** keep account-scoped reply and reference queues 6757fde
+* **mail:** make accepted correspondence the quiet notification default a4feaef
+* **mail:** page merged and lane views through a growing window 696e271
+* **mail:** persist sender decisions per receiving account 5cbe0e2
+* **mail:** place a single message in a lane 154d950
+* **mail:** quiet conversations and resurface them later 189f5e3
+* **mail:** read the selected messages together 4157fe3
+* **ui:** route incoming senders into account-scoped mail lanes fbfea7b
+
+
+### Bug Fixes
+
+* **ci:** fail when a piped cargo check fails 8f11aff
+* **db:** migrate installed schemas without resetting user data cb00249
+* **mail:** clear the loading note when messages open together 4d4804b
+* **mail:** derive conversation anchors when the list is stale 52d629e
+* **mail:** refuse unsafe mixed-account mailbox mutations fd33cd8
+* **ui:** keep shortcuts discoverable at every terminal width 468bcf7
+
 ## [2.0.1](https://github.com/blackopsrepl/Franking/compare/v2.0.0...v2.0.1) (2026-09-22)
 
 
