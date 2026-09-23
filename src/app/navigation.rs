@@ -129,7 +129,7 @@ impl App {
     }
 
     pub(crate) fn page_up(&mut self) {
-        if self.triage_lane.is_some() || self.followup_lane.is_some() {
+        if self.followup_lane.is_some() {
             return;
         }
         if self.view == View::EnvelopeList && self.page > 1 {
@@ -139,7 +139,7 @@ impl App {
     }
 
     pub(crate) fn page_down(&mut self) {
-        if self.triage_lane.is_some() || self.followup_lane.is_some() {
+        if self.followup_lane.is_some() {
             return;
         }
         if self.view == View::EnvelopeList && self.envelopes.len() >= self.page_size {

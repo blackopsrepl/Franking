@@ -43,15 +43,17 @@ impl App {
             return;
         }
         if self.current_folder == super::model::UNIFIED_INBOX {
-            self.worker.fetch_all_inboxes("INBOX".to_string());
+            let window = self.page * self.page_size;
+            self.worker.fetch_all_inboxes("INBOX".to_string(), window);
             return;
         }
         if self.triage_lane.is_some() && self.current_folder.eq_ignore_ascii_case("INBOX") {
+            let window = (self.page * self.page_size).min(crate::worker::MAX_PER_ACCOUNT);
             self.worker.fetch_envelopes(
                 self.acct_owned(),
                 "INBOX".to_string(),
                 1,
-                200,
+                window,
                 None,
                 self.sort_order,
             );

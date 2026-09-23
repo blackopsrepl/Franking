@@ -27,7 +27,7 @@ pub fn render(app: &mut App, frame: &mut Frame, area: Rect) {
     let title = if let Some(marker) = app.followup_lane {
         format!(" {} · {} ", app.current_folder, marker.label())
     } else if let Some(lane) = app.triage_lane {
-        format!(" {} · {lane:?} · recent 200/account ", app.current_folder)
+        format!(" {} · {lane:?} · p{} ", app.current_folder, app.page)
     } else if let Some(ref q) = app.active_query {
         format!(
             " {}{} \u{2014} search: {q} ",

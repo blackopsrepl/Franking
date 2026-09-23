@@ -46,7 +46,7 @@ INBOX event. Users can choose all mail, contacts only, or off instead.
   manual handling rather than silently grouped by its display name.
 - Pagination, offline cache, and account failure must not make a lane falsely
   appear complete. Cross-account loading fails visibly if any account fails,
-  but consistent paging remains necessary before a lane can replace a mailbox.
+  and paging grows the per-account window up to a bounded maximum.
 
 The workflow uses additive, reversible local state. Existing accounts,
 mailboxes, and cached messages must survive upgrades. Sender decisions can be
@@ -59,8 +59,8 @@ Reading, Receipts, Blocked, then the unfiltered server inbox. `1` through `5`
 route the selected sender to Inbox, Reading, Receipts, Blocked, or Screening,
 respectively, from the list or message reader. Routing changes the local view
 for all currently fetched messages from that sender in the receiving account;
-it does not move mail on the server. The lane title says "recent 200/account"
-because the current fetch is bounded per account. Other server folders and
+it does not move mail on the server. `n`/`p` page through a growing per-account
+window, so a lane keeps loading older mail as you go. Other server folders and
 search are available independently.
 
 Use `y` to add or remove a message from **Reply later**, and `Y` for **Saved**.
@@ -81,7 +81,7 @@ focused queue, a thread board, or a shared project view.
 | User job | Franking today | Ownership or missing behavior |
 | --- | --- | --- |
 | Decide whether a new sender gets attention; reconsider a refusal | Local Screening and Blocked lanes | Per receiving account and sender mailbox; mail is still delivered to the provider |
-| Route accepted correspondence, reading, and transactions | Local Inbox, Reading, Receipts lanes | Sender policy per receiving account; only the latest 200 inbox messages per account are listed |
+| Route accepted correspondence, reading, and transactions | Local Inbox, Reading, Receipts lanes | Sender policy per receiving account; a lane loads a growing per-account window rather than the whole mailbox at once |
 | Override one message without changing future sender delivery | `x` places one message in a lane, overriding its sender's route | The override is keyed by account, folder, and UID with a Message-ID guard |
 | Separate new correspondence from previously seen threads | Inbox lane groups new before seen by message flag | Thread-level promotion after a fresh reply still needs coherent conversation state |
 | Process multiple new messages in one uninterrupted pass | One-message reader | Session over selected new messages with decisions between reads |
