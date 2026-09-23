@@ -27,7 +27,7 @@ pub struct StagesState {
 
 impl App {
     /// Record each loaded conversation's stage and apply the active filter.
-    pub(crate) fn load_stages_and_filter(&mut self, anchors_by_row: &[Vec<String>]) {
+    pub(crate) fn load_stages_and_filter(&mut self, accounts: &[String]) {
         self.stage_of_anchor.clear();
         let Some(conn) = self.db.as_ref() else {
             return;
@@ -36,19 +36,26 @@ impl App {
             String,
             std::collections::HashMap<String, String>,
         > = std::collections::HashMap::new();
-        for (index, envelope) in self.envelopes.iter().enumerate() {
-            let Some(account) = envelope
+        for account in accounts {
+            stages_by_account.insert(
+                account.clone(),
+                store::assignments_for_account(conn, account).unwrap_or_default(),
+            );
+        }
+        for envelope in self.envelopes.iter() {
+            let account = envelope
                 .account
-                .clone()
-                .or_else(|| self.account_name.clone())
-                .filter(|account| !account.is_empty())
+                .as_deref()
+                .or(self.account_name.as_deref())
+                .filter(|account| !account.is_empty());
+            let Some(assignments) = account.and_then(|account| stages_by_account.get(account))
             else {
                 continue;
             };
-            let assignments = stages_by_account.entry(account.clone()).or_insert_with(|| {
-                store::assignments_for_account(conn, &account).unwrap_or_default()
-            });
-            for anchor in &anchors_by_row[index] {
+            let Some(anchors) = self.conversation_anchors.get(&envelope.id) else {
+                continue;
+            };
+            for anchor in anchors {
                 if let Some(stage) = assignments.get(anchor) {
                     self.stage_of_anchor.insert(anchor.clone(), stage.clone());
                 }

@@ -28,31 +28,47 @@ impl App {
             return;
         };
         // Resolve every row's anchors with one Message-ID index.
-        let anchors_by_row = conversations::anchors_for_list(&self.envelopes);
-        // Load each account's rules once instead of a query per row.
+        let mut anchors_by_row = conversations::anchors_for_list(&self.envelopes);
+        // Load each account's state once instead of a query per row.
+        let accounts: Vec<String> = self
+            .envelopes
+            .iter()
+            .filter_map(|envelope| {
+                envelope
+                    .account
+                    .clone()
+                    .or_else(|| self.account_name.clone())
+            })
+            .filter(|account| !account.is_empty())
+            .collect::<std::collections::HashSet<_>>()
+            .into_iter()
+            .collect();
         let mut rules: HashMap<String, HashMap<String, conversations::Rule>> = HashMap::new();
         let mut aliases: HashMap<String, HashMap<String, String>> = HashMap::new();
+        for account in &accounts {
+            rules.insert(
+                account.clone(),
+                conversations::rules_for_account(conn, account).unwrap_or_default(),
+            );
+            aliases.insert(
+                account.clone(),
+                crate::db::annotations::aliases_for_account(conn, account).unwrap_or_default(),
+            );
+        }
         for (index, envelope) in self.envelopes.iter().enumerate() {
             let anchors = &anchors_by_row[index];
-            let Some(account) = envelope
+            let account = envelope
                 .account
-                .clone()
-                .or_else(|| self.account_name.clone())
-                .filter(|account| !account.is_empty())
-            else {
-                continue;
-            };
-            let account_rules = rules.entry(account.clone()).or_insert_with(|| {
-                conversations::rules_for_account(conn, &account).unwrap_or_default()
-            });
-            let account_aliases = aliases.entry(account.clone()).or_insert_with(|| {
-                crate::db::annotations::aliases_for_account(conn, &account).unwrap_or_default()
-            });
+                .as_deref()
+                .or(self.account_name.as_deref())
+                .filter(|account| !account.is_empty());
+            let account_rules = account.and_then(|account| rules.get(account));
+            let account_aliases = account.and_then(|account| aliases.get(account));
             let mut muted = false;
             let mut loud = false;
             let mut due = false;
             for anchor in anchors {
-                if let Some(rule) = account_rules.get(anchor) {
+                if let Some(rule) = account_rules.and_then(|rules| rules.get(anchor)) {
                     muted |= rule.muted;
                     loud |= rule.loud;
                     due |= rule
@@ -60,7 +76,7 @@ impl App {
                         .as_deref()
                         .is_some_and(|at| at <= now.as_str());
                 }
-                if let Some(alias) = account_aliases.get(anchor) {
+                if let Some(alias) = account_aliases.and_then(|aliases| aliases.get(anchor)) {
                     self.subject_aliases
                         .entry(envelope.id.clone())
                         .or_insert_with(|| alias.clone());
@@ -75,8 +91,10 @@ impl App {
             if loud {
                 self.loud_ids.insert(envelope.id.clone());
             }
-            self.conversation_anchors
-                .insert(envelope.id.clone(), anchors.clone());
+            self.conversation_anchors.insert(
+                envelope.id.clone(),
+                std::mem::take(&mut anchors_by_row[index]),
+            );
         }
         // Keep the visible order stable: resurfaced, ordinary, then quieted.
         let muted = &self.muted_ids;
@@ -103,24 +121,10 @@ impl App {
             self.envelopes.retain(|envelope| !envelope.is_seen());
             self.covered_count = before - self.envelopes.len();
         }
-        self.load_stages_and_filter(&anchors_by_row);
-        self.load_collections_and_filter(&anchors_by_row);
-        let merged_accounts: Vec<String> = self
-            .envelopes
-            .iter()
-            .filter_map(|envelope| envelope.account.clone())
-            .collect::<std::collections::HashSet<_>>()
-            .into_iter()
-            .collect();
-        self.load_merge_roots(&merged_accounts);
+        self.load_stages_and_filter(&accounts);
+        self.load_collections_and_filter(&accounts);
+        self.load_merge_roots(&accounts);
         // Collapse bundled senders after every other ordering decision.
-        let accounts: Vec<String> = self
-            .envelopes
-            .iter()
-            .filter_map(|envelope| envelope.account.clone())
-            .collect::<std::collections::HashSet<_>>()
-            .into_iter()
-            .collect();
         self.load_bundled_senders(&accounts);
         self.apply_bundles();
     }

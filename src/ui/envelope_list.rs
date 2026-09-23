@@ -4,6 +4,7 @@ use ratatui::widgets::{Block, Borders, Cell, Row, Table};
 use crate::app::App;
 use crate::keys::View;
 use chrono::Local;
+use std::fmt::Write as _;
 
 use crate::theme::theme;
 
@@ -134,41 +135,49 @@ pub fn render(app: &mut App, frame: &mut Frame, area: Rect) {
             };
             let from_cell = Cell::from(truncate(&sender, 24)).style(base_style);
             let depth = depths.get(index).copied().unwrap_or(0);
-            let subject = if depth > 0 {
+            // One base string, then one prefix, so a row costs few allocations.
+            let base = if let Some(alias) = app.subject_aliases.get(&env.id) {
+                format!("{alias}  ({})", env.subject)
+            } else if depth > 0 {
                 format!("{}\u{21b3} {}", "  ".repeat(depth), env.subject)
             } else {
                 env.subject.clone()
             };
-            let subject = match app.subject_aliases.get(&env.id) {
-                Some(alias) => format!("{alias}  ({})", env.subject),
-                None => subject,
-            };
-            let subject = if app.triage_lane == Some(crate::db::sender_routes::Route::Inbox)
-                && (index == 0 || app.envelopes[index - 1].is_seen() != env.is_seen())
-            {
-                format!("{} · {subject}", if env.is_seen() { "Seen" } else { "New" })
-            } else {
-                subject
-            };
-            let subject = match root_keys.get(index) {
-                Some(key) => match app.collapsed_threads.get(key) {
-                    Some(hidden) => format!("▸ {subject}  (+{})", hidden.len()),
-                    None => subject,
-                },
-                None => subject,
-            };
+            let mut prefix = String::new();
             let bundle_count = app.bundled_reps.get(&env.id).copied().unwrap_or(0);
-            let subject = if bundle_count > 1 {
-                format!("\u{2261} {bundle_count} \u{00b7} {subject}")
+            if bundle_count > 1 {
+                let _ = write!(prefix, "\u{2261} {bundle_count} \u{00b7} ");
             } else if resurfaced {
-                format!("\u{25F7} resurfaced · {subject}")
+                prefix.push_str("\u{25F7} resurfaced \u{00b7} ");
             } else if loud {
-                format!("loud · {subject}")
+                prefix.push_str("loud \u{00b7} ");
             } else if muted {
-                format!("quiet · {subject}")
+                prefix.push_str("quiet \u{00b7} ");
+            }
+            let inbox_group = app.triage_lane == Some(crate::db::sender_routes::Route::Inbox)
+                && (index == 0 || app.envelopes[index - 1].is_seen() != env.is_seen());
+            if inbox_group {
+                prefix.push_str(if env.is_seen() {
+                    "Seen \u{00b7} "
+                } else {
+                    "New \u{00b7} "
+                });
+            }
+            let collapsed = root_keys
+                .get(index)
+                .and_then(|key| app.collapsed_threads.get(key));
+            if collapsed.is_some() {
+                prefix.push('\u{25b8}');
+                prefix.push(' ');
+            }
+            let mut subject = if prefix.is_empty() {
+                base
             } else {
-                subject
+                prefix + &base
             };
+            if let Some(hidden) = collapsed {
+                let _ = write!(subject, "  (+{})", hidden.len());
+            }
             let subject_cell = Cell::from(subject).style(base_style);
             let date_cell = Cell::from(relative_date(&env.date, &now)).style(t.dimmed());
 
