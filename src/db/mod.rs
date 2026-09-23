@@ -6,5 +6,6 @@ mod schema;
 pub mod preferences;
 pub mod saved_searches;
 mod schema_migrations;
+pub mod sender_routes;
 
 pub use connection::{db_path, init_for_test, open, schema_version, CURRENT_SCHEMA_VERSION};

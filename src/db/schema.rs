@@ -22,6 +22,7 @@ pub(super) fn reset_schema(conn: &Connection) -> Result<()> {
          DROP TABLE IF EXISTS credentials;
          DROP TABLE IF EXISTS outbox;
          DROP TABLE IF EXISTS saved_searches;
+         DROP TABLE IF EXISTS sender_routes;
          DROP TABLE IF EXISTS legacy_credentials_backup;
          DROP TABLE IF EXISTS meta;",
     )?;
@@ -210,6 +211,13 @@ pub(super) fn create_schema(conn: &Connection) -> Result<()> {
              query      TEXT NOT NULL,
              scope      TEXT NOT NULL DEFAULT 'folder',
              created_at TEXT NOT NULL DEFAULT (datetime('now'))
+         );
+
+         CREATE TABLE sender_routes (
+              account TEXT NOT NULL,
+              sender  TEXT NOT NULL,
+              route   TEXT NOT NULL CHECK(route IN ('inbox', 'reading', 'receipts', 'blocked')),
+              PRIMARY KEY (account, sender)
          );
 
          CREATE TABLE sync_state (

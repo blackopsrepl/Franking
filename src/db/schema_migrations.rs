@@ -54,6 +54,14 @@ pub(super) fn migrate_schema(conn: &Connection) -> Result<()> {
              query      TEXT NOT NULL,
              scope      TEXT NOT NULL DEFAULT 'folder',
              created_at TEXT NOT NULL DEFAULT (datetime('now'))
+          );",
+    )?;
+    conn.execute_batch(
+        "CREATE TABLE IF NOT EXISTS sender_routes (
+             account TEXT NOT NULL,
+             sender  TEXT NOT NULL,
+             route   TEXT NOT NULL CHECK(route IN ('inbox', 'reading', 'receipts', 'blocked')),
+             PRIMARY KEY (account, sender)
          );",
     )?;
     for column in [
