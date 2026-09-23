@@ -8,15 +8,21 @@ use crate::mail::types::Envelope;
 
 use super::model::App;
 
-/// Stable key for the thread an envelope belongs to: the top-most present
-/// ancestor's Message-ID, or the envelope's own id when it is a root.
-fn root_key(envelopes: &[Envelope], index: usize) -> String {
-    let by_id: std::collections::HashMap<&str, usize> = envelopes
+/// Shared Message-ID index for resolving thread roots.
+fn id_index(envelopes: &[Envelope]) -> std::collections::HashMap<&str, usize> {
+    envelopes
         .iter()
         .enumerate()
         .filter_map(|(i, envelope)| envelope.message_id.as_deref().map(|id| (id, i)))
-        .collect();
+        .collect()
+}
 
+/// The top-most present ancestor's Message-ID, or the envelope's own id.
+fn natural_root(
+    by_id: &std::collections::HashMap<&str, usize>,
+    envelopes: &[Envelope],
+    index: usize,
+) -> String {
     let mut current = index;
     let mut hops = 0;
     while hops < 8 {
@@ -36,10 +42,15 @@ fn root_key(envelopes: &[Envelope], index: usize) -> String {
 }
 
 impl App {
-    /// Thread key for every envelope currently listed.
+    /// Thread key for every envelope currently listed, with local merges
+    /// applied so separate threads can be worked as one.
     pub(crate) fn thread_root_keys(&self) -> Vec<String> {
+        let by_id = id_index(&self.envelopes);
         (0..self.envelopes.len())
-            .map(|index| root_key(&self.envelopes, index))
+            .map(|index| {
+                let natural = natural_root(&by_id, &self.envelopes, index);
+                self.merge_roots.get(&natural).cloned().unwrap_or(natural)
+            })
             .collect()
     }
 
@@ -55,15 +66,13 @@ impl App {
         if index >= self.envelopes.len() {
             return;
         }
-        let key = root_key(&self.envelopes, index);
-        let root = (0..=index)
-            .rev()
-            .find(|&i| root_key(&self.envelopes, i) == key)
-            .unwrap_or(index);
+        let keys = self.thread_root_keys();
+        let key = keys[index].clone();
+        let root = (0..=index).rev().find(|&i| keys[i] == key).unwrap_or(index);
 
         let hidden: Vec<Envelope> = {
             let mut end = root + 1;
-            while end < self.envelopes.len() && root_key(&self.envelopes, end) == key {
+            while end < self.envelopes.len() && keys[end] == key {
                 end += 1;
             }
             self.envelopes.drain(root + 1..end).collect()
@@ -88,7 +97,7 @@ impl App {
         if index >= self.envelopes.len() {
             return;
         }
-        let key = root_key(&self.envelopes, index);
+        let key = self.thread_root_keys()[index].clone();
         let Some(hidden) = self.collapsed_threads.remove(&key) else {
             self.set_status("No collapsed thread here.");
             return;

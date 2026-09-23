@@ -87,6 +87,7 @@ pub fn resolve(view: View, key: KeyEvent) -> Action {
             KeyCode::Char('k') => Action::OpenClips,
             KeyCode::Char('g') => Action::OpenStages,
             KeyCode::Char('o') => Action::OpenCollections,
+            KeyCode::Char('t') => Action::MergeConversation,
             _ => Action::None,
         };
     }

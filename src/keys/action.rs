@@ -9,7 +9,7 @@ pub enum Action {
     RouteSender(crate::db::sender_routes::Route),
     OpenFollowup(crate::db::message_markers::Marker),
     ToggleMarker(crate::db::message_markers::Marker),
-    ToggleMuteConversation, ToggleLoudConversation, CycleBundle, BulkReply,
+    ToggleMuteConversation, ToggleLoudConversation, CycleBundle, BulkReply, MergeConversation,
     OpenResurface,
     ResurfaceInput(char),
     ResurfaceBackspace, ResurfaceSubmit, ResurfaceCancel, OpenPlacePrompt,

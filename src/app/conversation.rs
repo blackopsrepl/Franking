@@ -105,6 +105,14 @@ impl App {
         }
         self.load_stages_and_filter(&anchors_by_row);
         self.load_collections_and_filter(&anchors_by_row);
+        let merged_accounts: Vec<String> = self
+            .envelopes
+            .iter()
+            .filter_map(|envelope| envelope.account.clone())
+            .collect::<std::collections::HashSet<_>>()
+            .into_iter()
+            .collect();
+        self.load_merge_roots(&merged_accounts);
         // Collapse bundled senders after every other ordering decision.
         let accounts: Vec<String> = self
             .envelopes

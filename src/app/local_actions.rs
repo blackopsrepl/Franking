@@ -15,6 +15,7 @@ impl App {
             Action::ToggleMuteConversation => self.toggle_mute_conversation(),
             Action::ToggleLoudConversation => self.toggle_loud_conversation(),
             Action::CycleBundle => self.cycle_bundle(),
+            Action::MergeConversation => self.merge_conversation(),
             Action::BulkReply => self.bulk_reply(),
             Action::OpenResurface => self.open_resurface_prompt(),
             Action::ResurfaceInput(c) => self.resurface_input(*c),

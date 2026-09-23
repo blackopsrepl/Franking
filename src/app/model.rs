@@ -93,6 +93,10 @@ pub struct App {
     pub(crate) collection_of_anchor: HashMap<String, Vec<String>>,
     /// Active collection filter by name.
     pub(crate) collection_filter: Option<String>,
+    /// Locally merged conversation roots, keyed by source anchor.
+    pub(crate) merge_roots: HashMap<String, String>,
+    /// Merge source awaiting a target: (account, anchor).
+    pub(crate) pending_merge: Option<(String, String)>,
 
     /// Bundled senders for the loaded accounts, keyed by (account, sender).
     pub(crate) bundled_senders: super::bundle_view::BundleKeys,

@@ -20,6 +20,7 @@ mod followup;
 mod help;
 mod keys;
 mod mail_ui;
+mod merge;
 mod message_search;
 mod move_prompt;
 mod notifications;

@@ -78,6 +78,12 @@ pub(super) fn create_local_schema(conn: &Connection) -> Result<()> {
               sender  TEXT NOT NULL,
               PRIMARY KEY (account, sender)
          );
+         CREATE TABLE thread_merges (
+              account TEXT NOT NULL,
+              anchor  TEXT NOT NULL,
+              root    TEXT NOT NULL,
+              PRIMARY KEY (account, anchor)
+         );
          CREATE TABLE collections (
               id      INTEGER PRIMARY KEY AUTOINCREMENT,
               account TEXT    NOT NULL,
