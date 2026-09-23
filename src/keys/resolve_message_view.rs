@@ -24,6 +24,8 @@ pub(super) fn resolve_message_view(key: KeyEvent) -> Action {
         KeyCode::Char('M') => Action::ToggleMuteConversation,
         KeyCode::Char('b') => Action::OpenResurface,
         KeyCode::Char('x') => Action::OpenPlacePrompt,
+        KeyCode::Char('i') => Action::OpenNote,
+        KeyCode::Char('%') => Action::OpenSubjectAlias,
         KeyCode::Char('1') => Action::RouteSender(crate::db::sender_routes::Route::Inbox),
         KeyCode::Char('2') => Action::RouteSender(crate::db::sender_routes::Route::Reading),
         KeyCode::Char('3') => Action::RouteSender(crate::db::sender_routes::Route::Receipts),

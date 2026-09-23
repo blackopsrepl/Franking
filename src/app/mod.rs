@@ -3,6 +3,7 @@
 mod accessors;
 mod account_form;
 mod accounts;
+mod annotations;
 mod archive;
 mod attachments;
 mod autosave;

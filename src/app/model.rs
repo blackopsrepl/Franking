@@ -56,6 +56,12 @@ pub struct App {
     pub(crate) resurfaced_ids: std::collections::HashSet<String>,
     /// Buffered resurface delay input.
     pub(crate) resurface_input: String,
+    /// Display aliases for the loaded list, keyed by envelope id.
+    pub(crate) subject_aliases: HashMap<String, String>,
+    /// Buffered text for the note or subject-alias prompt.
+    pub(crate) annotation_input: String,
+    /// Private note for the open message, if one was written.
+    pub(crate) message_note: Option<String>,
 
     // ── Envelope state ──────────────────────────────────────────────
     pub envelopes: Vec<Envelope>,

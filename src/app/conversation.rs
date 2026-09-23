@@ -17,6 +17,7 @@ impl App {
         self.conversation_anchors.clear();
         self.muted_ids.clear();
         self.resurfaced_ids.clear();
+        self.subject_aliases.clear();
         let now = now_utc();
         let Some(conn) = self.db.as_ref() else {
             return;
@@ -38,6 +39,9 @@ impl App {
             }
             if due {
                 self.resurfaced_ids.insert(envelope.id.clone());
+            }
+            if let Ok(Some(alias)) = crate::db::annotations::alias(conn, &account, &anchors) {
+                self.subject_aliases.insert(envelope.id.clone(), alias);
             }
             self.conversation_anchors
                 .insert(envelope.id.clone(), anchors);

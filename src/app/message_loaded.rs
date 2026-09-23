@@ -18,6 +18,11 @@ impl App {
         self.message_scroll = 0;
         self.loading = false;
         self.view = View::MessageView;
+        self.message_note = self.selected_envelope().cloned().and_then(|envelope| {
+            self.db
+                .as_ref()
+                .and_then(|conn| crate::db::annotations::note(conn, &envelope).ok().flatten())
+        });
         self.mark_opened_message_seen();
     }
 

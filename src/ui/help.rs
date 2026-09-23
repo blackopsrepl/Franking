@@ -79,6 +79,12 @@ pub fn render(app: &mut App, frame: &mut Frame) {
             "b",
             "Resurface the conversation after a delay (blank clears)",
         ),
+        binding(
+            "x",
+            "Place one message in a lane, overriding its sender's route",
+        ),
+        binding("i", "Write a private note on the selected message"),
+        binding("%", "Rename the subject for you only (blank restores)"),
         binding("O", "Open the outbox"),
         binding("P", "Open preferences"),
         binding("K", "Open key material"),
@@ -117,6 +123,8 @@ pub fn render(app: &mut App, frame: &mut Frame) {
             "x",
             "Place one message in a lane, overriding its sender's route",
         ),
+        binding("i", "Write a private note on the selected message"),
+        binding("%", "Rename the subject for you only (blank restores)"),
         binding(
             "1/2/3/4/5",
             "Route sender: Inbox/Reading/Receipts/Blocked/Screening",

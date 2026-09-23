@@ -100,9 +100,18 @@ impl App {
     }
 
     pub fn render_message_body(&self, width: usize) -> String {
-        self.current_message()
+        let body = self
+            .current_message()
             .map(|message| message.render(width))
-            .unwrap_or_default()
+            .unwrap_or_default();
+        match self
+            .message_note
+            .as_deref()
+            .filter(|note| !note.trim().is_empty())
+        {
+            Some(note) => format!("Note: {note}\n\n{body}"),
+            None => body,
+        }
     }
 
     pub fn rendered_message_line_count(&self, width: usize) -> u16 {
@@ -141,6 +150,9 @@ impl App {
             muted_ids: std::collections::HashSet::new(),
             resurfaced_ids: std::collections::HashSet::new(),
             resurface_input: String::new(),
+            subject_aliases: HashMap::new(),
+            annotation_input: String::new(),
+            message_note: None,
             envelopes: Vec::new(),
             envelope_state: TableState::default(),
             page: 1,

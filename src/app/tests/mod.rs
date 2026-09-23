@@ -1,6 +1,7 @@
 /*! App unit test wiring. */
 
 mod accounts;
+mod annotations;
 mod archive;
 mod attachment_save;
 mod compose;

@@ -231,6 +231,23 @@ pub(super) fn create_schema(conn: &Connection) -> Result<()> {
          CREATE INDEX idx_message_routes_account
               ON message_routes(account);
 
+         CREATE TABLE message_notes (
+              account    TEXT NOT NULL,
+              folder     TEXT NOT NULL,
+              uid        TEXT NOT NULL,
+              message_id TEXT,
+              body       TEXT NOT NULL,
+              updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+              PRIMARY KEY (account, folder, uid)
+         );
+         CREATE TABLE subject_aliases (
+              account    TEXT NOT NULL,
+              anchor     TEXT NOT NULL,
+              alias      TEXT NOT NULL,
+              updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+              PRIMARY KEY (account, anchor)
+         );
+
          CREATE TABLE sync_state (
              account        TEXT    NOT NULL,
              folder         TEXT    NOT NULL,

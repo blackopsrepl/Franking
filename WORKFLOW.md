@@ -97,8 +97,8 @@ focused queue, a thread board, or a shared project view.
 | Read selected messages together in one scroll | Multiselect supports batch operations | Combined reader that keeps each message's account identity |
 | Search and navigate attachments independently of messages | Attachments can be opened/saved from a message | Cross-account attachment index with account, type, sender, and source-thread filters |
 | Save small excerpts for quick retrieval | Search and copy, not excerpt storage | Text clips keyed to source account and message; deleting a clip leaves mail alone |
-| Add private notes to a contact, message, or conversation | Contact notes exist | Message annotations and thread notes/files remain separate concepts |
-| Rename a subject for local display only | Not available | Keep the original RFC subject for sending and threading |
+| Add private notes to a contact, message, or conversation | Contact notes exist; `i` writes a private note on a message, shown above its body | Notes are per message, not per conversation or with files |
+| Rename a subject for local display only | `%` sets a display alias for the conversation; the wire subject is unchanged | The alias is keyed by conversation anchor |
 | Insert reusable response text | Compose editor, no snippet library | User-defined reusable text for the selected identity/account |
 | Control interruption per contact or thread | Focused-Inbox notification default plus all/contacts/off preferences | Per-thread overrides and reliable change-event identity remain |
 | Avoid remote tracking pixels | HTML-to-terminal-text rendering makes no image request | No tracker detection/report; don't claim comprehensive remote-content blocking |

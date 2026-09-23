@@ -1,6 +1,7 @@
 mod account_edit;
 mod account_list;
 pub mod action_bar;
+mod annotation_prompt;
 mod attachment_list;
 mod compose;
 mod contact_edit;
@@ -104,6 +105,7 @@ pub fn render(app: &mut App, frame: &mut Frame) {
         View::SchedulePrompt => outbox::render_schedule_prompt(app, frame, outer[2]),
         View::ResurfacePrompt => resurface_prompt::render(app, frame, outer[2]),
         View::PlacePrompt => place_prompt::render(app, frame, outer[2]),
+        View::MessageNote | View::SubjectAlias => annotation_prompt::render(app, frame, outer[2]),
         View::MessageSearch => message_view::render_search_prompt(app, frame, outer[2]),
         _ => status_bar::render(app, frame, outer[2]),
     }

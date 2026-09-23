@@ -2,7 +2,8 @@
 
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
-use super::action::{Action, ComposeFocus, ComposeKeyContext};
+use super::action::Action;
+use super::compose_context::{ComposeFocus, ComposeKeyContext};
 
 /// Resolve compose keys with compose-state context.
 ///

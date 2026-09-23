@@ -129,6 +129,10 @@ pub fn render(app: &mut App, frame: &mut Frame, area: Rect) {
             } else {
                 env.subject.clone()
             };
+            let subject = match app.subject_aliases.get(&env.id) {
+                Some(alias) => format!("{alias}  ({})", env.subject),
+                None => subject,
+            };
             let subject = if app.triage_lane == Some(crate::db::sender_routes::Route::Inbox)
                 && (index == 0 || app.envelopes[index - 1].is_seen() != env.is_seen())
             {

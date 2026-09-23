@@ -1,33 +1,3 @@
-/// Editing mode for forms that still distinguish navigation vs text entry.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum EditMode {
-    /// Navigation-focused controls.
-    Nav,
-    /// Direct text entry.
-    Insert,
-}
-/// Coarse compose focus buckets used by contextual key resolution.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ComposeFocus {
-    From,
-    Header,
-    Body,
-    ActionBar,
-}
-/// Runtime compose context needed to resolve keys correctly.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct ComposeKeyContext {
-    /// Which compose region currently owns focus.
-    pub focus: ComposeFocus,
-    /// Nav vs Insert for form-style fields that still use it.
-    pub edit_mode: EditMode,
-    /// Whether the body editor currently has an active search session.
-    pub body_search_active: bool,
-    /// Whether contact-autocomplete suggestions are visible.
-    pub autocomplete_visible: bool,
-    /// Whether the discard-confirmation modal is currently shown.
-    pub confirm_discard_visible: bool,
-}
 /// Actions the app can take in response to a key press.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Action {
@@ -61,6 +31,12 @@ pub enum Action {
     OpenPlacePrompt,
     RouteMessage(crate::db::sender_routes::Route),
     PlaceCancel,
+    OpenNote,
+    OpenSubjectAlias,
+    AnnotationInput(char),
+    AnnotationBackspace,
+    AnnotationSubmit,
+    AnnotationCancel,
     SyncFolder,
     MarkFolderRead,
     DownloadAttachments,

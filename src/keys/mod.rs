@@ -1,6 +1,7 @@
 /*! Keybinding module wiring. */
 
 mod action;
+mod compose_context;
 mod hints;
 mod resolve;
 mod resolve_accounts;
@@ -12,7 +13,8 @@ mod resolve_saved;
 mod resolve_sieve;
 mod view;
 
-pub use action::{Action, ComposeFocus, ComposeKeyContext, EditMode};
+pub use action::Action;
+pub use compose_context::{ComposeFocus, ComposeKeyContext, EditMode};
 pub use hints::hints;
 pub use resolve::resolve;
 pub use resolve_compose::resolve_compose_with_context;

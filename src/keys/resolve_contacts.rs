@@ -2,7 +2,8 @@
 
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
-use super::action::{Action, ComposeFocus, ComposeKeyContext, EditMode};
+use super::action::Action;
+use super::compose_context::{ComposeFocus, ComposeKeyContext, EditMode};
 use super::resolve_compose::resolve_compose_with_context;
 
 pub(super) fn resolve_compose(key: KeyEvent) -> Action {

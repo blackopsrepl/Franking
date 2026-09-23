@@ -22,6 +22,10 @@ pub enum View {
     ResurfacePrompt,
     /// Prompt to place one message in a lane, overriding its sender's route.
     PlacePrompt,
+    /// Prompt to write a private note on the selected message.
+    MessageNote,
+    /// Prompt to rename the selected conversation's subject locally.
+    SubjectAlias,
     Search,
     Help,
     MovePrompt,
