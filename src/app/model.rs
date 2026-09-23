@@ -50,6 +50,12 @@ pub struct App {
     pub(crate) triage_lane: Option<crate::db::sender_routes::Route>,
     pub(crate) followup_lane: Option<crate::db::message_markers::Marker>,
     pub(crate) pending_reply_marker: Option<Envelope>,
+    /// Conversation anchors and decisions for the loaded list, keyed by envelope id.
+    pub(crate) conversation_anchors: HashMap<String, Vec<String>>,
+    pub(crate) muted_ids: std::collections::HashSet<String>,
+    pub(crate) resurfaced_ids: std::collections::HashSet<String>,
+    /// Buffered resurface delay input.
+    pub(crate) resurface_input: String,
 
     // ── Envelope state ──────────────────────────────────────────────
     pub envelopes: Vec<Envelope>,

@@ -89,6 +89,15 @@ impl App {
         folder: &str,
         newest: Option<&crate::mail::types::Envelope>,
     ) -> bool {
+        if let (Some(envelope), Some(conn)) = (newest, self.db.as_ref()) {
+            let owner = envelope.account.as_deref().or(account).unwrap_or_default();
+            if !owner.is_empty() {
+                let anchors = crate::db::conversations::anchors(envelope);
+                if crate::db::conversations::is_muted(conn, owner, &anchors).unwrap_or(false) {
+                    return false;
+                }
+            }
+        }
         match self.notification_rule {
             NotificationRule::Off => false,
             NotificationRule::All => true,

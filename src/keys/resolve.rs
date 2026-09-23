@@ -31,6 +31,7 @@ pub fn resolve(view: View, key: KeyEvent) -> Action {
         View::Outbox => return resolve_outbox(key),
         View::Settings => return resolve_settings(key),
         View::SchedulePrompt => return resolve_schedule(key),
+        View::ResurfacePrompt => return resolve_resurface(key),
         View::AttachmentView => return resolve_attachment_view(key),
         View::LinkList => return resolve_link_list(key),
         View::SavedSearches => return resolve_saved_searches(key),
@@ -87,6 +88,7 @@ pub fn resolve(view: View, key: KeyEvent) -> Action {
         | View::Outbox
         | View::Settings
         | View::SchedulePrompt
+        | View::ResurfacePrompt
         | View::AttachmentView
         | View::Keys
         | View::KeysPrompt
@@ -114,6 +116,8 @@ fn resolve_envelope_list(key: KeyEvent) -> Action {
         KeyCode::Char('D') => Action::OpenFollowup(crate::db::message_markers::Marker::Saved),
         KeyCode::Char('y') => Action::ToggleMarker(crate::db::message_markers::Marker::ReplyLater),
         KeyCode::Char('Y') => Action::ToggleMarker(crate::db::message_markers::Marker::Saved),
+        KeyCode::Char('M') => Action::ToggleMuteConversation,
+        KeyCode::Char('b') => Action::OpenResurface,
         KeyCode::Char('1') => Action::RouteSender(crate::db::sender_routes::Route::Inbox),
         KeyCode::Char('2') => Action::RouteSender(crate::db::sender_routes::Route::Reading),
         KeyCode::Char('3') => Action::RouteSender(crate::db::sender_routes::Route::Receipts),
@@ -248,6 +252,16 @@ fn resolve_move_prompt(key: KeyEvent) -> Action {
         KeyCode::Char('j') | KeyCode::Down => Action::MoveNext,
         KeyCode::Char('k') | KeyCode::Up => Action::MovePrev,
         KeyCode::Char(c) => Action::MoveInput(c),
+        _ => Action::None,
+    }
+}
+
+fn resolve_resurface(key: KeyEvent) -> Action {
+    match key.code {
+        KeyCode::Enter => Action::ResurfaceSubmit,
+        KeyCode::Esc => Action::ResurfaceCancel,
+        KeyCode::Backspace => Action::ResurfaceBackspace,
+        KeyCode::Char(c) => Action::ResurfaceInput(c),
         _ => Action::None,
     }
 }

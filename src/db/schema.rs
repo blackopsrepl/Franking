@@ -206,6 +206,20 @@ pub(super) fn create_schema(conn: &Connection) -> Result<()> {
          CREATE INDEX idx_message_markers_account
               ON message_markers(account, reply_later, saved);
 
+         CREATE TABLE conversation_rules (
+              id           INTEGER PRIMARY KEY AUTOINCREMENT,
+              account      TEXT    NOT NULL,
+              anchor       TEXT    NOT NULL,
+              muted        INTEGER NOT NULL DEFAULT 0 CHECK(muted IN (0, 1)),
+              resurface_at TEXT,
+              created_at   TEXT    NOT NULL DEFAULT (datetime('now')),
+              UNIQUE(account, anchor)
+         );
+         CREATE INDEX idx_conversation_rules_muted
+              ON conversation_rules(account, muted);
+         CREATE INDEX idx_conversation_rules_resurface
+              ON conversation_rules(account, resurface_at);
+
          CREATE TABLE sync_state (
              account        TEXT    NOT NULL,
              folder         TEXT    NOT NULL,

@@ -88,8 +88,8 @@ focused queue, a thread board, or a shared project view.
 | Read newsletters as an already-open scrollable stream | Reading list of envelopes | A distinct reading surface, not just another inbox list |
 | Defer a required reply, then work only that queue | Local Reply later queue with direct-reply completion | Sequential focus reader and source reconciliation remain |
 | Keep a reference handy without owing a reply | Local Saved queue, independent of read and reply state | Reconcile moved messages whose server UID changes |
-| Resurface mail on a chosen date | Scheduled **sending** exists | A separate incoming-mail reminder, not the outgoing schedule |
-| Suppress future updates to a conversation while retaining its history | Not available | Account-scoped quiet-thread rule keyed to stable conversation identity |
+| Resurface mail on a chosen date | `b` sets a resurface delay per conversation; due conversations float to the top of the list | The reminder lives only while mail is listed; a scheduled background sweep is not required for it to apply |
+| Suppress future updates to a conversation while retaining its history | `M` quiets a conversation; direct replies no longer notify or outrank read mail | Matching uses Message-ID and In-Reply-To anchors, so a deep reply whose immediate parent is not loaded may not match |
 | Collapse a high-volume sender into one row | Thread collapse only | Sender-scoped bundle across unrelated messages, not conversation threading |
 | Track a conversation through custom stages | Not available | Account-scoped stage board; thread and its later replies travel together |
 | Keep related threads together without merging them | Search and contact tags, not project collections | Named collection of distinct thread references; separate from folders and saved searches |

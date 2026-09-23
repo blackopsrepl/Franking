@@ -74,6 +74,11 @@ pub fn render(app: &mut App, frame: &mut Frame) {
         ),
         binding("L / D", "Open Reply later / Saved"),
         binding("y / Y", "Mark reply later / save for reference"),
+        binding("M", "Quiet or unquiet the selected conversation"),
+        binding(
+            "b",
+            "Resurface the conversation after a delay (blank clears)",
+        ),
         binding("O", "Open the outbox"),
         binding("P", "Open preferences"),
         binding("K", "Open key material"),
@@ -103,6 +108,11 @@ pub fn render(app: &mut App, frame: &mut Frame) {
         binding("z", "Undo the last action"),
         binding("L/D", "Open Reply later / Saved (again to close)"),
         binding("y/Y", "Toggle reply later / saved on the selected message"),
+        binding("M", "Quiet or unquiet the selected conversation"),
+        binding(
+            "b",
+            "Resurface the conversation after a delay (blank clears)",
+        ),
         binding(
             "1/2/3/4/5",
             "Route sender: Inbox/Reading/Receipts/Blocked/Screening",

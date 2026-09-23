@@ -18,6 +18,8 @@ pub enum View {
     Settings,
     /// Prompt for a send-later delay.
     SchedulePrompt,
+    /// Prompt for a resurface delay on a conversation.
+    ResurfacePrompt,
     Search,
     Help,
     MovePrompt,

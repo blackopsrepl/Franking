@@ -222,6 +222,7 @@ impl App {
         if self.triage_lane == Some(crate::db::sender_routes::Route::Inbox) {
             self.envelopes.sort_by_key(|envelope| envelope.is_seen());
         }
+        self.apply_conversation_view();
 
         if !self.envelopes.is_empty() {
             // Preserve selection position on auto-refresh if possible

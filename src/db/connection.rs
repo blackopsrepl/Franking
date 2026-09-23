@@ -10,7 +10,7 @@ use super::schema::create_schema;
 use super::schema_migrations::migrate;
 
 /// Increment only with a corresponding migration in `schema_migrations`.
-const SCHEMA_VERSION: u32 = 5;
+const SCHEMA_VERSION: u32 = 6;
 
 /// Return the path to the database file.
 pub fn db_path() -> PathBuf {

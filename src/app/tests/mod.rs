@@ -5,6 +5,7 @@ mod archive;
 mod attachment_save;
 mod compose;
 mod compose_escape;
+mod conversation;
 mod copy_move;
 mod crypto;
 mod folder_jump;

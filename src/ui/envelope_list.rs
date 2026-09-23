@@ -90,7 +90,11 @@ pub fn render(app: &mut App, frame: &mut Frame, area: Rect) {
                         | crate::db::sender_routes::Route::Receipts
                 )
             );
-            let base_style = if env.is_flagged() {
+            let muted = app.muted_ids.contains(&env.id);
+            let resurfaced = app.resurfaced_ids.contains(&env.id);
+            let base_style = if muted {
+                t.dimmed()
+            } else if env.is_flagged() {
                 t.flagged()
             } else if !env.is_seen() && !quiet_lane {
                 t.unread()
@@ -138,6 +142,13 @@ pub fn render(app: &mut App, frame: &mut Frame, area: Rect) {
                     None => subject,
                 },
                 None => subject,
+            };
+            let subject = if resurfaced {
+                format!("\u{25F7} resurfaced · {subject}")
+            } else if muted {
+                format!("quiet · {subject}")
+            } else {
+                subject
             };
             let subject_cell = Cell::from(subject).style(base_style);
             let date_cell = Cell::from(relative_date(&env.date, &now)).style(t.dimmed());

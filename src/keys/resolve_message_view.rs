@@ -21,6 +21,8 @@ pub(super) fn resolve_message_view(key: KeyEvent) -> Action {
         KeyCode::Char('D') => Action::OpenFollowup(crate::db::message_markers::Marker::Saved),
         KeyCode::Char('y') => Action::ToggleMarker(crate::db::message_markers::Marker::ReplyLater),
         KeyCode::Char('Y') => Action::ToggleMarker(crate::db::message_markers::Marker::Saved),
+        KeyCode::Char('M') => Action::ToggleMuteConversation,
+        KeyCode::Char('b') => Action::OpenResurface,
         KeyCode::Char('1') => Action::RouteSender(crate::db::sender_routes::Route::Inbox),
         KeyCode::Char('2') => Action::RouteSender(crate::db::sender_routes::Route::Reading),
         KeyCode::Char('3') => Action::RouteSender(crate::db::sender_routes::Route::Receipts),

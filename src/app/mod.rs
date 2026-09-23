@@ -12,6 +12,7 @@ mod compose_attachments;
 mod compose_context;
 mod contact_harvest;
 mod contacts;
+mod conversation;
 mod crypto;
 mod editor;
 mod empty_folder;

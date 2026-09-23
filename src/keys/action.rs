@@ -52,6 +52,12 @@ pub enum Action {
     RouteSender(crate::db::sender_routes::Route),
     OpenFollowup(crate::db::message_markers::Marker),
     ToggleMarker(crate::db::message_markers::Marker),
+    ToggleMuteConversation,
+    OpenResurface,
+    ResurfaceInput(char),
+    ResurfaceBackspace,
+    ResurfaceSubmit,
+    ResurfaceCancel,
     SyncFolder,
     MarkFolderRead,
     DownloadAttachments,
@@ -264,7 +270,6 @@ pub enum Action {
     ContactSearchInput(char),
     ContactSearchBackspace,
     ContactSearchCancel,
-    // ── Contact edit form ─────────────────────────────────────────────
     ContactEditFieldNext,
     ContactEditFieldPrev,
     ContactEditInput(char),
@@ -273,7 +278,6 @@ pub enum Action {
     ContactEditCancel,
     /// Enter key on contact edit: activates focused action-button or advances field.
     ContactEditActivate,
-    // ── Identity list ─────────────────────────────────────────────────
     OpenIdentities,
     IdentityNew,
     IdentityEditSelected,
@@ -282,7 +286,6 @@ pub enum Action {
     IdentityListUp,
     IdentityListDown,
     IdentityListClose,
-    // ── Identity edit form ────────────────────────────────────────────
     IdentityEditFieldNext,
     IdentityEditFieldPrev,
     IdentityEditInput(char),
@@ -290,7 +293,6 @@ pub enum Action {
     IdentityEditToggle,
     IdentityEditSave,
     IdentityEditCancel,
-    // ── Passthrough for the compose editor / focused field ────────────
     /// Raw key event forwarded to the compose editor or focused field.
     EditorKey(crossterm::event::KeyEvent),
     None,
