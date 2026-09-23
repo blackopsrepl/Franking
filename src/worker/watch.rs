@@ -41,10 +41,15 @@ impl Worker {
             while !thread_stop.load(Ordering::Relaxed) {
                 match service.idle_watch(thread_account.as_deref(), &thread_folder, IDLE_TIMEOUT) {
                     Ok(IdleOutcome::MailboxChanged) => {
+                        let newest = service
+                            .list_envelopes(thread_account.as_deref(), &thread_folder, 1, 1, None)
+                            .ok()
+                            .and_then(|envelopes| envelopes.into_iter().next());
                         if tx
                             .send(WorkerResult::MailboxChanged(
                                 thread_account.clone(),
                                 thread_folder.clone(),
+                                newest,
                             ))
                             .is_err()
                         {

@@ -12,8 +12,10 @@ const RULE: &str = "notification_rule";
 pub enum NotificationRule {
     /// Never.
     Off,
-    /// Every arriving message.
+    /// Only explicitly accepted correspondence in an inbox.
     #[default]
+    Focused,
+    /// Every arriving message.
     All,
     /// Only messages from an address in the address book.
     Contacts,
@@ -23,7 +25,8 @@ impl NotificationRule {
     /// The next rule in the cycle.
     pub fn next(self) -> Self {
         match self {
-            NotificationRule::Off => NotificationRule::All,
+            NotificationRule::Off => NotificationRule::Focused,
+            NotificationRule::Focused => NotificationRule::All,
             NotificationRule::All => NotificationRule::Contacts,
             NotificationRule::Contacts => NotificationRule::Off,
         }
@@ -33,6 +36,7 @@ impl NotificationRule {
     pub fn label(self) -> &'static str {
         match self {
             NotificationRule::Off => "off",
+            NotificationRule::Focused => "focused inbox",
             NotificationRule::All => "every message",
             NotificationRule::Contacts => "contacts only",
         }
@@ -42,6 +46,7 @@ impl NotificationRule {
     pub fn as_str(self) -> &'static str {
         match self {
             NotificationRule::Off => "off",
+            NotificationRule::Focused => "focused",
             NotificationRule::All => "all",
             NotificationRule::Contacts => "contacts",
         }
@@ -51,8 +56,10 @@ impl NotificationRule {
     pub fn parse(value: &str) -> Self {
         match value {
             "off" => NotificationRule::Off,
+            "focused" => NotificationRule::Focused,
+            "all" => NotificationRule::All,
             "contacts" => NotificationRule::Contacts,
-            _ => NotificationRule::All,
+            _ => NotificationRule::Focused,
         }
     }
 
@@ -64,6 +71,7 @@ impl NotificationRule {
     pub fn allows(self, known_contact: bool) -> bool {
         match self {
             NotificationRule::Off => false,
+            NotificationRule::Focused => false,
             NotificationRule::All => true,
             NotificationRule::Contacts => known_contact,
         }
@@ -73,22 +81,45 @@ impl NotificationRule {
 impl App {
     /// Whether arriving mail in `folder` should raise a notification.
     ///
-    /// The contacts rule needs the sender, which a change notification does not
-    /// carry, so the newest envelope is fetched for that rule only.
-    pub(crate) fn notify_for_new_mail(&self, account: Option<&str>, folder: &str) -> bool {
+    /// The watcher fetches the newest envelope off the UI thread for rules that
+    /// depend on its sender. Failure to fetch does not create an alert.
+    pub(crate) fn notify_for_new_mail(
+        &self,
+        account: Option<&str>,
+        folder: &str,
+        newest: Option<&crate::mail::types::Envelope>,
+    ) -> bool {
         match self.notification_rule {
             NotificationRule::Off => false,
             NotificationRule::All => true,
-            NotificationRule::Contacts => {
-                let sender = self
-                    .worker
-                    .service()
-                    .list_envelopes(account, folder, 1, 1, None)
-                    .ok()
-                    .and_then(|envelopes| envelopes.into_iter().next())
-                    .map(|envelope| envelope.sender_display())
-                    .unwrap_or_default();
-                !sender.is_empty() && self.should_notify(&sender)
+            NotificationRule::Contacts | NotificationRule::Focused => {
+                if self.notification_rule == NotificationRule::Focused
+                    && !folder.eq_ignore_ascii_case("INBOX")
+                {
+                    return false;
+                }
+                let Some(envelope) = newest else {
+                    return false;
+                };
+                if self.notification_rule == NotificationRule::Focused {
+                    if crate::db::sender_routes::sender_address(&envelope.sender).is_none() {
+                        return false;
+                    }
+                    let mut envelope = envelope.clone();
+                    if envelope.account.is_none() {
+                        envelope.account = account.map(str::to_owned);
+                    }
+                    if envelope.account.is_none() {
+                        return false;
+                    }
+                    self.db.as_ref().and_then(|conn| {
+                        crate::db::sender_routes::for_envelope(conn, &envelope).ok()
+                    }) == Some(crate::db::sender_routes::Route::Inbox)
+                } else {
+                    let sender = crate::db::sender_routes::sender_address(&envelope.sender)
+                        .unwrap_or_default();
+                    !sender.is_empty() && self.should_notify(&sender)
+                }
             }
         }
     }
@@ -158,14 +189,15 @@ mod tests {
     #[test]
     fn cycling_reaches_every_rule_and_returns() {
         let mut rule = NotificationRule::default();
-        assert_eq!(rule, NotificationRule::All);
+        assert_eq!(rule, NotificationRule::Focused);
         let mut seen = vec![rule];
-        for _ in 0..3 {
+        for _ in 0..4 {
             rule = rule.next();
             seen.push(rule);
         }
         assert_eq!(rule, NotificationRule::default(), "returns to the start");
         assert!(seen.contains(&NotificationRule::Off));
+        assert!(seen.contains(&NotificationRule::Focused));
         assert!(seen.contains(&NotificationRule::Contacts));
     }
 
@@ -173,17 +205,22 @@ mod tests {
     fn stored_names_round_trip() {
         for rule in [
             NotificationRule::Off,
+            NotificationRule::Focused,
             NotificationRule::All,
             NotificationRule::Contacts,
         ] {
             assert_eq!(NotificationRule::parse(rule.as_str()), rule);
         }
-        assert_eq!(NotificationRule::parse("nonsense"), NotificationRule::All);
+        assert_eq!(
+            NotificationRule::parse("nonsense"),
+            NotificationRule::Focused
+        );
     }
 
     #[test]
     fn the_contacts_rule_needs_a_known_sender() {
         assert!(!NotificationRule::Off.allows(true));
+        assert!(!NotificationRule::Focused.allows(true));
         assert!(
             NotificationRule::All.allows(false),
             "all mail, known or not"

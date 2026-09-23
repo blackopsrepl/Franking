@@ -95,7 +95,7 @@ cargo run -- --setup
 - **Security indicators** - SPF/DKIM/DMARC verdicts from `Authentication-Results`, PGP/MIME and S/MIME structure detection, and OpenPGP/S/MIME verification and decryption
 - **Crypto keyring** - public/secret keys under `~/.local/share/franking/keys` verify and decrypt OpenPGP (inline and PGP/MIME) and S/MIME (PKCS#7 signed/enveloped)
 - **Calendar invitations** - `text/calendar` events show their summary and time with its timezone, cancelled events are marked, and `c` hands the invitation to Planner123 (`planner123-cli ical import`)
-- **Desktop notifications** - `notify-send` on new mail when the IDLE watcher fires
+- **Desktop notifications** - Quiet by default: `notify-send` for accepted Inbox senders when the IDLE watcher fires, with all/contacts/off preferences
 - **Offline cache** - Listings and search fall back to the local store when the server is unreachable
 - **Mark read/unread** - Press `N` to toggle the Seen flag
 

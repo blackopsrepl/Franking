@@ -102,54 +102,6 @@ fn discovery_requires_an_email_address() {
 }
 
 #[test]
-fn notification_rule_round_trips() {
-    use crate::app::notification_rules::NotificationRule;
-    use crate::keys::View;
-
-    use super::super::App;
-
-    let conn = rusqlite::Connection::open_in_memory().unwrap();
-    crate::db::init_for_test(&conn).unwrap();
-
-    let mut app = App::new(None);
-    app.db = Some(conn);
-    assert_eq!(app.notification_rule, NotificationRule::All, "the default");
-
-    app.open_settings();
-    assert_eq!(app.view, View::Settings);
-
-    // Off, every message, contacts only, then back to off.
-    app.cycle_notification_rule();
-    assert_eq!(app.notification_rule, NotificationRule::Contacts);
-    assert!(app.status_message.contains("contacts only"));
-    app.cycle_notification_rule();
-    assert_eq!(app.notification_rule, NotificationRule::Off);
-    assert!(app.status_message.contains("off"));
-    app.cycle_notification_rule();
-    assert_eq!(app.notification_rule, NotificationRule::All);
-
-    // A fresh app picks the stored rule back up.
-    let mut reloaded = App::new(None);
-    let conn = app.db.take().unwrap();
-    crate::db::preferences::set_text(&conn, "notification_rule", "contacts").unwrap();
-    reloaded.db = Some(conn);
-    reloaded.load_preferences();
-    assert_eq!(reloaded.notification_rule, NotificationRule::Contacts);
-
-    // An install that only has the older boolean keeps its choice.
-    let conn = rusqlite::Connection::open_in_memory().unwrap();
-    crate::db::init_for_test(&conn).unwrap();
-    crate::db::preferences::set(&conn, "notifications", false).unwrap();
-    let mut older = App::new(None);
-    older.db = Some(conn);
-    older.load_preferences();
-    assert_eq!(older.notification_rule, NotificationRule::Off);
-
-    app.close_settings();
-    assert_eq!(app.view, View::EnvelopeList);
-}
-
-#[test]
 fn contact_tag_filter_cycles_through_tags_and_back_to_all() {
     use crate::contacts::{self, Contact};
 

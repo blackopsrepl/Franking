@@ -14,12 +14,12 @@ fn settings_cycle_between_preferences() {
 
     assert_eq!(
         app.notification_rule,
-        crate::app::notification_rules::NotificationRule::All
+        crate::app::notification_rules::NotificationRule::Focused
     );
     app.settings_toggle();
     assert_eq!(
         app.notification_rule,
-        crate::app::notification_rules::NotificationRule::Contacts
+        crate::app::notification_rules::NotificationRule::All
     );
 
     app.settings_move(1);

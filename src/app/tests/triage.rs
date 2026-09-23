@@ -72,3 +72,21 @@ fn reply_from_a_combined_lane_uses_the_message_account() {
     assert_eq!(reply.account.as_deref(), Some("work"));
     assert_eq!(reply.reply_to_folder.as_deref(), Some("INBOX"));
 }
+
+#[test]
+fn focused_inbox_groups_new_mail_before_seen_mail() {
+    let conn = rusqlite::Connection::open_in_memory().unwrap();
+    crate::db::init_for_test(&conn).unwrap();
+    sender_routes::set(&conn, "work", "alice@example.org", Route::Inbox).unwrap();
+    let mut app = App::new(Some("work".into()));
+    app.db = Some(conn);
+    app.triage_lane = Some(Route::Inbox);
+    let mut seen = envelope("work", "newest", "alice@example.org");
+    seen.flags.push("seen".into());
+    seen.date = "2026-09-24T12:00:00Z".into();
+    let mut new = envelope("work", "older", "alice@example.org");
+    new.date = "2026-09-23T12:00:00Z".into();
+    app.handle_envelopes_loaded(vec![seen, new]);
+    assert_eq!(app.envelopes[0].id, "older");
+    assert_eq!(app.envelopes[1].id, "newest");
+}

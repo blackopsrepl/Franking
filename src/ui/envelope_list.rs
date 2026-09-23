@@ -83,9 +83,16 @@ pub fn render(app: &mut App, frame: &mut Frame, area: Rect) {
         .iter()
         .enumerate()
         .map(|(index, env)| {
+            let quiet_lane = matches!(
+                app.triage_lane,
+                Some(
+                    crate::db::sender_routes::Route::Reading
+                        | crate::db::sender_routes::Route::Receipts
+                )
+            );
             let base_style = if env.is_flagged() {
                 t.flagged()
-            } else if !env.is_seen() {
+            } else if !env.is_seen() && !quiet_lane {
                 t.unread()
             } else {
                 t.normal()
@@ -96,7 +103,12 @@ pub fn render(app: &mut App, frame: &mut Frame, area: Rect) {
             } else {
                 " "
             };
-            let flag_cell = Cell::from(format!("{marker} {}", env.flag_icon())).style(base_style);
+            let icon = if quiet_lane && !env.is_flagged() {
+                " "
+            } else {
+                env.flag_icon()
+            };
+            let flag_cell = Cell::from(format!("{marker} {icon}")).style(base_style);
             let sender = if app.is_unified_inbox() {
                 format!(
                     "{} · {}",
@@ -112,6 +124,13 @@ pub fn render(app: &mut App, frame: &mut Frame, area: Rect) {
                 format!("{}\u{21b3} {}", "  ".repeat(depth), env.subject)
             } else {
                 env.subject.clone()
+            };
+            let subject = if app.triage_lane == Some(crate::db::sender_routes::Route::Inbox)
+                && (index == 0 || app.envelopes[index - 1].is_seen() != env.is_seen())
+            {
+                format!("{} · {subject}", if env.is_seen() { "Seen" } else { "New" })
+            } else {
+                subject
             };
             let subject = match root_keys.get(index) {
                 Some(key) => match app.collapsed_threads.get(key) {

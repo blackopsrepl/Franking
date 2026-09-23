@@ -23,8 +23,8 @@ pub enum WorkerResult {
     Template(Result<String, MailError>),
     /// Result of sending a template.
     SendDone(Result<String, MailError>),
-    /// The watched mailbox changed: (account, folder).
-    MailboxChanged(Option<String>, String),
+    /// The watched mailbox changed: (account, folder, latest envelope).
+    MailboxChanged(Option<String>, String, Option<Envelope>),
     /// Server-side Sieve scripts for an account.
     SieveScripts(Result<Vec<crate::mail::sieve::SieveScript>, MailError>),
     /// A fetched Sieve script: (name, source).

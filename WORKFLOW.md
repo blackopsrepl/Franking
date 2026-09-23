@@ -24,7 +24,8 @@ Separate three questions that traditional inboxes collapse:
 
 Inbox should distinguish new from seen correspondence. Reading and Receipts
 should be browsable without creating an obligation to clear unread badges.
-Notifications should follow the attention policy, not every server INBOX event.
+The default notification rule follows accepted Inbox senders, not every server
+INBOX event. Users can choose all mail, contacts only, or off instead.
 
 ## Multi-account contract
 
@@ -80,7 +81,7 @@ focused queue, a thread board, or a shared project view.
 | Decide whether a new sender gets attention; reconsider a refusal | Local Screening and Blocked lanes | Per receiving account and sender mailbox; mail is still delivered to the provider |
 | Route accepted correspondence, reading, and transactions | Local Inbox, Reading, Receipts lanes | Sender policy per receiving account; only the latest 200 inbox messages per account are listed |
 | Override one message without changing future sender delivery | Not available | Message-scoped exception to the sender policy |
-| Separate new correspondence from previously seen threads | Unread flags and sorting only | Thread returns to new when a fresh reply arrives; independent of reading/receipts |
+| Separate new correspondence from previously seen threads | Inbox lane groups new before seen by message flag | Thread-level promotion after a fresh reply still needs coherent conversation state |
 | Process multiple new messages in one uninterrupted pass | One-message reader | Session over selected new messages with decisions between reads |
 | Read newsletters as an already-open scrollable stream | Reading list of envelopes | A distinct reading surface, not just another inbox list |
 | Defer a required reply, then work only that queue | Local Reply later queue with direct-reply completion | Sequential focus reader and source reconciliation remain |
@@ -97,7 +98,7 @@ focused queue, a thread board, or a shared project view.
 | Add private notes to a contact, message, or conversation | Contact notes exist | Message annotations and thread notes/files remain separate concepts |
 | Rename a subject for local display only | Not available | Keep the original RFC subject for sending and threading |
 | Insert reusable response text | Compose editor, no snippet library | User-defined reusable text for the selected identity/account |
-| Control interruption per contact or thread | Off/all/contacts notifications; all is default | Route- and thread-aware quiet default; existing rule is not equivalent |
+| Control interruption per contact or thread | Focused-Inbox notification default plus all/contacts/off preferences | Per-thread overrides and reliable change-event identity remain |
 | Avoid remote tracking pixels | HTML-to-terminal-text rendering makes no image request | No tracker detection/report; don't claim comprehensive remote-content blocking |
 | Let a trusted unknown sender bypass screening | Not available | Revocable per-account bypass token, validated without silently approving other senders |
 | Identify spam separately from screening | Provider junk mailbox and Sieve controls | A blocked sender is an attention decision, not spam training or SMTP rejection |

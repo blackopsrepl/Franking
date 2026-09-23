@@ -120,8 +120,8 @@ impl App {
                         .and_then(|cs| cs.account.clone());
                     self.queue_failed_send(account);
                 }
-                WorkerResult::MailboxChanged(account, folder) => {
-                    if self.notify_for_new_mail(account.as_deref(), &folder) {
+                WorkerResult::MailboxChanged(account, folder, newest) => {
+                    if self.notify_for_new_mail(account.as_deref(), &folder, newest.as_ref()) {
                         super::notification_rules::notify_new_mail(&folder);
                     }
                     if folder == self.current_folder && !self.loading {
@@ -218,6 +218,9 @@ impl App {
         if !self.threaded {
             let order = self.sort_order;
             order.apply(&mut self.envelopes);
+        }
+        if self.triage_lane == Some(crate::db::sender_routes::Route::Inbox) {
+            self.envelopes.sort_by_key(|envelope| envelope.is_seen());
         }
 
         if !self.envelopes.is_empty() {
