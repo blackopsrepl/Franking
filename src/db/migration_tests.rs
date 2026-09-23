@@ -228,3 +228,39 @@ fn malformed_schema_version_fails_without_changes() {
         .unwrap();
     assert_eq!(body, "keep me");
 }
+
+#[test]
+fn file_backed_upgrade_survives_process_restart() {
+    let path = std::env::temp_dir().join(format!(
+        "franking-upgrade-{}-{}.db",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+    ));
+    {
+        let conn = Connection::open(&path).unwrap();
+        init_for_test(&conn).unwrap();
+        conn.execute_batch(
+            "UPDATE meta SET value = '3' WHERE key = 'schema_version';
+            DROP TABLE sender_routes;
+            INSERT INTO contacts (email, notes) VALUES ('alice@example.org', 'do not lose');",
+        )
+        .unwrap();
+    }
+    {
+        let conn = Connection::open(&path).unwrap();
+        init_for_test(&conn).unwrap();
+        assert_eq!(schema_version(&conn), CURRENT_SCHEMA_VERSION);
+        let note: String = conn
+            .query_row(
+                "SELECT notes FROM contacts WHERE email = 'alice@example.org'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(note, "do not lose");
+    }
+    std::fs::remove_file(path).unwrap();
+}
