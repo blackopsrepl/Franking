@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [2.2.3](https://github.com/blackopsrepl/Franking/compare/v2.2.2...v2.2.3) (2026-10-14)
+
+
+### Bug Fixes
+
+* **accounts:** stop reseeding the deleted sample maildir account ([12fe482](https://github.com/blackopsrepl/Franking/commit/12fe482d03cf55d447343fd6ff007dc7bcda1926))
+
+
 ## [2.2.2](https://github.com/blackopsrepl/Franking/compare/v2.2.1...v2.2.2) (2026-09-23)
 
 
