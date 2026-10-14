@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [2.2.4](https://github.com/blackopsrepl/Franking/compare/v2.2.3...v2.2.4) (2026-10-14)
+
+
+### Bug Fixes
+
+* **import:** pass get by value to and_then ([f76401d](https://github.com/blackopsrepl/Franking/commit/f76401d42e398c3d597dd272996e5a5d0b38c11b))
+
+
 ## [2.2.3](https://github.com/blackopsrepl/Franking/compare/v2.2.2...v2.2.3) (2026-10-14)
 
 
