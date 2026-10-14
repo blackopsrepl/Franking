@@ -163,6 +163,29 @@ mod account_lifecycle {
     }
 
     #[test]
+    fn a_deleted_sample_account_stays_deleted_after_seeding() {
+        let conn = rusqlite::Connection::open_in_memory().unwrap();
+        crate::db::init_for_test(&conn).unwrap();
+        assert!(
+            list_accounts(&conn)
+                .unwrap()
+                .iter()
+                .any(|record| record.name == crate::mail::account_store::TEST_ACCOUNT_NAME),
+            "a fresh database seeds the sample maildir account"
+        );
+
+        delete_account(&conn, crate::mail::account_store::TEST_ACCOUNT_NAME).unwrap();
+        super::super::seed_defaults(&conn).unwrap();
+        assert!(
+            !list_accounts(&conn)
+                .unwrap()
+                .iter()
+                .any(|record| record.name == crate::mail::account_store::TEST_ACCOUNT_NAME),
+            "seeding must not resurrect a removed sample account"
+        );
+    }
+
+    #[test]
     fn setting_the_default_clears_the_previous_one() {
         let conn = rusqlite::Connection::open_in_memory().unwrap();
         crate::db::init_for_test(&conn).unwrap();

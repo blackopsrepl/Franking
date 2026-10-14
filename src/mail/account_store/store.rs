@@ -8,7 +8,26 @@ use rusqlite::{params, Connection};
 use super::model::{AccountConfig, AccountRecord};
 
 pub fn seed_defaults(conn: &Connection) -> Result<()> {
-    upsert_account(conn, &AccountConfig::test_maildir())
+    // The maildir sample account is a convenience for a fresh install. Seed
+    // it exactly once, then mark it done: deleting the sample must not be
+    // undone by the next launch, even when it was the only account.
+    let seeded: bool = conn
+        .query_row(
+            "SELECT EXISTS(SELECT 1 FROM meta WHERE key = 'sample_seeded')",
+            [],
+            |row| row.get::<_, i64>(0),
+        )
+        .map(|exists| exists != 0)
+        .unwrap_or(false);
+    if seeded {
+        return Ok(());
+    }
+    upsert_account(conn, &AccountConfig::test_maildir())?;
+    conn.execute(
+        "INSERT OR REPLACE INTO meta (key, value) VALUES ('sample_seeded', '1')",
+        [],
+    )?;
+    Ok(())
 }
 
 pub fn list_accounts(conn: &Connection) -> Result<Vec<AccountRecord>> {
