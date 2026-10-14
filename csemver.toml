@@ -1,0 +1,59 @@
+# Release configuration for csemver, replacing the commit-and-tag-version
+# setup that lived in .versionrc.js plus two JavaScript updaters. The JS
+# configuration channel is gone from csemver, so the effective settings of
+# that tool carry over here natively.
+#
+# The product version is the [package] version in Cargo.toml, read with the
+# native regex updater instead of a scripted one; the match is anchored to
+# the start of a line so it cannot collide with dependency versions, which
+# are written inline (`imap-codec = { version = ... }`).
+#
+# Cargo.lock records the same number for this crate and CI builds with
+# `--locked`, so the lock file is a version surface too and is declared
+# here instead of being left to drift; the name/version pair is unique to
+# this package. The README version badge follows the repository tag, so it
+# needs no entry.
+#
+# Links point at the GitHub remote, which is where the releases are
+# published; the Forgejo remote carries the same commits and the same tag.
+#
+# Declare every commit type so performance and refactor work reach the
+# changelog instead of producing an empty release section.
+tagPrefix = "v"
+releaseCommitMessageFormat = "chore(release): {{currentTag}}"
+commitUrlFormat = "https://github.com/blackopsrepl/Franking/commit/{{hash}}"
+compareUrlFormat = "https://github.com/blackopsrepl/Franking/compare/{{previousTag}}...{{currentTag}}"
+issueUrlFormat = "https://github.com/blackopsrepl/Franking/issues/{{id}}"
+
+packageFiles = [
+  { filename = "Cargo.toml", type = "regex", pattern = '^version = "([^"]+)"', versionGroup = 1 },
+]
+
+
+
+types = [
+  { type = "feat", section = "Features" },
+  { type = "fix", section = "Bug Fixes" },
+  { type = "perf", section = "Performance Improvements" },
+  { type = "refactor", section = "Code Refactoring" },
+  { type = "docs", effect = "hidden" },
+  { type = "test", section = "Tests", effect = "hidden" },
+  { type = "build", section = "Build System", effect = "hidden" },
+  { type = "ci", section = "Continuous Integration", effect = "hidden" },
+  { type = "chore", section = "Chores", effect = "hidden" },
+  { type = "style", section = "Styles", effect = "hidden" },
+]
+
+[[bumpFiles]]
+filename = "Cargo.toml"
+type = "regex"
+pattern = '''^version = "([^"]+)'''
+versionGroup = 1
+
+[[bumpFiles]]
+filename = "Cargo.lock"
+type = "regex"
+pattern = '''^\[\[package\]\]
+name = "franking"
+version = "([^"]+)'''
+versionGroup = 1
