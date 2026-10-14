@@ -213,10 +213,10 @@ fn parse_csv(content: &str) -> Result<Vec<Contact>> {
         };
 
         // Determine display name
-        let name = name_col.and_then(&get).or_else(|| {
+        let name = name_col.and_then(get).or_else(|| {
             // Construct from given + family
-            let given = given_col.and_then(&get);
-            let family = family_col.and_then(&get);
+            let given = given_col.and_then(get);
+            let family = family_col.and_then(get);
             match (given, family) {
                 (Some(g), Some(f)) => Some(format!("{g} {f}")),
                 (Some(g), None) => Some(g),
@@ -225,8 +225,8 @@ fn parse_csv(content: &str) -> Result<Vec<Contact>> {
             }
         });
 
-        let phone = phone_col.and_then(&get);
-        let org = org_col.and_then(&get);
+        let phone = phone_col.and_then(get);
+        let org = org_col.and_then(get);
 
         if name.is_none() && phone.is_none() && org.is_none() {
             // Only an email address — still useful
