@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [3.0.1](https://github.com/blackopsrepl/Franking/compare/v3.0.0...v3.0.1) (2026-10-25)
+
+
+### Bug Fixes
+
+* **imap:** decode encoded-word sender names and subjects ([dd0e0dd](https://github.com/blackopsrepl/Franking/commit/dd0e0ddb4f2345c9bcc126aabaf3cf304fdba2dc))
+* **keyring:** report a missing secret instead of an unavailable keyring ([3b06542](https://github.com/blackopsrepl/Franking/commit/3b06542a7d54f96d823fc952495d9a0d0feac808))
+
+
 ## [3.0.0](https://github.com/blackopsrepl/Franking/compare/v2.2.4...v3.0.0) (2026-10-25)
 
 
