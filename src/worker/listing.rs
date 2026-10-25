@@ -1,17 +1,20 @@
-/*! Envelope listings apply only explicit future-mail rules. */
+/*! Envelope listings: server truth, then sender-rule routing when the App
+passed a snapshot of active rules. */
 
-use super::{Worker, WorkerResult};
+use super::folder_rules::{deliver_listing, RoutingSnapshot};
+use super::Worker;
 use std::thread;
 
 impl Worker {
+    /// `(page, page_size)` selects the window.
     pub fn fetch_envelopes(
         &self,
         account: Option<String>,
         folder: String,
-        page: usize,
-        page_size: usize,
+        (page, page_size): (usize, usize),
         query: Option<String>,
         order: crate::mail::sort::SortOrder,
+        rules: Option<RoutingSnapshot>,
     ) {
         let tx = self.tx.clone();
         let service = self.service.clone();
@@ -24,8 +27,7 @@ impl Worker {
                 query.as_deref(),
                 order,
             );
-            let result = result.and_then(|rows| super::folder_rules::apply(service.as_ref(), rows));
-            let _ = tx.send(WorkerResult::Envelopes(result));
+            deliver_listing(&tx, service.as_ref(), rules.as_ref(), result);
         });
     }
 
@@ -34,14 +36,14 @@ impl Worker {
         account: Option<String>,
         folder: String,
         query: Option<String>,
+        rules: Option<RoutingSnapshot>,
     ) {
         let tx = self.tx.clone();
         let service = self.service.clone();
         thread::spawn(move || {
             let result =
                 service.list_envelopes_threaded(account.as_deref(), &folder, query.as_deref());
-            let result = result.and_then(|rows| super::folder_rules::apply(service.as_ref(), rows));
-            let _ = tx.send(WorkerResult::Envelopes(result));
+            deliver_listing(&tx, service.as_ref(), rules.as_ref(), result);
         });
     }
 }

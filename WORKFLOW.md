@@ -49,19 +49,29 @@ rule. The rule belongs to the message's receiving account, not its display name
 or the account that happens to be focused elsewhere.
 
 Future-mail rules require an IMAP Inbox sync with UIDVALIDITY and UIDNEXT. They
-use that boundary to avoid sweeping older unfetched mail into a new rule. A
-mailbox UID reset suspends the rule; recreate it from Move to enable it again.
-Local Maildir accounts do not provide this IMAP boundary and cannot create these
-rules. Ordinary manual Move remains available.
+use that boundary to avoid sweeping older unfetched mail into a new rule. The
+rule is saved only after the move you made succeeds; if that move fails, no
+rule is created. Local Maildir accounts do not provide this IMAP boundary and
+cannot create these rules. Ordinary manual Move remains available.
 
-**Actions → Sender folder rules** shows account, sender, and destination. Press
-d twice to remove a rule. Removal stops future routing; it does not move mail
-back. Old screening decisions are never imported into these rules.
+**Actions → Sender folder rules** shows account, sender, destination, and
+whether a rule is suspended and why. Press d twice to remove a rule. Removal
+stops future routing; it does not move mail back. Old screening decisions are
+never imported into these rules.
 
 Rules run when Franking fetches Inbox mail, including unified and threaded
-listings. They perform real server moves, not local visibility filters. They
-do not run while Franking is closed and are not provider-side spam training.
-A failed move is reported instead of pretending the message was filed.
+listings, each message by its own account's rules. They perform real server
+moves, not local visibility filters. They do not run while Franking is closed
+and are not provider-side spam training. Moved mail leaves the listing; mail
+whose move failed stays listed, because it is still in the Inbox.
+
+A rule whose move fails, or whose Inbox was reset by the server (UIDVALIDITY
+changed), is suspended with that reason and is not retried. The status line
+names the sender and folder. Press r in the rules list to resume it: it then
+routes only mail arriving from that point on, and resuming is refused if its
+folder no longer exists (resume while that account is the active one).
+Renaming a folder in Franking updates rules that target it; deleting a folder
+removes them. If the rename or delete fails, rules are left unchanged.
 
 ## Notifications
 

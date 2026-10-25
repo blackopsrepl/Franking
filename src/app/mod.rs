@@ -19,6 +19,7 @@ mod crypto;
 mod editor;
 mod empty_folder;
 mod file_picker;
+mod folder_rule_events;
 mod folder_rules;
 mod folders;
 mod identities;

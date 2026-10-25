@@ -1,39 +1,28 @@
 use super::*;
 use crate::mail::store::{set_sync_state, SyncState};
-use crate::mail::types::{Envelope, Sender};
 
 fn setup() -> Connection {
     let conn = Connection::open_in_memory().unwrap();
     crate::db::init_for_test(&conn).unwrap();
     for account in ["work", "home"] {
-        set_sync_state(
-            &conn,
-            &SyncState {
-                account: account.into(),
-                folder: "INBOX".into(),
-                uid_validity: Some(7),
-                uid_next: Some(100),
-                highest_modseq: None,
-                last_synced_at: None,
-            },
-        )
-        .unwrap();
+        set_inbox(&conn, account, 7, 100);
     }
     conn
 }
 
-fn envelope(account: &str, uid: &str, folder: &str) -> Envelope {
-    Envelope {
-        id: uid.into(),
-        flags: vec![],
-        subject: "Mail".into(),
-        sender: Sender::Plain("Alice <ALICE@example.org>".into()),
-        date: "1990-01-01".into(),
-        message_id: None,
-        in_reply_to: None,
-        account: Some(account.into()),
-        folder: Some(folder.into()),
-    }
+fn set_inbox(conn: &Connection, account: &str, validity: u32, next: u32) {
+    set_sync_state(
+        conn,
+        &SyncState {
+            account: account.into(),
+            folder: "INBOX".into(),
+            uid_validity: Some(validity),
+            uid_next: Some(next),
+            highest_modseq: None,
+            last_synced_at: None,
+        },
+    )
+    .unwrap();
 }
 
 #[test]
@@ -46,16 +35,20 @@ fn explicit_rules_are_account_scoped_persistent_and_removable() {
     )
     .unwrap();
     assert!(list(&conn).unwrap().is_empty());
-    save(&conn, "work", "Alice@Example.org", "Reading").unwrap();
-    save(&conn, "home", "alice@example.org", "Receipts").unwrap();
+    let work = draft(&conn, "work", "Alice@Example.org", "Reading").unwrap();
+    assert!(list(&conn).unwrap().is_empty(), "a draft is not stored");
+    save(&conn, &work).unwrap();
+    save(
+        &conn,
+        &draft(&conn, "home", "alice@example.org", "Receipts").unwrap(),
+    )
+    .unwrap();
     let rules = list(&conn).unwrap();
+    assert_eq!(rules.len(), 2);
+    assert_eq!(rules[1], work);
     assert_eq!(
-        target_for(&conn, &rules, &envelope("work", "100", "INBOX")).unwrap(),
-        Some("Reading")
-    );
-    assert_eq!(
-        target_for(&conn, &rules, &envelope("home", "101", "INBOX")).unwrap(),
-        Some("Receipts")
+        (work.sender.as_str(), work.uid_validity, work.first_uid),
+        ("alice@example.org", 7, 100)
     );
     assert!(delete(&conn, "work", "alice@example.org").unwrap());
     assert_eq!(list(&conn).unwrap().len(), 1);
@@ -69,38 +62,49 @@ fn explicit_rules_are_account_scoped_persistent_and_removable() {
 }
 
 #[test]
-fn only_future_inbox_mail_in_same_uid_epoch_qualifies() {
+fn suspended_rules_resume_at_a_fresh_boundary() {
     let conn = setup();
-    save(&conn, "work", "alice@example.org", "Reading").unwrap();
-    let rules = list(&conn).unwrap();
-    for e in [
-        envelope("work", "99", "INBOX"),
-        envelope("work", "100", "Sent"),
-        envelope("other", "100", "INBOX"),
-        envelope("work", "nonnumeric", "INBOX"),
-    ] {
-        assert_eq!(target_for(&conn, &rules, &e).unwrap(), None);
-    }
-    let mut e = envelope("work", "100", "INBOX");
-    e.account = None;
-    assert_eq!(target_for(&conn, &rules, &e).unwrap(), None);
-    conn.execute(
-        "UPDATE sync_state SET uid_validity=8 WHERE account='work'",
-        [],
+    save(
+        &conn,
+        &draft(&conn, "work", "alice@example.org", "Reading").unwrap(),
     )
     .unwrap();
+    assert!(suspend(&conn, "work", "alice@example.org", MAILBOX_RESET).unwrap());
     assert_eq!(
-        target_for(&conn, &rules, &envelope("work", "100", "INBOX")).unwrap(),
-        None
+        list(&conn).unwrap()[0].suspended.as_deref(),
+        Some(MAILBOX_RESET)
     );
+    set_inbox(&conn, "work", 8, 340);
+    resume(&conn, "work", "alice@example.org").unwrap();
+    let rule = &list(&conn).unwrap()[0];
+    assert_eq!((rule.uid_validity, rule.first_uid), (8, 340));
+    assert_eq!(rule.suspended, None);
+    assert!(resume(&conn, "work", "bob@example.org").is_err());
+}
+
+#[test]
+fn folder_rename_and_delete_follow_only_that_account() {
+    let conn = setup();
+    for (account, sender) in [
+        ("work", "a@x.org"),
+        ("work", "b@x.org"),
+        ("home", "a@x.org"),
+    ] {
+        save(&conn, &draft(&conn, account, sender, "Reading").unwrap()).unwrap();
+    }
+    assert_eq!(retarget(&conn, "work", "Reading", "Later").unwrap(), 2);
+    let targets: Vec<_> = list(&conn).unwrap().into_iter().map(|r| r.target).collect();
+    assert_eq!(targets, ["Reading", "Later", "Later"]);
+    assert_eq!(delete_targeting(&conn, "work", "Later").unwrap(), 2);
+    assert_eq!(list(&conn).unwrap().len(), 1);
 }
 
 #[test]
 fn rejects_missing_inbox_cursor_and_invalid_targets() {
     let conn = setup();
-    assert!(save(&conn, "unknown", "alice@example.org", "Reading").is_err());
+    assert!(draft(&conn, "unknown", "alice@example.org", "Reading").is_err());
     for target in ["", "INBOX", "All Inboxes", "bad\nfolder"] {
-        assert!(save(&conn, "work", "alice@example.org", target).is_err());
+        assert!(draft(&conn, "work", "alice@example.org", target).is_err());
     }
     assert!(list(&conn).unwrap().is_empty());
 }

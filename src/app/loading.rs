@@ -25,25 +25,30 @@ impl App {
         }
         if self.current_folder == super::model::UNIFIED_INBOX {
             let window = self.page * self.page_size;
-            self.worker.fetch_all_inboxes("INBOX".to_string(), window);
+            let rules = self.rule_snapshot(None);
+            self.worker
+                .fetch_all_inboxes("INBOX".to_string(), window, rules);
             return;
         }
         self.worker
             .start_watching(self.acct_owned(), self.current_folder.clone());
+        let account = self.acct_owned();
+        let rules = self.inbox_rule_snapshot();
         if self.threaded {
             self.worker.fetch_envelopes_threaded(
-                self.acct_owned(),
+                account,
                 self.current_folder.clone(),
                 self.active_query.clone(),
+                rules,
             );
         } else {
             self.worker.fetch_envelopes(
-                self.acct_owned(),
+                account,
                 self.current_folder.clone(),
-                self.page,
-                self.page_size,
+                (self.page, self.page_size),
                 self.active_query.clone(),
                 self.sort_order,
+                rules,
             );
         }
     }

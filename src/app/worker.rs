@@ -42,35 +42,13 @@ impl App {
                 WorkerResult::AttachmentLibrary(result) => {
                     self.handle_attachment_library(result);
                 }
-                WorkerResult::ActionDone(Ok(msg)) => {
-                    self.loading = false;
-                    self.set_status(&msg);
-                    self.worker
-                        .fetch_folder_unread(self.acct_owned(), self.current_folder.clone());
-                    if self.pending_return_to_list {
-                        self.view = View::EnvelopeList;
-                        self.pending_return_to_list = false;
-                    }
-                    if self.pending_refresh_after_action {
-                        self.pending_refresh_after_action = false;
-                        self.load_envelopes();
-                    }
-                    if self.pending_folder_refresh {
-                        self.pending_folder_refresh = false;
-                        self.load_folders();
-                    }
-                    if self.sieve.pending_refresh {
-                        self.sieve.pending_refresh = false;
-                        let account = self.acct_owned();
-                        self.loading = true;
-                        self.worker.fetch_sieve_scripts(account);
-                    }
+                WorkerResult::ActionDone(result) => self.handle_action_done(result),
+                WorkerResult::FolderRulesApplied(report) => self.handle_routing_report(report),
+                WorkerResult::RuleMoveDone(rule, result) => {
+                    self.handle_rule_move_done(rule, result)
                 }
-                WorkerResult::ActionDone(Err(e)) => {
-                    self.loading = false;
-                    self.set_error(&format!("Error: {e}"));
-                    self.pending_return_to_list = false;
-                    self.pending_refresh_after_action = false;
+                WorkerResult::FolderChanged(change, result) => {
+                    self.handle_folder_changed(change, result);
                 }
                 WorkerResult::Discovered(config) => self.apply_discovered(config),
                 WorkerResult::Outbox(result) => self.handle_outbox(result),
@@ -133,6 +111,41 @@ impl App {
                     }
                 }
             }
+        }
+    }
+
+    /// Finish a server action: status, then the refreshes it asked for.
+    pub(crate) fn handle_action_done(&mut self, result: Result<String, crate::mail::MailError>) {
+        self.loading = false;
+        let msg = match result {
+            Ok(msg) => msg,
+            Err(e) => {
+                self.set_error(&format!("Error: {e}"));
+                self.pending_return_to_list = false;
+                self.pending_refresh_after_action = false;
+                return;
+            }
+        };
+        self.set_status(&msg);
+        self.worker
+            .fetch_folder_unread(self.acct_owned(), self.current_folder.clone());
+        if self.pending_return_to_list {
+            self.view = View::EnvelopeList;
+            self.pending_return_to_list = false;
+        }
+        if self.pending_refresh_after_action {
+            self.pending_refresh_after_action = false;
+            self.load_envelopes();
+        }
+        if self.pending_folder_refresh {
+            self.pending_folder_refresh = false;
+            self.load_folders();
+        }
+        if self.sieve.pending_refresh {
+            self.sieve.pending_refresh = false;
+            let account = self.acct_owned();
+            self.loading = true;
+            self.worker.fetch_sieve_scripts(account);
         }
     }
 

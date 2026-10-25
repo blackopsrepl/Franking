@@ -10,7 +10,7 @@ use super::schema::create_schema;
 use super::schema_migrations::migrate;
 
 /// Increment only with a corresponding migration in `schema_migrations`.
-const SCHEMA_VERSION: u32 = 16;
+const SCHEMA_VERSION: u32 = 17;
 
 /// Return the path to the database file.
 pub fn db_path() -> PathBuf {
@@ -155,6 +155,7 @@ mod tests {
         assert!(table_exists(&conn, "messages").unwrap());
         assert!(table_exists(&conn, "messages_fts").unwrap());
         assert!(table_exists(&conn, "sync_state").unwrap());
+        assert!(table_exists(&conn, "folder_rules").unwrap());
         assert!(!table_exists(&conn, "envelope_cache").unwrap());
     }
 

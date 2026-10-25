@@ -1,7 +1,11 @@
-/*! Explicit sender-to-server-folder rules. Legacy sender_routes are never read. */
+/*! Explicit sender-to-server-folder rules. Legacy sender_routes are never read.
+The table is created by schema migration v16→v17. */
 
 use anyhow::{bail, Context, Result};
 use rusqlite::{params, Connection};
+
+/// Stored when the server reports a different INBOX UIDVALIDITY than the rule's.
+pub const MAILBOX_RESET: &str = "mailbox was reset";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FolderRule {
@@ -10,25 +14,29 @@ pub struct FolderRule {
     pub target: String,
     pub uid_validity: u32,
     pub first_uid: u32,
+    /// Why routing stopped. A suspended rule is never applied.
+    pub suspended: Option<String>,
 }
 
-/// Additive local metadata: deliberately does not migrate legacy triage decisions.
-pub fn ensure_schema(conn: &Connection) -> Result<()> {
-    conn.execute_batch(
-        "CREATE TABLE IF NOT EXISTS folder_rules (
-            account TEXT NOT NULL,
-            sender TEXT NOT NULL,
-            target TEXT NOT NULL,
-            uid_validity INTEGER NOT NULL CHECK(uid_validity > 0),
-            first_uid INTEGER NOT NULL CHECK(first_uid > 0),
-            PRIMARY KEY(account, sender)
-        );",
-    )?;
-    Ok(())
+/// The receiving account's stored INBOX boundary: (UIDVALIDITY, UIDNEXT).
+/// UIDNEXT excludes all mail already present, even old unseen/unfetched mail.
+/// Never infer arrival from the untrusted sender-supplied Date header.
+fn boundary(conn: &Connection, account: &str) -> Result<(u32, u32)> {
+    let state = crate::mail::store::get_sync_state(conn, account, "INBOX")?
+        .context("Refresh this account's INBOX before saving a future-mail rule")?;
+    let validity = state
+        .uid_validity
+        .filter(|v| *v > 0)
+        .context("Future-mail rules require an IMAP UIDVALIDITY")?;
+    let first_uid = state
+        .uid_next
+        .filter(|v| *v > 0)
+        .context("Refresh INBOX to obtain UIDNEXT before saving this rule")?;
+    Ok((validity, first_uid))
 }
 
-pub fn save(conn: &Connection, account: &str, sender: &str, target: &str) -> Result<()> {
-    ensure_schema(conn)?;
+/// Validate a rule and capture its boundary now; nothing is stored yet.
+pub fn draft(conn: &Connection, account: &str, sender: &str, target: &str) -> Result<FolderRule> {
     let sender = sender.trim().to_ascii_lowercase();
     if account.is_empty() || !sender.contains('@') || sender.contains(char::is_whitespace) {
         bail!("A receiving account and sender mailbox are required");
@@ -40,31 +48,40 @@ pub fn save(conn: &Connection, account: &str, sender: &str, target: &str) -> Res
     {
         bail!("Choose a server folder other than INBOX");
     }
-    // UIDNEXT excludes all mail already present, even old unseen/unfetched mail.
-    // Never infer arrival from the untrusted sender-supplied Date header.
-    let state = crate::mail::store::get_sync_state(conn, account, "INBOX")?
-        .context("Refresh this account's INBOX before saving a future-mail rule")?;
-    let validity = state
-        .uid_validity
-        .filter(|v| *v > 0)
-        .context("Future-mail rules require an IMAP UIDVALIDITY")?;
-    let first_uid = state
-        .uid_next
-        .filter(|v| *v > 0)
-        .context("Refresh INBOX to obtain UIDNEXT before saving this rule")?;
+    let (uid_validity, first_uid) = boundary(conn, account)?;
+    Ok(FolderRule {
+        account: account.into(),
+        sender,
+        target: target.into(),
+        uid_validity,
+        first_uid,
+        suspended: None,
+    })
+}
+
+/// Store a drafted rule, replacing any rule for the same account and sender.
+pub fn save(conn: &Connection, rule: &FolderRule) -> Result<()> {
     conn.execute(
-        "INSERT INTO folder_rules(account,sender,target,uid_validity,first_uid)
-         VALUES (?1,?2,?3,?4,?5) ON CONFLICT(account,sender) DO UPDATE SET
-         target=excluded.target,uid_validity=excluded.uid_validity,first_uid=excluded.first_uid",
-        params![account, sender, target, validity, first_uid],
+        "INSERT INTO folder_rules(account,sender,target,uid_validity,first_uid,suspended_reason)
+         VALUES (?1,?2,?3,?4,?5,?6) ON CONFLICT(account,sender) DO UPDATE SET
+         target=excluded.target,uid_validity=excluded.uid_validity,
+         first_uid=excluded.first_uid,suspended_reason=excluded.suspended_reason",
+        params![
+            rule.account,
+            rule.sender,
+            rule.target,
+            rule.uid_validity,
+            rule.first_uid,
+            rule.suspended
+        ],
     )?;
     Ok(())
 }
 
 pub fn list(conn: &Connection) -> Result<Vec<FolderRule>> {
-    ensure_schema(conn)?;
     let mut stmt = conn.prepare(
-        "SELECT account,sender,target,uid_validity,first_uid FROM folder_rules ORDER BY account,sender",
+        "SELECT account,sender,target,uid_validity,first_uid,suspended_reason
+         FROM folder_rules ORDER BY account,sender",
     )?;
     let rules = stmt
         .query_map([], |row| {
@@ -74,6 +91,7 @@ pub fn list(conn: &Connection) -> Result<Vec<FolderRule>> {
                 target: row.get(2)?,
                 uid_validity: row.get(3)?,
                 first_uid: row.get(4)?,
+                suspended: row.get(5)?,
             })
         })?
         .collect::<rusqlite::Result<Vec<_>>>()?;
@@ -81,43 +99,49 @@ pub fn list(conn: &Connection) -> Result<Vec<FolderRule>> {
 }
 
 pub fn delete(conn: &Connection, account: &str, sender: &str) -> Result<bool> {
-    ensure_schema(conn)?;
     Ok(conn.execute(
         "DELETE FROM folder_rules WHERE account=?1 AND sender=?2",
         params![account, sender.trim().to_ascii_lowercase()],
     )? > 0)
 }
 
-/// Fail closed on a mailbox reset, missing provenance, or pre-rule message.
-pub fn target_for<'a>(
-    conn: &Connection,
-    rules: &'a [FolderRule],
-    envelope: &crate::mail::types::Envelope,
-) -> Result<Option<&'a str>> {
-    let (Some(account), Some(folder), Some(sender)) = (
-        envelope.account.as_deref(),
-        envelope.folder.as_deref(),
-        envelope.sender.mailbox(),
-    ) else {
-        return Ok(None);
-    };
-    if !folder.eq_ignore_ascii_case("INBOX") {
-        return Ok(None);
+/// Stop applying a rule until the user resumes it.
+pub fn suspend(conn: &Connection, account: &str, sender: &str, reason: &str) -> Result<bool> {
+    Ok(conn.execute(
+        "UPDATE folder_rules SET suspended_reason=?3 WHERE account=?1 AND sender=?2",
+        params![account, sender, reason],
+    )? > 0)
+}
+
+/// Re-arm a suspended rule at a fresh stored boundary, so mail that arrived
+/// while it was suspended is never swept up.
+pub fn resume(conn: &Connection, account: &str, sender: &str) -> Result<()> {
+    let (uid_validity, first_uid) = boundary(conn, account)?;
+    let changed = conn.execute(
+        "UPDATE folder_rules SET uid_validity=?3,first_uid=?4,suspended_reason=NULL
+         WHERE account=?1 AND sender=?2",
+        params![account, sender, uid_validity, first_uid],
+    )?;
+    if changed == 0 {
+        bail!("The rule no longer exists");
     }
-    let Some(uid) = envelope.id.parse::<u32>().ok() else {
-        return Ok(None);
-    };
-    let Some(rule) = rules
-        .iter()
-        .find(|r| r.account == account && r.sender == sender)
-    else {
-        return Ok(None);
-    };
-    let state = crate::mail::store::get_sync_state(conn, account, folder)?;
-    Ok(
-        (uid >= rule.first_uid && state.and_then(|s| s.uid_validity) == Some(rule.uid_validity))
-            .then_some(rule.target.as_str()),
-    )
+    Ok(())
+}
+
+/// Follow a server folder rename. Returns the number of rules updated.
+pub fn retarget(conn: &Connection, account: &str, from: &str, to: &str) -> Result<usize> {
+    Ok(conn.execute(
+        "UPDATE folder_rules SET target=?3 WHERE account=?1 AND target=?2",
+        params![account, from, to],
+    )?)
+}
+
+/// Drop rules whose server folder was deleted. Returns the number removed.
+pub fn delete_targeting(conn: &Connection, account: &str, folder: &str) -> Result<usize> {
+    Ok(conn.execute(
+        "DELETE FROM folder_rules WHERE account=?1 AND target=?2",
+        params![account, folder],
+    )?)
 }
 
 #[cfg(test)]

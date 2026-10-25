@@ -1,6 +1,7 @@
 /*! Real-server proof for the explicit future-mail rule boundary. */
 
-use super::{apply_with, folder_rules};
+use super::{route, RoutingSnapshot};
+use crate::db::folder_rules;
 use crate::mail::{
     account_store::AccountRecord,
     remote::{next, ImapSmtpService},
@@ -74,17 +75,29 @@ fn explicit_rules_move_future_mail_on_a_real_imap_server() {
         },
     )
     .unwrap();
-    folder_rules::save(&conn, &account.name, &sender, &destination).unwrap();
+    let rule = folder_rules::draft(&conn, &account.name, &sender, &destination).unwrap();
+    folder_rules::save(&conn, &rule).unwrap();
+    // The App's snapshot: stored rules plus the stored INBOX UIDVALIDITY.
+    let snapshot = |conn: &rusqlite::Connection| RoutingSnapshot {
+        rules: folder_rules::list(conn).unwrap(),
+        inbox_validity: [(account.name.clone(), cursor.0)].into(),
+    };
+    let list_and_route = |snapshot: &RoutingSnapshot| {
+        let rows = service
+            .list_envelopes(None, "INBOX", 1, 2000, None)
+            .unwrap();
+        route(
+            snapshot,
+            rows,
+            |a| Ok(service.folder_sync_cursor(Some(a), "INBOX")?.0),
+            |a, folder, target, uid| service.move_message(Some(a), folder, target, uid),
+        )
+    };
     append("After explicit rule");
-    let rows = service
-        .list_envelopes(None, "INBOX", 1, 2000, None)
-        .unwrap();
-    let visible = apply_with(&conn, rows, |account, folder, target, uid| {
-        service.move_message(Some(account), folder, target, uid)
-    })
-    .unwrap();
+    let (visible, report) = list_and_route(&snapshot(&conn));
     assert!(visible.iter().any(|e| e.subject == "Before explicit rule"));
     assert!(!visible.iter().any(|e| e.subject == "After explicit rule"));
+    assert_eq!(report.moved, [(rule.clone(), 1)]);
     let moved = service
         .list_envelopes(None, &destination, 1, 50, None)
         .unwrap();
@@ -95,15 +108,19 @@ fn explicit_rules_move_future_mail_on_a_real_imap_server() {
         .unwrap();
     assert!(inbox.iter().any(|e| e.subject == "Before explicit rule"));
     assert!(!inbox.iter().any(|e| e.subject == "After explicit rule"));
+
+    // A vanished target is a per-rule failure; the listing still succeeds.
+    service.delete_folder(None, &destination).unwrap();
+    append("After target deleted");
+    let (visible, report) = list_and_route(&snapshot(&conn));
+    assert!(visible.iter().any(|e| e.subject == "After target deleted"));
+    assert!(report.moved.is_empty());
+    assert_eq!(report.failed.len(), 1);
+    assert_eq!(report.failed[0].0, rule);
+
     folder_rules::delete(&conn, &account.name, &sender).unwrap();
     append("After removing rule");
-    let rows = service
-        .list_envelopes(None, "INBOX", 1, 2000, None)
-        .unwrap();
-    let visible = apply_with(&conn, rows, |_, _, _, _| {
-        panic!("deleted rule must not move mail")
-    })
-    .unwrap();
+    let (visible, report) = list_and_route(&snapshot(&conn));
+    assert!(report.is_empty(), "a deleted rule never routes");
     assert!(visible.iter().any(|e| e.subject == "After removing rule"));
-    service.delete_folder(None, &destination).unwrap();
 }

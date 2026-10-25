@@ -14,13 +14,21 @@ pub fn render(app: &App, frame: &mut Frame) {
     ])
     .split(area);
     frame.render_widget(Paragraph::new(
-        "Explicit rules move future incoming INBOX mail to server folders while Franking fetches mail.\nExisting mail and legacy triage decisions are never routed. Rules are per receiving account."
+        "Explicit rules move future incoming INBOX mail to server folders while Franking fetches mail.\nExisting mail and legacy triage decisions are never routed. A rule whose move fails is suspended."
     ).style(t.normal()), layout[0]);
     let items: Vec<ListItem> = app
         .folder_rules
         .rules
         .iter()
-        .map(|r| ListItem::new(format!(" {} | {} → {}", r.account, r.sender, r.target)))
+        .map(|r| {
+            let line = format!(" {} | {} → {}", r.account, r.sender, r.target);
+            match &r.suspended {
+                None => ListItem::new(line),
+                Some(reason) => {
+                    ListItem::new(format!("{line}  [suspended: {reason}]")).style(t.dimmed())
+                }
+            }
+        })
         .collect();
     if items.is_empty() {
         frame.render_widget(Paragraph::new(
@@ -43,7 +51,7 @@ pub fn render(app: &App, frame: &mut Frame) {
     let footer = if app.folder_rules.pending_delete.is_some() {
         "Press d again to remove this rule. Existing messages stay where they are."
     } else {
-        "↑/↓ select · d remove (confirm twice) · Esc close\nIf the server resets the mailbox, recreate the rule from Move."
+        "↑/↓ select · r resume suspended rule · d remove (confirm twice) · Esc close\nResuming only routes mail that arrives afterwards; its folder must still exist."
     };
     frame.render_widget(Paragraph::new(footer).style(t.dimmed()), layout[2]);
 }

@@ -68,10 +68,16 @@ impl App {
             self.view = View::EnvelopeList;
             return;
         };
+        // The rule is drafted (boundary captured) now but stored only after the
+        // server move succeeds; see `handle_rule_move_done`.
+        let mut rule = None;
         if self.folder_rules.also_future && !self.move_is_copy {
-            if let Err(error) = self.save_move_future_rule(&target) {
-                self.set_error(&format!("Rule not saved; message not moved: {error}"));
-                return;
+            match self.move_rule_draft(&target) {
+                Ok(draft) => rule = Some(draft),
+                Err(error) => {
+                    self.set_error(&format!("Rule not saved; message not moved: {error}"));
+                    return;
+                }
             }
         }
         let ids = self.target_ids();
@@ -98,7 +104,10 @@ impl App {
                 to: target.clone(),
                 ids: ids.clone(),
             });
-            if ids.len() == 1 {
+            if let Some(rule) = rule {
+                self.worker
+                    .move_message_with_rule(account, folder, id, rule);
+            } else if ids.len() == 1 {
                 self.worker.move_message(account, folder, target, id);
             } else {
                 self.selected.clear();

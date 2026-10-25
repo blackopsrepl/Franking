@@ -31,6 +31,7 @@ impl App {
                 KeyCode::Down | KeyCode::Char('j') => self.folder_rules_next(),
                 KeyCode::Up | KeyCode::Char('k') => self.folder_rules_prev(),
                 KeyCode::Delete | KeyCode::Char('d') => self.delete_folder_rule(),
+                KeyCode::Char('r') => self.resume_folder_rule(),
                 _ => {
                     self.folder_rules.pending_delete = None;
                 }
@@ -50,7 +51,7 @@ impl App {
         self.folder_rules.open = true;
     }
 
-    fn reload_folder_rules(&mut self) {
+    pub(crate) fn reload_folder_rules(&mut self) {
         let result = self
             .db
             .as_ref()
@@ -106,6 +107,52 @@ impl App {
         }
     }
 
+    /// Resume a suspended rule at a fresh boundary, only if its folder exists.
+    pub(crate) fn resume_folder_rule(&mut self) {
+        self.folder_rules.pending_delete = None;
+        let Some(rule) = self
+            .folder_rules
+            .rules
+            .get(self.folder_rules.index)
+            .cloned()
+        else {
+            return;
+        };
+        if rule.suspended.is_none() {
+            self.set_status("This rule is active.");
+            return;
+        }
+        if self.account_name.as_deref() != Some(rule.account.as_str()) {
+            self.set_error(&format!(
+                "Switch to account {} to resume this rule, so {} can be checked.",
+                rule.account, rule.target
+            ));
+            return;
+        }
+        if !self.folders.iter().any(|f| f.name == rule.target) {
+            self.set_error(&format!(
+                "{} no longer exists in {}; remove this rule or create a new one from Move.",
+                rule.target, rule.account
+            ));
+            return;
+        }
+        let result = self
+            .db
+            .as_ref()
+            .ok_or_else(|| anyhow::anyhow!("Local database is unavailable"))
+            .and_then(|conn| store::resume(conn, &rule.account, &rule.sender));
+        match result {
+            Ok(()) => {
+                self.reload_folder_rules();
+                self.set_status(&format!(
+                    "Rule resumed; mail from {} arriving from now on moves to {}.",
+                    rule.sender, rule.target
+                ));
+            }
+            Err(error) => self.set_error(&format!("Could not resume folder rule: {error}")),
+        }
+    }
+
     pub(crate) fn close_folder_rules(&mut self) {
         self.folder_rules.pending_delete = None;
         self.folder_rules.open = false;
@@ -126,13 +173,24 @@ impl App {
         }
     }
 
-    pub(crate) fn save_move_future_rule(&self, target: &str) -> anyhow::Result<()> {
+    /// Validate the opt-in rule and capture its INBOX boundary at submit time.
+    /// Nothing is stored until the server move succeeds.
+    pub(crate) fn move_rule_draft(&self, target: &str) -> anyhow::Result<FolderRule> {
         let sender = self
             .move_rule_sender()
             .ok_or_else(|| anyhow::anyhow!("Select one message with a sender mailbox"))?;
         let account = self
             .selected_account()
             .ok_or_else(|| anyhow::anyhow!("Receiving account is unavailable"))?;
+        if self
+            .accounts
+            .iter()
+            .any(|a| a.name == account && crate::mail::types::is_local_maildir_account(a))
+        {
+            anyhow::bail!(
+                "Maildir accounts have no IMAP UIDVALIDITY boundary for future-mail rules"
+            );
+        }
         if !self.folders.iter().any(|f| f.name == target) {
             anyhow::bail!("Choose an existing server folder for the future-mail rule");
         }
@@ -140,6 +198,6 @@ impl App {
             .db
             .as_ref()
             .ok_or_else(|| anyhow::anyhow!("Local database is unavailable"))?;
-        store::save(conn, &account, &sender, target)
+        store::draft(conn, &account, &sender, target)
     }
 }

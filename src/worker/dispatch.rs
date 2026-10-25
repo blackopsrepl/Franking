@@ -37,6 +37,15 @@ pub enum WorkerResult {
     Outbox(Result<Vec<crate::mail::outbox::OutboxItem>, MailError>),
     /// Result of an OAuth authorization attempt.
     OAuthAuthorized(String, Result<String, MailError>),
+    /// Sender-rule routing after a listing: moves, failures, mailbox resets.
+    FolderRulesApplied(super::RoutingReport),
+    /// A Move that also creates this rule; store it only on success.
+    RuleMoveDone(
+        crate::db::folder_rules::FolderRule,
+        Result<String, MailError>,
+    ),
+    /// A server folder rename/delete, so rules can follow it on success.
+    FolderChanged(super::FolderChange, Result<String, MailError>),
 }
 
 /// Lightweight handle for dispatching work to background threads.

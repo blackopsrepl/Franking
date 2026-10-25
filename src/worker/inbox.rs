@@ -11,7 +11,13 @@ pub(crate) const MAX_PER_ACCOUNT: usize = 2000;
 impl Worker {
     /// List every account's inbox up to `per_account` messages and merge by
     /// date. The caller grows `per_account` as the user pages.
-    pub fn fetch_all_inboxes(&self, folder: String, per_account: usize) {
+    /// Each message is routed by its own account's rules from `rules`.
+    pub fn fetch_all_inboxes(
+        &self,
+        folder: String,
+        per_account: usize,
+        rules: Option<super::folder_rules::RoutingSnapshot>,
+    ) {
         let tx = self.tx.clone();
         let service = self.service.clone();
         let per_account = per_account.clamp(1, MAX_PER_ACCOUNT);
@@ -35,8 +41,7 @@ impl Worker {
                 }
             }
             merged.sort_by(|left, right| right.date.cmp(&left.date));
-            let result = super::folder_rules::apply(service.as_ref(), merged);
-            let _ = tx.send(WorkerResult::Envelopes(result));
+            super::folder_rules::deliver_listing(&tx, service.as_ref(), rules.as_ref(), Ok(merged));
         });
     }
 }

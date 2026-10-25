@@ -201,6 +201,45 @@ fn v5_upgrade_adds_conversation_rules_and_keeps_followups() {
 }
 
 #[test]
+fn v16_upgrade_keeps_runtime_folder_rules_and_matches_fresh_layout() {
+    let columns = |conn: &Connection| -> Vec<(String, String, bool)> {
+        let mut stmt = conn
+            .prepare("SELECT name, type, \"notnull\" FROM pragma_table_info('folder_rules')")
+            .unwrap();
+        let rows = stmt.query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)));
+        rows.unwrap().map(Result::unwrap).collect()
+    };
+    let fresh = Connection::open_in_memory().unwrap();
+    init_for_test(&fresh).unwrap();
+    let conn = Connection::open_in_memory().unwrap();
+    init_for_test(&conn).unwrap();
+    // The first rules build created this table at runtime under schema 16.
+    conn.execute_batch(
+        "UPDATE meta SET value = '16' WHERE key = 'schema_version';
+         DROP TABLE folder_rules;
+         CREATE TABLE folder_rules (account TEXT NOT NULL, sender TEXT NOT NULL,
+             target TEXT NOT NULL, uid_validity INTEGER NOT NULL CHECK(uid_validity > 0),
+             first_uid INTEGER NOT NULL CHECK(first_uid > 0), PRIMARY KEY(account, sender));
+         INSERT INTO folder_rules VALUES ('work', 'alice@example.org', 'Reading', 7, 100);",
+    )
+    .unwrap();
+    init_for_test(&conn).unwrap();
+    assert_eq!(schema_version(&conn), CURRENT_SCHEMA_VERSION);
+    assert_eq!(columns(&conn), columns(&fresh));
+    let rules = super::folder_rules::list(&conn).unwrap();
+    assert_eq!(
+        (rules[0].target.as_str(), rules[0].suspended.as_deref()),
+        ("Reading", None)
+    );
+    conn.execute_batch(
+        "UPDATE meta SET value = '16' WHERE key = 'schema_version'; DROP TABLE folder_rules;",
+    )
+    .unwrap();
+    init_for_test(&conn).unwrap();
+    assert_eq!(columns(&conn), columns(&fresh));
+}
+
+#[test]
 fn file_backed_upgrade_survives_process_restart() {
     let path = std::env::temp_dir().join(format!(
         "franking-upgrade-{}-{}.db",

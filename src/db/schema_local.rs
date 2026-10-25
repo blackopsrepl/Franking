@@ -121,6 +121,15 @@ pub(super) fn create_local_schema(conn: &Connection) -> Result<()> {
               alias      TEXT NOT NULL,
               updated_at TEXT NOT NULL DEFAULT (datetime('now')),
               PRIMARY KEY (account, anchor)
+         );
+         CREATE TABLE folder_rules (
+              account          TEXT    NOT NULL,
+              sender           TEXT    NOT NULL,
+              target           TEXT    NOT NULL,
+              uid_validity     INTEGER NOT NULL CHECK(uid_validity > 0),
+              first_uid        INTEGER NOT NULL CHECK(first_uid > 0),
+              suspended_reason TEXT,
+              PRIMARY KEY (account, sender)
          );",
     )?;
     Ok(())
