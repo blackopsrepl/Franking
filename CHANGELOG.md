@@ -2,6 +2,36 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [3.0.0](https://github.com/blackopsrepl/Franking/compare/v2.2.4...v3.0.0) (2026-10-25)
+
+
+### ⚠ BREAKING CHANGES
+
+* **tui:** the 1-5 routing keys and the shortcuts for stages, collections, clips, merges, notes, subject aliases, read-together, focus-and-reply, bulk reply, resurfacing and the Saved shelf are removed. Remaining commands are listed in the : Actions menu, the footer and help.
+* **mail:** the Inbox shows every delivered message. Screening, the Imbox/Feed/Paper Trail lanes, sender routes, bundles, seen-mail covers and bypass tokens no longer exist, and stored screening decisions are not turned into folder rules.
+
+### Features
+
+* **rules:** route future inbox mail through explicit folder rules ([3aa01a7](https://github.com/blackopsrepl/Franking/commit/3aa01a716b3140378fc68222dfaabed47045bf33))
+
+
+### Bug Fixes
+
+* **compose:** make scheduled sending reachable from the action bar ([401b69b](https://github.com/blackopsrepl/Franking/commit/401b69b9d9266abff2e8b76dc88491770bcb2a12))
+* **maildir:** keep message identifiers stable across flag changes ([9c6ce00](https://github.com/blackopsrepl/Franking/commit/9c6ce00e01b57258349a81752d02364786a2894f))
+* **rules:** carry rules through subfolder renames and resume from any account ([9175a1e](https://github.com/blackopsrepl/Franking/commit/9175a1e0f3e15ad5d8fb3f9183a4b8cbd2567a0c))
+* **rules:** route as a separate step and suspend failing rules ([d94e4af](https://github.com/blackopsrepl/Franking/commit/d94e4af76902d11bf4b022554c3d345a8088e2c5))
+
+
+### Code Refactoring
+
+* delete the retired inbox workflow code ([5429e1d](https://github.com/blackopsrepl/Franking/commit/5429e1da58b13bf0f52d81562ea31b7f37822a9d))
+* **keys:** drop actions no key can produce ([702bcb7](https://github.com/blackopsrepl/Franking/commit/702bcb7110afd542293b9a2ec21feed814bca3cc))
+* **mail:** retire implicit inbox attention policies ([905bc18](https://github.com/blackopsrepl/Franking/commit/905bc1854dcce7a34de7a984ed70489d65175984))
+* **mail:** split Sieve operations into their own service trait ([7b8cef4](https://github.com/blackopsrepl/Franking/commit/7b8cef4d85a140c0da8be04ec6d993dbea5757eb))
+* **tui:** replace workflow shortcuts with visible mail actions ([ca91b99](https://github.com/blackopsrepl/Franking/commit/ca91b99cd147aa73b87c3a0f46da88ef000cbd87))
+
+
 ## [2.2.4](https://github.com/blackopsrepl/Franking/compare/v2.2.3...v2.2.4) (2026-10-14)
 
 
