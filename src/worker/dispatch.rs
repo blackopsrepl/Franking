@@ -136,45 +136,6 @@ impl Worker {
         });
     }
 
-    pub fn fetch_envelopes(
-        &self,
-        account: Option<String>,
-        folder: String,
-        page: usize,
-        page_size: usize,
-        query: Option<String>,
-        order: crate::mail::sort::SortOrder,
-    ) {
-        let tx = self.tx.clone();
-        let service = self.service.clone();
-        thread::spawn(move || {
-            let result = service.list_envelopes_sorted(
-                account.as_deref(),
-                &folder,
-                page,
-                page_size,
-                query.as_deref(),
-                order,
-            );
-            let _ = tx.send(WorkerResult::Envelopes(result));
-        });
-    }
-
-    pub fn fetch_envelopes_threaded(
-        &self,
-        account: Option<String>,
-        folder: String,
-        query: Option<String>,
-    ) {
-        let tx = self.tx.clone();
-        let service = self.service.clone();
-        thread::spawn(move || {
-            let result =
-                service.list_envelopes_threaded(account.as_deref(), &folder, query.as_deref());
-            let _ = tx.send(WorkerResult::Envelopes(result));
-        });
-    }
-
     /// Fetch unread count for a specific folder by querying for unseen envelopes.
     pub fn fetch_folder_unread(&self, account: Option<String>, folder: String) {
         let tx = self.tx.clone();

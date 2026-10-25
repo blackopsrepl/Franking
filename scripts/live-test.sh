@@ -116,6 +116,6 @@ export FRANKING_IMAP_TEST_PASSWORD="$DOVECOT_PASSWORD"
 export FRANKING_SIEVE_TEST_ADDR="127.0.0.1:$SIEVE_PORT"
 export FRANKING_SMTP_TEST_ADDR="127.0.0.1:$SMTP_PORT"
 
-targets=(--test imap_codec --test dovecot_test --test sieve_live_test)
+targets=(--lib --test imap_codec --test dovecot_test --test sieve_live_test)
 printf '\nrunning: cargo test %s\n\n' "${targets[*]}"
 cargo test "${targets[@]}" "$@"

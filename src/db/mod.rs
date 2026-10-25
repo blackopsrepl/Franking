@@ -24,6 +24,7 @@ pub mod bundles;
 pub mod clips;
 pub mod collections;
 pub mod conversations;
+pub mod folder_rules;
 pub mod message_markers;
 pub mod message_routes;
 pub mod preferences;

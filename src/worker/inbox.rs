@@ -35,7 +35,8 @@ impl Worker {
                 }
             }
             merged.sort_by(|left, right| right.date.cmp(&left.date));
-            let _ = tx.send(WorkerResult::Envelopes(Ok(merged)));
+            let result = super::folder_rules::apply(service.as_ref(), merged);
+            let _ = tx.send(WorkerResult::Envelopes(result));
         });
     }
 }
