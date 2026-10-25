@@ -14,7 +14,7 @@ fn conversation(account: &str, id: &str, message_id: &str, in_reply_to: Option<&
 }
 
 #[test]
-fn quieting_a_conversation_orders_it_last_and_marks_it() {
+fn muting_a_conversation_marks_it_without_changing_order() {
     let conn = rusqlite::Connection::open_in_memory().unwrap();
     crate::db::init_for_test(&conn).unwrap();
     let mut app = App::new(Some("work".into()));
@@ -24,21 +24,25 @@ fn quieting_a_conversation_orders_it_last_and_marks_it() {
     app.handle_envelopes_loaded(vec![root.clone(), reply.clone()]);
     let anchors = conversations::anchors(&root);
     conversations::set_muted(app.db.as_ref().unwrap(), "work", &anchors, true).unwrap();
-    app.handle_envelopes_loaded(vec![root, reply]);
+    let other = conversation("work", "3", "other@x", None);
+    app.handle_envelopes_loaded(vec![root, reply, other]);
     assert!(app.muted_ids.contains("1"));
     assert!(
         app.muted_ids.contains("2"),
         "the reply joins the conversation"
     );
     assert_eq!(
-        app.envelopes.last().unwrap().id,
-        "2",
-        "quieted mail sorts last"
+        app.envelopes
+            .iter()
+            .map(|mail| mail.id.as_str())
+            .collect::<Vec<_>>(),
+        vec!["1", "2", "3"],
+        "mute leaves the ordinary order intact"
     );
 }
 
 #[test]
-fn a_resurfaced_conversation_sorts_first() {
+fn a_legacy_resurface_record_does_not_change_order() {
     let conn = rusqlite::Connection::open_in_memory().unwrap();
     crate::db::init_for_test(&conn).unwrap();
     let mut app = App::new(Some("work".into()));
@@ -53,9 +57,12 @@ fn a_resurfaced_conversation_sorts_first() {
         Some("2020-01-01T00:00:00Z"),
     )
     .unwrap();
+    conversations::set_loud(app.db.as_ref().unwrap(), "work", &anchors, true).unwrap();
     app.handle_envelopes_loaded(vec![newer, older]);
-    assert!(app.resurfaced_ids.contains("1"));
-    assert_eq!(app.envelopes.first().unwrap().id, "1");
+    assert!(app.loud_ids.is_empty());
+    assert!(conversations::is_loud(app.db.as_ref().unwrap(), "work", &anchors).unwrap());
+    assert!(app.resurfaced_ids.is_empty());
+    assert_eq!(app.envelopes.first().unwrap().id, "2");
 }
 
 #[test]

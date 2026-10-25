@@ -71,7 +71,6 @@ impl App {
             message_note: None,
             bypass_token: None,
             bypass_input: String::new(),
-            cover_seen: false,
             cover_revealed: false,
             covered_count: 0,
             snippets: Default::default(),

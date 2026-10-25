@@ -33,22 +33,12 @@ pub fn render(app: &App, frame: &mut Frame) {
             "Mark read on open".to_string(),
             toggle_label(app.mark_read_on_open),
         ),
+        ("Page size".to_string(), app.page_size.to_string()),
         (
             "Encrypt drafts".to_string(),
             toggle_label(app.encrypt_drafts),
         ),
-        ("Page size".to_string(), app.page_size.to_string()),
         ("Compose autosave".to_string(), autosave),
-        (
-            "Cover previously seen".to_string(),
-            toggle_label(app.cover_seen),
-        ),
-        (
-            "Bypass token".to_string(),
-            app.bypass_token
-                .clone()
-                .unwrap_or_else(|| "(none)".to_string()),
-        ),
     ];
 
     let mut lines = Vec::new();

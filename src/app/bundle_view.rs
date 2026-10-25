@@ -8,6 +8,10 @@ use super::model::App;
 
 impl App {
     /// Load the bundled senders for every account in the current list.
+    #[allow(
+        dead_code,
+        reason = "Retained legacy helper; ordinary folder loads bypass local policy"
+    )]
     pub(crate) fn load_bundled_senders(&mut self, accounts: &[String]) {
         self.bundled_senders.clear();
         let Some(conn) = self.db.as_ref() else {
@@ -23,6 +27,10 @@ impl App {
     }
 
     /// Collapse bundled senders to their newest row, unless expanded.
+    #[allow(
+        dead_code,
+        reason = "Retained legacy helper; ordinary folder loads bypass local policy"
+    )]
     pub(crate) fn apply_bundles(&mut self) {
         self.bundled_reps.clear();
         if self.bundled_senders.is_empty() {

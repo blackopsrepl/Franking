@@ -25,13 +25,14 @@ fn bulk_reply_addresses_every_selected_sender_once() {
 }
 
 #[test]
-fn read_together_streams_the_reading_lane() {
+fn legacy_reading_lane_does_not_implicitly_select_every_message() {
     let mut app = App::new(Some("work".into()));
     app.triage_lane = Some(sender_routes::Route::Reading);
     app.envelopes = vec![
         envelope("work", "1", "alice@example.org"),
         envelope("work", "2", "bob@example.org"),
     ];
+    app.envelope_state.select(Some(0));
     app.open_read_together();
-    assert!(app.status_message.contains("Reading 2 messages"));
+    assert!(app.status_message.contains("Reading 1 messages"));
 }

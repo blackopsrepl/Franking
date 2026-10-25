@@ -3,7 +3,6 @@
 #[test]
 fn settings_cycle_between_preferences() {
     use crate::app::App;
-    use crate::keys::View;
 
     let conn = rusqlite::Connection::open_in_memory().unwrap();
     crate::db::init_for_test(&conn).unwrap();
@@ -15,12 +14,12 @@ fn settings_cycle_between_preferences() {
 
     assert_eq!(
         app.notification_rule,
-        crate::app::notification_rules::NotificationRule::Focused
+        crate::app::notification_rules::NotificationRule::All
     );
     app.settings_toggle();
     assert_eq!(
         app.notification_rule,
-        crate::app::notification_rules::NotificationRule::All
+        crate::app::notification_rules::NotificationRule::Contacts
     );
 
     app.settings_move(1);
@@ -56,22 +55,13 @@ fn settings_cycle_between_preferences() {
     assert!(app.status_message.contains("every 60s"));
 
     app.settings_move(1);
-    assert_eq!(app.settings_index, 5);
-    assert!(!app.cover_seen);
-    app.settings_toggle();
-    assert!(app.cover_seen);
-    assert!(app.status_message.contains("press V"));
-
-    app.settings_move(1);
-    assert_eq!(app.settings_index, 6);
-    app.settings_toggle();
-    assert_eq!(app.view, View::BypassPrompt, "the token prompt opens");
-    app.cancel_bypass();
-
-    app.settings_move(1);
-    assert_eq!(app.settings_index, 0, "wraps around");
+    assert_eq!(app.settings_index, 0, "wraps around five preferences");
     app.settings_move(-1);
-    assert_eq!(app.settings_index, 6);
+    assert_eq!(app.settings_index, 4);
+
+    crate::db::preferences::set(app.db.as_ref().unwrap(), "cover_seen", true).unwrap();
+    crate::db::account_policy::set_bypass_token(app.db.as_ref().unwrap(), "work", Some("Red87"))
+        .unwrap();
 
     // The stored values come back on the next start.
     let mut reloaded = App::new(None);
@@ -80,7 +70,16 @@ fn settings_cycle_between_preferences() {
     assert_eq!(reloaded.page_size, 100);
     assert_eq!(reloaded.autosave_seconds, 60);
     assert!(reloaded.encrypt_drafts, "the choice comes back");
-    assert!(reloaded.cover_seen, "the cover choice comes back");
+    assert!(reloaded.bypass_token.is_none());
+    assert!(
+        crate::db::preferences::get(reloaded.db.as_ref().unwrap(), "cover_seen", false).unwrap()
+    );
+    assert_eq!(
+        crate::db::account_policy::bypass_token(reloaded.db.as_ref().unwrap(), "work")
+            .unwrap()
+            .as_deref(),
+        Some("Red87")
+    );
 }
 
 #[test]

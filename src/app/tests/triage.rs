@@ -34,8 +34,8 @@ fn a_combined_lane_respects_each_receiving_account() {
         envelope("work", "1", "same@example.org"),
         envelope("personal", "2", "same@example.org"),
     ]);
-    assert_eq!(app.envelopes.len(), 1);
-    assert_eq!(app.envelopes[0].account.as_deref(), Some("personal"));
+    assert_eq!(app.envelopes.len(), 2, "all server inbox mail is visible");
+    app.envelope_state.select(Some(1));
 
     app.route_selected_sender(Route::Receipts);
     assert_eq!(
@@ -74,7 +74,7 @@ fn reply_from_a_combined_lane_uses_the_message_account() {
 }
 
 #[test]
-fn focused_inbox_groups_new_mail_before_seen_mail() {
+fn inbox_keeps_requested_date_order_including_seen_mail() {
     let conn = rusqlite::Connection::open_in_memory().unwrap();
     crate::db::init_for_test(&conn).unwrap();
     sender_routes::set(&conn, "work", "alice@example.org", Route::Inbox).unwrap();
@@ -87,8 +87,8 @@ fn focused_inbox_groups_new_mail_before_seen_mail() {
     let mut new = envelope("work", "older", "alice@example.org");
     new.date = "2026-09-23T12:00:00Z".into();
     app.handle_envelopes_loaded(vec![seen, new]);
-    assert_eq!(app.envelopes[0].id, "older");
-    assert_eq!(app.envelopes[1].id, "newest");
+    assert_eq!(app.envelopes[0].id, "newest");
+    assert_eq!(app.envelopes[1].id, "older");
 }
 
 #[test]

@@ -13,7 +13,7 @@ fn mail(id: &str, message_id: &str) -> crate::mail::types::Envelope {
 }
 
 #[test]
-fn a_conversation_can_be_staged_and_the_list_filtered() {
+fn legacy_stage_storage_does_not_filter_server_folder_mail() {
     let conn = rusqlite::Connection::open_in_memory().unwrap();
     crate::db::init_for_test(&conn).unwrap();
     stages::upsert(&conn, "work", "Doing").unwrap();
@@ -33,10 +33,10 @@ fn a_conversation_can_be_staged_and_the_list_filtered() {
         Some(&"Doing".to_string())
     );
 
-    // Filtering by the stage keeps only its conversation.
+    // A stored stage selection must not filter ordinary server mail.
     app.stage_filter = Some("Doing".into());
     app.handle_envelopes_loaded(vec![mail("1", "one@x"), mail("2", "two@x")]);
-    assert_eq!(app.envelopes.len(), 1);
+    assert_eq!(app.envelopes.len(), 2, "legacy stages do not filter mail");
     assert_eq!(app.envelopes[0].message_id.as_deref(), Some("one@x"));
 
     // Closing the board returns to the list.

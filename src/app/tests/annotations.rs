@@ -55,7 +55,7 @@ fn an_alias_works_from_the_reader_without_precomputed_anchors() {
 }
 
 #[test]
-fn a_subject_alias_is_applied_to_the_list_only() {
+fn a_stored_subject_alias_is_not_applied_to_the_list() {
     let conn = rusqlite::Connection::open_in_memory().unwrap();
     crate::db::init_for_test(&conn).unwrap();
     let mut app = App::new(Some("work".into()));
@@ -76,9 +76,9 @@ fn a_subject_alias_is_applied_to_the_list_only() {
         Some("Q3 pricing")
     );
     app.handle_envelopes_loaded(vec![mail.clone()]);
-    assert_eq!(
-        app.subject_aliases.get("7").map(String::as_str),
-        Some("Q3 pricing")
+    assert!(
+        app.subject_aliases.is_empty(),
+        "stored aliases stay dormant"
     );
     // The server-visible subject is untouched.
     assert_eq!(mail.subject, "7");

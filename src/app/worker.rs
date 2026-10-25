@@ -171,7 +171,6 @@ impl App {
             self.account_index = accounts.iter().position(|a| &a.name == name).unwrap_or(0);
         }
         self.accounts = accounts;
-        self.refresh_bypass_token();
         // Chain: after accounts, load folders
         self.load_folders();
     }
@@ -224,9 +223,6 @@ impl App {
         if !self.threaded {
             let order = self.sort_order;
             order.apply(&mut self.envelopes);
-        }
-        if self.triage_lane == Some(crate::db::sender_routes::Route::Inbox) {
-            self.envelopes.sort_by_key(|envelope| envelope.is_seen());
         }
         self.apply_conversation_view();
 

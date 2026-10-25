@@ -6,6 +6,10 @@ use super::model::App;
 
 impl App {
     /// Recompute the merged roots for the loaded accounts.
+    #[allow(
+        dead_code,
+        reason = "Retained legacy helper; ordinary folder loads bypass local policy"
+    )]
     pub(crate) fn load_merge_roots(&mut self, accounts: &[String]) {
         self.merge_roots.clear();
         let Some(conn) = self.db.as_ref() else {

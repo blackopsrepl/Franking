@@ -13,7 +13,7 @@ fn mail(id: &str, message_id: &str) -> crate::mail::types::Envelope {
 }
 
 #[test]
-fn a_conversation_joins_collections_and_filters() {
+fn legacy_collection_storage_does_not_filter_server_folder_mail() {
     let conn = rusqlite::Connection::open_in_memory().unwrap();
     crate::db::init_for_test(&conn).unwrap();
     collections::upsert(&conn, "work", "Projects").unwrap();
@@ -35,6 +35,10 @@ fn a_conversation_joins_collections_and_filters() {
 
     app.collection_filter = Some("Projects".into());
     app.handle_envelopes_loaded(vec![mail("1", "one@x"), mail("2", "two@x")]);
-    assert_eq!(app.envelopes.len(), 1);
+    assert_eq!(
+        app.envelopes.len(),
+        2,
+        "legacy collections do not filter mail"
+    );
     assert_eq!(app.envelopes[0].message_id.as_deref(), Some("one@x"));
 }

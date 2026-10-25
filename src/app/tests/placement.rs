@@ -6,7 +6,7 @@ use crate::db::{message_routes, sender_routes};
 use super::triage::envelope;
 
 #[test]
-fn a_placed_message_moves_lane_without_changing_its_sender() {
+fn a_legacy_placement_does_not_hide_server_folder_mail() {
     let conn = rusqlite::Connection::open_in_memory().unwrap();
     crate::db::init_for_test(&conn).unwrap();
     sender_routes::set(
@@ -30,7 +30,7 @@ fn a_placed_message_moves_lane_without_changing_its_sender() {
     )
     .unwrap();
     app.handle_envelopes_loaded(vec![mail.clone()]);
-    assert!(app.envelopes.is_empty(), "it leaves the Inbox lane");
+    assert_eq!(app.envelopes.len(), 1, "local placement does not hide mail");
     assert_eq!(
         sender_routes::get(app.db.as_ref().unwrap(), "work", "alice@example.org").unwrap(),
         sender_routes::Route::Inbox

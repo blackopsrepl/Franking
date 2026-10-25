@@ -195,6 +195,10 @@ impl App {
 
 impl App {
     /// Record each loaded conversation's collections and apply the active filter.
+    #[allow(
+        dead_code,
+        reason = "Retained legacy helper; ordinary folder loads bypass local policy"
+    )]
     pub(crate) fn load_collections_and_filter(&mut self, accounts: &[String]) {
         self.collection_of_anchor.clear();
         let Some(conn) = self.db.as_ref() else {

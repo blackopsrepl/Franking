@@ -1,4 +1,4 @@
-/*! Notifications follow receiving-account sender decisions. */
+/*! Notifications follow explicit preferences, not retired sender policies. */
 
 use crate::app::notification_rules::NotificationRule;
 use crate::app::App;
@@ -8,72 +8,90 @@ use super::triage::envelope;
 
 #[test]
 fn notification_rule_round_trips() {
-    use crate::keys::View;
     let conn = rusqlite::Connection::open_in_memory().unwrap();
     crate::db::init_for_test(&conn).unwrap();
     let mut app = App::new(None);
     app.db = Some(conn);
-    assert_eq!(app.notification_rule, NotificationRule::Focused);
-    app.open_settings();
-    assert_eq!(app.view, View::Settings);
+    assert_eq!(app.notification_rule, NotificationRule::All);
     for (rule, label) in [
-        (NotificationRule::All, "every message"),
         (NotificationRule::Contacts, "contacts only"),
         (NotificationRule::Off, "off"),
-        (NotificationRule::Focused, "focused inbox"),
+        (NotificationRule::All, "all inbox mail"),
     ] {
         app.cycle_notification_rule();
         assert_eq!(app.notification_rule, rule);
         assert!(app.status_message.contains(label));
     }
     let mut reloaded = App::new(None);
-    let conn = app.db.take().unwrap();
-    crate::db::preferences::set_text(&conn, "notification_rule", "contacts").unwrap();
-    reloaded.db = Some(conn);
-    reloaded.load_preferences();
-    assert_eq!(reloaded.notification_rule, NotificationRule::Contacts);
+    reloaded.db = app.db.take();
+    for (stored, expected) in [
+        ("contacts", NotificationRule::Contacts),
+        ("off", NotificationRule::Off),
+        ("focused", NotificationRule::All),
+        ("all", NotificationRule::All),
+    ] {
+        crate::db::preferences::set_text(
+            reloaded.db.as_ref().unwrap(),
+            "notification_rule",
+            stored,
+        )
+        .unwrap();
+        reloaded.load_preferences();
+        assert_eq!(reloaded.notification_rule, expected);
+    }
     let conn = rusqlite::Connection::open_in_memory().unwrap();
     crate::db::init_for_test(&conn).unwrap();
     crate::db::preferences::set(&conn, "notifications", false).unwrap();
-    let mut older = App::new(None);
-    older.db = Some(conn);
-    older.load_preferences();
-    assert_eq!(older.notification_rule, NotificationRule::Off);
-    app.close_settings();
-    assert_eq!(app.view, View::EnvelopeList);
+    reloaded.db = Some(conn);
+    reloaded.load_preferences();
+    assert_eq!(reloaded.notification_rule, NotificationRule::Off);
 }
 
 #[test]
-fn focused_notifications_ignore_screening_reading_and_other_accounts() {
+fn inbox_notifications_ignore_sender_routes_and_bypass_tokens() {
     let conn = rusqlite::Connection::open_in_memory().unwrap();
     crate::db::init_for_test(&conn).unwrap();
-    sender_routes::set(&conn, "work", "alice@example.org", Route::Inbox).unwrap();
+    sender_routes::set(&conn, "work", "alice@example.org", Route::Blocked).unwrap();
     sender_routes::set(&conn, "personal", "alice@example.org", Route::Reading).unwrap();
+    crate::db::account_policy::set_bypass_token(&conn, "work", Some("Red87")).unwrap();
     let mut app = App::new(Some("work".into()));
     app.db = Some(conn);
-    assert_eq!(app.notification_rule, NotificationRule::Focused);
     let work = envelope("work", "1", "alice@example.org");
     let personal = envelope("personal", "2", "alice@example.org");
     let unknown = envelope("work", "3", "new@example.org");
-    assert!(app.notify_for_new_mail(Some("work"), "INBOX", Some(&work)));
-    assert!(!app.notify_for_new_mail(Some("personal"), "INBOX", Some(&personal)));
-    assert!(!app.notify_for_new_mail(Some("work"), "INBOX", Some(&unknown)));
+    for mail in [&work, &personal, &unknown] {
+        assert!(app.notify_for_new_mail(None, "inbox", Some(mail)));
+    }
     assert!(!app.notify_for_new_mail(Some("work"), "Archive", Some(&work)));
-    assert!(!app.notify_for_new_mail(Some("work"), "INBOX", None));
+    assert!(app.notify_for_new_mail(Some("work"), "INBOX", None));
     let mut no_account = work.clone();
     no_account.account = None;
-    assert!(!app.notify_for_new_mail(None, "INBOX", Some(&no_account)));
-    app.notification_rule = NotificationRule::All;
-    assert!(app.notify_for_new_mail(Some("work"), "INBOX", Some(&unknown)));
+    assert!(app.notify_for_new_mail(None, "INBOX", Some(&no_account)));
+}
 
-    // A loud conversation notifies even when the rule is off.
+#[test]
+fn mute_and_off_cannot_be_overridden_by_legacy_loud_rules() {
+    let conn = rusqlite::Connection::open_in_memory().unwrap();
+    crate::db::init_for_test(&conn).unwrap();
+    let mut app = App::new(Some("work".into()));
+    let mail = envelope("work", "1", "new@example.org");
+    let anchors = crate::db::conversations::anchors(&mail);
+    crate::db::conversations::set_loud(&conn, "work", &anchors, true).unwrap();
+    crate::db::conversations::set_muted(&conn, "work", &anchors, true).unwrap();
+    app.db = Some(conn);
+    assert!(!app.notify_for_new_mail(Some("work"), "INBOX", Some(&mail)));
+    assert!(app.notify_for_new_mail(
+        Some("personal"),
+        "INBOX",
+        Some(&envelope("personal", "1", "new@example.org"))
+    ));
+    crate::db::conversations::set_muted(app.db.as_ref().unwrap(), "work", &anchors, false).unwrap();
     app.notification_rule = NotificationRule::Off;
-    crate::db::conversations::set_loud(
-        app.db.as_ref().unwrap(),
-        "work",
-        &crate::db::conversations::anchors(&unknown),
-        true,
-    )
-    .unwrap();
-    assert!(app.notify_for_new_mail(Some("work"), "INBOX", Some(&unknown)));
+    assert!(!app.notify_for_new_mail(Some("work"), "INBOX", Some(&mail)));
+    assert!(!app.notify_for_new_mail(Some("work"), "INBOX", None));
+    app.notification_rule = NotificationRule::Contacts;
+    assert!(!app.notify_for_new_mail(Some("work"), "INBOX", Some(&mail)));
+    assert!(!app.notify_for_new_mail(Some("work"), "INBOX", None));
+    crate::contacts::upsert_harvested(app.db.as_ref().unwrap(), None, "new@example.org").unwrap();
+    assert!(app.notify_for_new_mail(Some("work"), "INBOX", Some(&mail)));
 }

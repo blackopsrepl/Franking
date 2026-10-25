@@ -1,132 +1,49 @@
-/*! Quiet conversations and resurfacing over the loaded message list. */
+/*! Conversation identity and explicit mute state for the loaded list. */
 
 use std::collections::HashMap;
 
 use crate::db::conversations;
 use crate::keys::View;
-use crate::mail::types::Envelope;
 
 use super::model::App;
 
-/// Current UTC time in the stored timestamp form.
-pub fn now_utc() -> String {
-    chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Secs, true)
-}
-
 impl App {
-    /// Recompute conversation anchors and rules for the loaded list, then order
-    /// resurfaced conversations first and quieted ones last.
+    /// Resolve conversation identity and mute indicators without changing the
+    /// server-folder membership, subjects, grouping, or requested sort order.
     pub(crate) fn apply_conversation_view(&mut self) {
         self.conversation_anchors.clear();
         self.muted_ids.clear();
         self.resurfaced_ids.clear();
         self.loud_ids.clear();
         self.stage_of_anchor.clear();
+        self.collection_of_anchor.clear();
         self.subject_aliases.clear();
-        let now = now_utc();
-        let Some(conn) = self.db.as_ref() else {
-            return;
-        };
-        // Resolve every row's anchors with one Message-ID index.
-        let mut anchors_by_row = conversations::anchors_for_list(&self.envelopes);
-        // Load each account's state once instead of a query per row.
-        let accounts: Vec<String> = self
-            .envelopes
-            .iter()
-            .filter_map(|envelope| {
-                envelope
-                    .account
-                    .clone()
-                    .or_else(|| self.account_name.clone())
-            })
-            .filter(|account| !account.is_empty())
-            .collect::<std::collections::HashSet<_>>()
-            .into_iter()
-            .collect();
+        self.merge_roots.clear();
+        self.bundled_senders.clear();
+        self.bundled_reps.clear();
+        self.covered_count = 0;
+        let anchors_by_row = conversations::anchors_for_list(&self.envelopes);
         let mut rules: HashMap<String, HashMap<String, conversations::Rule>> = HashMap::new();
-        let mut aliases: HashMap<String, HashMap<String, String>> = HashMap::new();
-        for account in &accounts {
-            rules.insert(
-                account.clone(),
-                conversations::rules_for_account(conn, account).unwrap_or_default(),
-            );
-            aliases.insert(
-                account.clone(),
-                crate::db::annotations::aliases_for_account(conn, account).unwrap_or_default(),
-            );
-        }
-        for (index, envelope) in self.envelopes.iter().enumerate() {
-            let anchors = &anchors_by_row[index];
+        for (envelope, anchors) in self.envelopes.iter().zip(anchors_by_row) {
             let account = envelope
                 .account
                 .as_deref()
                 .or(self.account_name.as_deref())
                 .filter(|account| !account.is_empty());
-            let account_rules = account.and_then(|account| rules.get(account));
-            let account_aliases = account.and_then(|account| aliases.get(account));
-            let mut muted = false;
-            let mut loud = false;
-            let mut due = false;
-            for anchor in anchors {
-                if let Some(rule) = account_rules.and_then(|rules| rules.get(anchor)) {
-                    muted |= rule.muted;
-                    loud |= rule.loud;
-                    due |= rule
-                        .resurface_at
-                        .as_deref()
-                        .is_some_and(|at| at <= now.as_str());
-                }
-                if let Some(alias) = account_aliases.and_then(|aliases| aliases.get(anchor)) {
-                    self.subject_aliases
-                        .entry(envelope.id.clone())
-                        .or_insert_with(|| alias.clone());
+            if let (Some(account), Some(conn)) = (account, self.db.as_ref()) {
+                let account_rules = rules.entry(account.to_string()).or_insert_with(|| {
+                    conversations::rules_for_account(conn, account).unwrap_or_default()
+                });
+                if anchors
+                    .iter()
+                    .any(|anchor| account_rules.get(anchor).is_some_and(|rule| rule.muted))
+                {
+                    self.muted_ids.insert(envelope.id.clone());
                 }
             }
-            if muted {
-                self.muted_ids.insert(envelope.id.clone());
-            }
-            if due {
-                self.resurfaced_ids.insert(envelope.id.clone());
-            }
-            if loud {
-                self.loud_ids.insert(envelope.id.clone());
-            }
-            self.conversation_anchors.insert(
-                envelope.id.clone(),
-                std::mem::take(&mut anchors_by_row[index]),
-            );
+            self.conversation_anchors
+                .insert(envelope.id.clone(), anchors);
         }
-        // Keep the visible order stable: resurfaced, ordinary, then quieted.
-        let muted = &self.muted_ids;
-        let resurfaced = &self.resurfaced_ids;
-        self.envelopes.sort_by(|left, right| {
-            let rank = |envelope: &Envelope| {
-                if resurfaced.contains(&envelope.id) {
-                    0
-                } else if muted.contains(&envelope.id) {
-                    2
-                } else {
-                    1
-                }
-            };
-            rank(left).cmp(&rank(right))
-        });
-        // Cover previously seen Inbox mail until the user lifts it.
-        self.covered_count = 0;
-        if self.cover_seen
-            && !self.cover_revealed
-            && self.triage_lane == Some(crate::db::sender_routes::Route::Inbox)
-        {
-            let before = self.envelopes.len();
-            self.envelopes.retain(|envelope| !envelope.is_seen());
-            self.covered_count = before - self.envelopes.len();
-        }
-        self.load_stages_and_filter(&accounts);
-        self.load_collections_and_filter(&accounts);
-        self.load_merge_roots(&accounts);
-        // Collapse bundled senders after every other ordering decision.
-        self.load_bundled_senders(&accounts);
-        self.apply_bundles();
     }
 
     /// Mute or unmute the selected conversation.
@@ -152,9 +69,9 @@ impl App {
         match conversations::set_muted(conn, &account, &anchors, !muted) {
             Ok(()) => {
                 self.set_status(if muted {
-                    "Conversation is loud again."
+                    "Conversation unmuted."
                 } else {
-                    "Conversation quieted; new replies stay out of the way."
+                    "Conversation muted; notifications are off for its replies."
                 });
                 self.load_envelopes();
             }

@@ -12,7 +12,7 @@ fn mail(id: &str, message_id: &str) -> crate::mail::types::Envelope {
 }
 
 #[test]
-fn two_conversations_merge_and_share_a_thread_key() {
+fn stored_merges_do_not_replace_thread_keys_on_reload() {
     let conn = rusqlite::Connection::open_in_memory().unwrap();
     crate::db::init_for_test(&conn).unwrap();
     let mut app = App::new(Some("work".into()));
@@ -37,8 +37,11 @@ fn two_conversations_merge_and_share_a_thread_key() {
         Some(&"a@x".to_string())
     );
 
-    // After a reload the merged pair shares one thread key.
+    // Reloading keeps the stored merge dormant and the thread identities separate.
     app.handle_envelopes_loaded(vec![first, second]);
-    assert_eq!(app.merge_roots.get("b@x"), Some(&"a@x".to_string()));
-    assert!(app.thread_root_keys().iter().all(|key| key == "a@x"));
+    assert!(
+        app.merge_roots.is_empty(),
+        "stored merges no longer alter display"
+    );
+    assert_eq!(app.thread_root_keys(), vec!["a@x", "b@x"]);
 }

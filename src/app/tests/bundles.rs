@@ -39,4 +39,21 @@ fn a_bundled_sender_collapses_to_one_row_and_expands() {
     ];
     app.apply_bundles();
     assert_eq!(app.envelopes.len(), 3);
+
+    // Ordinary loads ignore the legacy record and clear stale collapsed counts.
+    app.expanded_bundles.clear();
+    let mail = vec![
+        envelope("work", "1", "bot@example.org"),
+        envelope("work", "2", "bot@example.org"),
+        envelope("work", "3", "alice@example.org"),
+    ];
+    app.handle_envelopes_loaded(mail);
+    assert_eq!(app.envelopes.len(), 3);
+    assert!(app.bundled_reps.is_empty());
+    assert!(app.bundled_senders.is_empty());
+    assert!(
+        bundles::bundled_for_account(app.db.as_ref().unwrap(), "work")
+            .unwrap()
+            .contains("bot@example.org")
+    );
 }

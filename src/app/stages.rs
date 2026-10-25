@@ -27,6 +27,10 @@ pub struct StagesState {
 
 impl App {
     /// Record each loaded conversation's stage and apply the active filter.
+    #[allow(
+        dead_code,
+        reason = "Retained legacy helper; ordinary folder loads bypass local policy"
+    )]
     pub(crate) fn load_stages_and_filter(&mut self, accounts: &[String]) {
         self.stage_of_anchor.clear();
         let Some(conn) = self.db.as_ref() else {

@@ -70,8 +70,6 @@ pub struct App {
     pub(crate) bypass_token: Option<String>,
     /// Buffered token input while the bypass prompt is open.
     pub(crate) bypass_input: String,
-    /// Whether previously seen mail is hidden behind a cover in the Inbox lane.
-    pub(crate) cover_seen: bool,
     /// Whether the cover has been lifted for this session.
     pub(crate) cover_revealed: bool,
     /// How many seen messages the cover is hiding.
