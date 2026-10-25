@@ -7,11 +7,6 @@ use crate::mail::attachments;
 use super::model::App;
 
 impl App {
-    /// Open the picker at the home directory.
-    pub(crate) fn open_file_picker(&mut self) {
-        self.open_file_picker_at(None);
-    }
-
     /// Open the picker to choose a directory for saving an attachment.
     pub(crate) fn open_save_attachment_picker(&mut self) {
         self.file_picker = Some(FilePickerState::open_with(

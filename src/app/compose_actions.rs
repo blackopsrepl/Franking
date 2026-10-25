@@ -1,7 +1,6 @@
 /*! Compose action dispatch. */
 
-use crate::compose::FocusedField;
-use crate::keys::{Action, EditMode, View};
+use crate::keys::{Action, View};
 
 use super::model::App;
 
@@ -35,7 +34,6 @@ impl App {
                     cs.focused = cs.focused.prev();
                 }
             }
-            Action::ComposeSend => self.compose_send(),
             Action::ComposeDiscard => self.compose_discard(),
             Action::ComposeConfirmDiscard => {
                 self.clear_autosave();
@@ -46,30 +44,6 @@ impl App {
             Action::ComposeCancelDiscard => {
                 if let Some(ref mut cs) = self.compose_state {
                     cs.confirm_discard = false;
-                }
-            }
-            Action::ComposeInput(c) => self.compose_input(c),
-            Action::ComposeBackspace => {
-                let is_address = {
-                    let cs = self.compose_state.as_ref();
-                    cs.map(|cs| {
-                        cs.edit_mode == EditMode::Insert
-                            && matches!(
-                                cs.focused,
-                                FocusedField::To | FocusedField::Cc | FocusedField::Bcc
-                            )
-                    })
-                    .unwrap_or(false)
-                };
-                if let Some(ref mut cs) = self.compose_state {
-                    if cs.edit_mode == EditMode::Insert {
-                        if let Some(field) = cs.focused_line_field_mut() {
-                            field.pop();
-                        }
-                    }
-                }
-                if is_address {
-                    self.update_autocomplete();
                 }
             }
             Action::ComposeEnterInsert => {

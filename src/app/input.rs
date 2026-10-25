@@ -103,7 +103,6 @@ impl App {
             Action::AccountEditSave => self.account_form_save(),
             Action::AccountEditCancel => self.cancel_account_form(),
             Action::AccountEditDiscover => self.discover_account_settings(),
-            Action::OpenFilePicker => self.open_file_picker(),
             Action::FilePickerNext => self.file_picker_next(),
             Action::FilePickerPrev => self.file_picker_prev(),
             Action::FilePickerEnter => self.file_picker_enter(),
@@ -121,7 +120,6 @@ impl App {
             Action::SettingsPrev => self.settings_move(-1),
             Action::SettingsClose => self.close_settings(),
             Action::CycleContactTag => self.cycle_contact_tag(),
-            Action::OpenSchedule => self.open_schedule_prompt(),
             Action::ScheduleInput(c) => self.schedule_input(c),
             Action::ScheduleBackspace => self.schedule_backspace(),
             Action::ScheduleSubmit => self.submit_schedule(),
@@ -196,12 +194,9 @@ impl App {
             | Action::ComposeFieldPrev
             | Action::ComposeLeaveBodyNext
             | Action::ComposeLeaveBodyPrev
-            | Action::ComposeSend
             | Action::ComposeDiscard
             | Action::ComposeConfirmDiscard
             | Action::ComposeCancelDiscard
-            | Action::ComposeInput(_)
-            | Action::ComposeBackspace
             | Action::ComposeEnterInsert
             | Action::ComposeExitToNav => self.handle_compose_action(action),
             Action::EditorKey(key_event) => {
@@ -246,7 +241,6 @@ impl App {
             Action::ContactEditFieldPrev => self.contact_edit_field_prev(),
             Action::ContactEditInput(c) => self.contact_edit_input(c),
             Action::ContactEditBackspace => self.contact_edit_backspace(),
-            Action::ContactEditSave => self.contact_edit_save(),
             Action::ContactEditCancel => self.contact_edit_cancel(),
             Action::ContactEditActivate => self.contact_edit_activate(),
             // ── Identity list ─────────────────────────────────────────
@@ -264,7 +258,6 @@ impl App {
             Action::IdentityEditInput(c) => self.identity_edit_input(c),
             Action::IdentityEditBackspace => self.identity_edit_backspace(),
             Action::IdentityEditToggle => self.identity_edit_toggle(),
-            Action::IdentityEditSave => self.identity_edit_save(),
             Action::IdentityEditCancel => self.identity_edit_cancel(),
 
             _ => {}
