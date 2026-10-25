@@ -26,11 +26,11 @@ pub fn ensure_access_token(account_name: &str, username: &str) -> MailResult<Str
         return Ok(token);
     }
 
-    let refresh_token = lookup_secret(&state.refresh_token_ref, username)?;
+    let refresh_token = crate::mail::session::lookup_secret(&state.refresh_token_ref, username)?;
     let client_secret = state
         .client_secret_ref
         .as_deref()
-        .map(|service| lookup_secret(service, username))
+        .map(|service| crate::mail::session::lookup_secret(service, username))
         .transpose()?;
 
     let refreshed = refresh_access_token(
@@ -118,44 +118,6 @@ fn map_refresh_error(error: anyhow::Error) -> MailError {
         MailError::transport_timeout(detail)
     } else {
         MailError::oauth_refresh_failure(detail)
-    }
-}
-
-fn lookup_secret(service: &str, username: &str) -> MailResult<String> {
-    let output = Command::new("secret-tool")
-        .args([
-            "lookup",
-            "service",
-            service,
-            "username",
-            username,
-            "application",
-            crate::brand::KEYRING_APPLICATION,
-        ])
-        .output()
-        .map_err(|err| {
-            if err.kind() == std::io::ErrorKind::NotFound {
-                MailError::keyring_unavailable(
-                    "secret-tool is not installed or not available in PATH",
-                )
-            } else {
-                MailError::keyring_unavailable(err.to_string())
-            }
-        })?;
-
-    if !output.status.success() {
-        return Err(MailError::keyring_unavailable(
-            String::from_utf8_lossy(&output.stderr).trim().to_string(),
-        ));
-    }
-
-    let secret = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    if secret.is_empty() {
-        Err(MailError::secret_missing(format!(
-            "no secret found for service {service}"
-        )))
-    } else {
-        Ok(secret)
     }
 }
 

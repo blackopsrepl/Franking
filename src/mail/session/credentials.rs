@@ -17,8 +17,8 @@ impl CredentialProvider for KeyringCredentials {
     }
 }
 
-/// Capabilities advertised by the server, decoded into the flags this client
-/// actually branches on.
+/// The one keyring lookup every caller uses. A missing item is reported as a
+/// missing secret naming what was looked for, never as an unavailable keyring.
 pub fn lookup_secret(service: &str, username: &str) -> MailResult<String> {
     let output = Command::new("secret-tool")
         .args([
@@ -42,16 +42,17 @@ pub fn lookup_secret(service: &str, username: &str) -> MailResult<String> {
             }
         })?;
 
-    if !output.status.success() {
-        return Err(MailError::keyring_unavailable(
-            String::from_utf8_lossy(&output.stderr).trim().to_string(),
-        ));
+    // secret-tool exits 1 with nothing on stderr when no item matches; any
+    // real keyring failure explains itself on stderr.
+    let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+    if !output.status.success() && !stderr.is_empty() {
+        return Err(MailError::keyring_unavailable(stderr));
     }
 
     let secret = String::from_utf8_lossy(&output.stdout).trim().to_string();
     if secret.is_empty() {
         Err(MailError::secret_missing(format!(
-            "no secret found for service {service}"
+            "no {service} secret is stored for {username}; run franking --setup"
         )))
     } else {
         Ok(secret)

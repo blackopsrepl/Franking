@@ -18,7 +18,7 @@ pub use capabilities::Capabilities;
 pub use client::{tag_for, ImapClient};
 pub use client_connect::open_imap_client;
 pub use codec::{CommandOutput, Completion, ResponseReader};
-pub use credentials::{CredentialProvider, KeyringCredentials};
+pub use credentials::{lookup_secret, CredentialProvider, KeyringCredentials};
 pub use errors::{looks_like_auth_failure, map_codec_error};
 pub use idle::{wait as idle_wait, IdleOutcome};
 pub use pool::SessionPool;

@@ -84,33 +84,7 @@ pub fn store_secret(label: &str, service: &str, username: &str, password: &str) 
 }
 
 pub fn lookup_secret(service: &str, username: &str) -> Result<String> {
-    let output = Command::new("secret-tool")
-        .args([
-            "lookup",
-            "service",
-            service,
-            "username",
-            username,
-            "application",
-            crate::brand::KEYRING_APPLICATION,
-        ])
-        .output()
-        .with_context(|| format!("failed to execute secret-tool for service {}", service))?;
-
-    if !output.status.success() {
-        bail!(
-            "secret-tool lookup failed for service {}: {}",
-            service,
-            String::from_utf8_lossy(&output.stderr).trim()
-        );
-    }
-
-    let secret = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    if secret.is_empty() {
-        bail!("no secret found for service {}", service);
-    }
-
-    Ok(secret)
+    Ok(crate::mail::session::lookup_secret(service, username)?)
 }
 
 pub(super) fn authinfo_gpg_path() -> PathBuf {
