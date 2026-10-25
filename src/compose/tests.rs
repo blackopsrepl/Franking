@@ -40,7 +40,7 @@ fn template_round_trip_preserves_attachments() {
 
 #[test]
 fn action_bar_cycle_includes_the_pgp_and_smime_toggles() {
-    use super::state::FocusedField;
+    use super::FocusedField;
 
     assert_eq!(FocusedField::Attach.next(), FocusedField::Files);
     assert_eq!(FocusedField::Files.next(), FocusedField::Sign);

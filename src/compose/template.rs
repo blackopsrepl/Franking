@@ -2,7 +2,8 @@
 
 use crate::compose_editor::ComposeEditor;
 
-use super::state::{ComposeMode, ComposeState, FocusedField};
+use super::state::{ComposeMode, ComposeState};
+use super::FocusedField;
 
 /// Parsed headers from an MML template.
 pub(crate) struct ParsedHeaders {

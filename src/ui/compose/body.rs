@@ -3,11 +3,11 @@
 use ratatui::prelude::*;
 use ratatui::widgets::*;
 
-use crate::compose::{ComposeState, FocusedField};
+use crate::compose::{ComposeState, FocusedField, ACTION_BAR};
 use crate::theme::theme;
 use crate::ui::action_bar::{
     render_action_bar_with_label, Button, ICON_ATTACH, ICON_CHECK_OFF, ICON_CHECK_ON, ICON_DISCARD,
-    ICON_DRAFT, ICON_FILES, ICON_SEND,
+    ICON_DRAFT, ICON_FILES, ICON_LATER, ICON_SEND,
 };
 
 pub(super) fn render_body(state: &ComposeState, frame: &mut Frame, area: Rect) {
@@ -58,56 +58,19 @@ pub(super) fn render_compose_action_bar(state: &ComposeState, frame: &mut Frame,
         )
     };
 
-    // Determine which button index is focused (None when a non-button field is focused).
-    // Buttons order: Send(0) Draft(1) Attach(2) Files(3) Sign(4) Encrypt(5) Discard(6)
-    let focused_btn_idx = match state.focused {
-        FocusedField::Send => Some(0usize),
-        FocusedField::Draft => Some(1),
-        FocusedField::Attach => Some(2),
-        FocusedField::Files => Some(3),
-        FocusedField::Sign => Some(4),
-        FocusedField::Encrypt => Some(5),
-        FocusedField::Discard => Some(6),
-        _ => None,
-    };
-
-    let buttons = [
-        Button {
-            label: &format!("{} Send", ICON_SEND),
-            focused: state.focused == FocusedField::Send,
+    let labels: Vec<String> = ACTION_BAR
+        .iter()
+        .map(|button| button_label(state, *button))
+        .collect();
+    let buttons: Vec<Button> = ACTION_BAR
+        .iter()
+        .zip(&labels)
+        .map(|(button, label)| Button {
+            label,
+            focused: state.focused == *button,
             disabled: false,
-        },
-        Button {
-            label: &format!("{} Draft", ICON_DRAFT),
-            focused: state.focused == FocusedField::Draft,
-            disabled: false,
-        },
-        Button {
-            label: &format!("{} Attach", ICON_ATTACH),
-            focused: state.focused == FocusedField::Attach,
-            disabled: false,
-        },
-        Button {
-            label: &format!("{} Files", ICON_FILES),
-            focused: state.focused == FocusedField::Files,
-            disabled: false,
-        },
-        Button {
-            label: &format!("{} Sign", toggle_icon(state.sign)),
-            focused: state.focused == FocusedField::Sign,
-            disabled: false,
-        },
-        Button {
-            label: &format!("{} Encrypt", toggle_icon(state.encrypt)),
-            focused: state.focused == FocusedField::Encrypt,
-            disabled: false,
-        },
-        Button {
-            label: &format!("{} Discard", ICON_DISCARD),
-            focused: state.focused == FocusedField::Discard,
-            disabled: false,
-        },
-    ];
+        })
+        .collect();
 
     render_action_bar_with_label(
         frame,
@@ -115,8 +78,25 @@ pub(super) fn render_compose_action_bar(state: &ComposeState, frame: &mut Frame,
         &status_label,
         status_style,
         &buttons,
-        focused_btn_idx,
+        state.focused.action_index(),
     );
+}
+
+/// Icon plus label for one action-bar button; toggles show their state.
+fn button_label(state: &ComposeState, button: FocusedField) -> String {
+    let icon = match button {
+        FocusedField::Send => ICON_SEND,
+        FocusedField::SendLater => ICON_LATER,
+        FocusedField::Draft => ICON_DRAFT,
+        FocusedField::Attach => ICON_ATTACH,
+        FocusedField::Files => ICON_FILES,
+        FocusedField::Sign => toggle_icon(state.sign),
+        FocusedField::Encrypt => toggle_icon(state.encrypt),
+        FocusedField::SmimeSign => toggle_icon(state.smime_sign),
+        FocusedField::SmimeEncrypt => toggle_icon(state.smime_encrypt),
+        _ => ICON_DISCARD,
+    };
+    format!("{icon} {}", button.label())
 }
 
 /// Checkbox glyph for a boolean toggle button.

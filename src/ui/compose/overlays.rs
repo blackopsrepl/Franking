@@ -73,6 +73,7 @@ pub(super) fn render_autocomplete(
         | FocusedField::Subject
         | FocusedField::Body
         | FocusedField::Send
+        | FocusedField::SendLater
         | FocusedField::Draft
         | FocusedField::Attach
         | FocusedField::Files

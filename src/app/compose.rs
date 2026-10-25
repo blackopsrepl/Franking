@@ -103,6 +103,9 @@ impl App {
             FocusedField::Send => {
                 self.compose_send();
             }
+            FocusedField::SendLater => {
+                self.open_schedule_prompt();
+            }
             FocusedField::Draft => {
                 self.compose_save_draft();
             }
@@ -147,14 +150,8 @@ impl App {
             cs.confirm_discard = false;
             return;
         }
-        match cs.focused {
-            FocusedField::Send
-            | FocusedField::Draft
-            | FocusedField::Attach
-            | FocusedField::Discard => {
-                cs.focused = FocusedField::Body;
-            }
-            _ => {}
+        if cs.focused.is_action_button() {
+            cs.focused = FocusedField::Body;
         }
     }
 

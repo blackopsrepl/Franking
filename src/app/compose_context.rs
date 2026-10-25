@@ -18,6 +18,7 @@ impl App {
                     | FocusedField::Subject => ComposeFocus::Header,
                     FocusedField::Body => ComposeFocus::Body,
                     FocusedField::Send
+                    | FocusedField::SendLater
                     | FocusedField::Draft
                     | FocusedField::Attach
                     | FocusedField::Files

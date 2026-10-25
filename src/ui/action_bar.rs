@@ -1,9 +1,10 @@
-/* Action bar widget — a row of labelled buttons rendered with ratatui's `Tabs`
-widget, with a mode pill on the left.
+/* Action bar widget — a row of labelled buttons with a mode pill on the left.
+When the row is wider than the terminal it scrolls to keep the focused button
+visible and marks the elided side.
 Used by the compose, identity-edit and contact-edit screens. */
 
 use ratatui::prelude::*;
-use ratatui::widgets::Tabs;
+use unicode_width::UnicodeWidthStr;
 
 use crate::keys::EditMode;
 use crate::theme::theme;
@@ -11,6 +12,8 @@ use crate::theme::theme;
 // ── Nerd Font icons ──────────────────────────────────────────────────────────
 /// Paper plane — Send
 pub const ICON_SEND: &str = "\u{f1d8}";
+/// Clock — Send later
+pub const ICON_LATER: &str = "\u{f017}";
 /// Pencil — Draft
 pub const ICON_DRAFT: &str = "\u{f044}";
 /// Paperclip — Attach
@@ -46,7 +49,7 @@ pub struct Button<'a> {
 /// `area`         — the 1-row area to render into.
 /// `edit_mode`    — Nav or Insert (used for the mode pill).
 /// `buttons`      — ordered list of buttons.
-/// `focused_idx`  — index of the currently focused button (for `Tabs::select`).
+/// `focused_idx`  — index of the currently focused button, kept on screen.
 pub fn render_action_bar(
     frame: &mut Frame,
     area: Rect,
@@ -96,29 +99,69 @@ pub fn render_action_bar_with_label(
         cols[1],
     );
 
-    // ── Tabs ─────────────────────────────────────────────────────────
-    let tab_lines: Vec<Line<'static>> = buttons
+    // ── Buttons ──────────────────────────────────────────────────────
+    let labels: Vec<String> = buttons
         .iter()
-        .map(|btn| {
-            let style = if btn.disabled {
-                t.action_btn_disabled()
-            } else if btn.focused {
-                t.action_btn_focused()
-            } else {
-                t.action_btn()
-            };
-            Line::from(Span::styled(format!(" {} ", btn.label), style))
-        })
+        .map(|btn| format!(" {} ", btn.label))
         .collect();
+    let widths: Vec<usize> = labels.iter().map(|label| label.width()).collect();
+    let (start, end) = visible_window(&widths, focused_idx, cols[2].width as usize);
+    let mut spans = Vec::new();
+    if start > 0 {
+        spans.push(Span::styled(MORE_LEFT, t.dimmed()));
+    }
+    for index in start..end {
+        if index > start {
+            spans.push(Span::styled(DIVIDER, t.dimmed()));
+        }
+        let btn = &buttons[index];
+        let style = if btn.disabled {
+            t.action_btn_disabled()
+        } else if btn.focused || focused_idx == Some(index) {
+            t.action_btn_focused()
+        } else {
+            t.action_btn()
+        };
+        spans.push(Span::styled(labels[index].clone(), style));
+    }
+    if end < buttons.len() {
+        spans.push(Span::styled(MORE_RIGHT, t.dimmed()));
+    }
+    frame.render_widget(
+        ratatui::widgets::Paragraph::new(Line::from(spans)).style(t.status_bar()),
+        cols[2],
+    );
+}
 
-    let focused_tab = focused_idx.unwrap_or(usize::MAX);
+const DIVIDER: &str = " · ";
+const MORE_LEFT: &str = "‹ ";
+const MORE_RIGHT: &str = " ›";
 
-    // Build tabs: highlight_style applied to the selected tab by Tabs widget.
-    let tabs = Tabs::new(tab_lines)
-        .select(focused_tab)
-        .highlight_style(t.action_btn_focused())
-        .divider(Span::styled(" · ", t.dimmed()))
-        .style(t.status_bar());
-
-    frame.render_widget(tabs, cols[2]);
+/// The contiguous run of buttons `[start, end)` that fits `available` columns
+/// and always contains the focused button. Elided sides get a ‹ or › marker.
+fn visible_window(widths: &[usize], focused: Option<usize>, available: usize) -> (usize, usize) {
+    let span = |start: usize, end: usize| -> usize {
+        let buttons: usize = widths[start..end].iter().sum();
+        let dividers = (end - start).saturating_sub(1) * DIVIDER.width();
+        let markers = if start > 0 { MORE_LEFT.width() } else { 0 }
+            + if end < widths.len() {
+                MORE_RIGHT.width()
+            } else {
+                0
+            };
+        buttons + dividers + markers
+    };
+    if span(0, widths.len()) <= available {
+        return (0, widths.len());
+    }
+    let anchor = focused.unwrap_or(0).min(widths.len().saturating_sub(1));
+    let mut start = 0;
+    while start < anchor && span(start, anchor + 1) > available {
+        start += 1;
+    }
+    let mut end = anchor + 1;
+    while end < widths.len() && span(start, end + 1) <= available {
+        end += 1;
+    }
+    (start, end.max(start + 1).min(widths.len()))
 }

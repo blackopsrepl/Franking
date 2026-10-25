@@ -10,6 +10,8 @@ use crate::compose_editor::ComposeEditor;
 use crate::identities::Identity;
 use crate::keys::EditMode;
 
+use super::FocusedField;
+
 /// Which mode we're in: new message, reply, reply-all, or forward.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ComposeMode {
@@ -17,108 +19,6 @@ pub enum ComposeMode {
     Reply,
     ReplyAll,
     Forward,
-}
-
-/// Which field / action-bar button currently has focus.
-///
-/// Tab cycle order:
-///   From → To → Cc → Bcc → Subject → Body → Send → Draft → Attach → Discard → From
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum FocusedField {
-    From,
-    To,
-    Cc,
-    Bcc,
-    Subject,
-    Body,
-    // ── Action bar buttons ──────────────────────────────────────────
-    Send,
-    Draft,
-    Attach,
-    Files,
-    Sign,
-    Encrypt,
-    SmimeSign,
-    SmimeEncrypt,
-    Discard,
-}
-
-impl FocusedField {
-    pub fn next(self) -> Self {
-        match self {
-            FocusedField::From => FocusedField::To,
-            FocusedField::To => FocusedField::Cc,
-            FocusedField::Cc => FocusedField::Bcc,
-            FocusedField::Bcc => FocusedField::Subject,
-            FocusedField::Subject => FocusedField::Body,
-            FocusedField::Body => FocusedField::Send,
-            FocusedField::Send => FocusedField::Draft,
-            FocusedField::Draft => FocusedField::Attach,
-            FocusedField::Attach => FocusedField::Files,
-            FocusedField::Files => FocusedField::Sign,
-            FocusedField::Sign => FocusedField::Encrypt,
-            FocusedField::Encrypt => FocusedField::SmimeSign,
-            FocusedField::SmimeSign => FocusedField::SmimeEncrypt,
-            FocusedField::SmimeEncrypt => FocusedField::Discard,
-            FocusedField::Discard => FocusedField::From,
-        }
-    }
-
-    pub fn prev(self) -> Self {
-        match self {
-            FocusedField::From => FocusedField::Discard,
-            FocusedField::To => FocusedField::From,
-            FocusedField::Cc => FocusedField::To,
-            FocusedField::Bcc => FocusedField::Cc,
-            FocusedField::Subject => FocusedField::Bcc,
-            FocusedField::Body => FocusedField::Subject,
-            FocusedField::Send => FocusedField::Body,
-            FocusedField::Draft => FocusedField::Send,
-            FocusedField::Attach => FocusedField::Draft,
-            FocusedField::Files => FocusedField::Attach,
-            FocusedField::Sign => FocusedField::Files,
-            FocusedField::Encrypt => FocusedField::Sign,
-            FocusedField::Discard => FocusedField::SmimeEncrypt,
-            FocusedField::SmimeEncrypt => FocusedField::SmimeSign,
-            FocusedField::SmimeSign => FocusedField::Encrypt,
-        }
-    }
-
-    pub fn label(self) -> &'static str {
-        match self {
-            FocusedField::From => "From",
-            FocusedField::To => "To",
-            FocusedField::Cc => "Cc",
-            FocusedField::Bcc => "Bcc",
-            FocusedField::Subject => "Subject",
-            FocusedField::Body => "Body",
-            FocusedField::Send => "Send",
-            FocusedField::Draft => "Draft",
-            FocusedField::Attach => "Attach",
-            FocusedField::Files => "Files",
-            FocusedField::Sign => "Sign",
-            FocusedField::Encrypt => "Encrypt",
-            FocusedField::SmimeSign => "S/MIME Sign",
-            FocusedField::SmimeEncrypt => "S/MIME Encrypt",
-            FocusedField::Discard => "Discard",
-        }
-    }
-
-    /// True if this is an action-bar button (not a text/content field).
-    pub fn is_action_button(self) -> bool {
-        matches!(
-            self,
-            FocusedField::Send
-                | FocusedField::Draft
-                | FocusedField::Attach
-                | FocusedField::Files
-                | FocusedField::Sign
-                | FocusedField::Encrypt
-                | FocusedField::SmimeSign
-                | FocusedField::SmimeEncrypt
-                | FocusedField::Discard
-        )
-    }
 }
 
 mod autocomplete;
@@ -251,6 +151,7 @@ impl ComposeState {
             FocusedField::Subject => Some(&mut self.subject),
             FocusedField::Body => None,
             FocusedField::Send
+            | FocusedField::SendLater
             | FocusedField::Draft
             | FocusedField::Attach
             | FocusedField::Files
