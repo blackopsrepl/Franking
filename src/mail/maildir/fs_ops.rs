@@ -9,7 +9,7 @@ use crate::mail::mime;
 use crate::mail::types::{Envelope, Sender};
 use crate::mail::types::{Folder, FolderRole};
 
-use super::flags::{file_name, flags_to_names, next_message_path, parse_flag_codes};
+use super::flags::{base_message_name, flags_to_names, next_message_path, parse_flag_codes};
 
 const SAMPLE_MESSAGE: &str = include_str!("../../../tests/fixtures/message.txt");
 
@@ -111,7 +111,7 @@ pub(super) fn list_message_entries(dir: &Path) -> MailResult<Vec<MessageEntry>> 
                 )
                 .to_ascii_lowercase(),
                 envelope: Envelope {
-                    id: file_name(&path)?,
+                    id: base_message_name(&path)?,
                     flags: flags_to_names(&parse_flag_codes(&path)),
                     subject: parsed.subject().to_string(),
                     sender: Sender::Plain(

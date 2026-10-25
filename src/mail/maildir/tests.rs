@@ -49,6 +49,7 @@ fn maildir_round_trip_supports_read_flag_move_and_send() {
         .list_envelopes(Some("test"), "INBOX", 1, 50, None)
         .unwrap();
     assert!(flagged[0].is_flagged());
+    assert_eq!(flagged[0].id, id, "flags must not change message identity");
 
     service
         .move_message(Some("test"), "INBOX", "Trash", &id)
