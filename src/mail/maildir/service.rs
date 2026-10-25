@@ -12,6 +12,8 @@ use super::fs_ops::*;
 use super::model::MaildirService;
 use super::template::*;
 
+impl crate::mail::SieveService for MaildirService {}
+
 impl MailService for MaildirService {
     fn list_accounts(&self) -> MailResult<Vec<Account>> {
         self.ensure_ready()?;

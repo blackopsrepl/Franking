@@ -157,6 +157,32 @@ fn sieve_error(error: anyhow::Error) -> MailError {
     }
 }
 
+impl super::sieve_trait::SieveService for RouterMailService {
+    fn sieve_scripts(&self, account: Option<&str>) -> MailResult<Vec<SieveScript>> {
+        scripts(self, account)
+    }
+
+    fn sieve_script(&self, account: Option<&str>, name: &str) -> MailResult<String> {
+        script(self, account, name)
+    }
+
+    fn sieve_save_script(&self, account: Option<&str>, name: &str, body: &str) -> MailResult<()> {
+        save_script(self, account, name, body)
+    }
+
+    fn sieve_set_active(&self, account: Option<&str>, name: Option<&str>) -> MailResult<()> {
+        set_active(self, account, name)
+    }
+
+    fn sieve_delete_script(&self, account: Option<&str>, name: &str) -> MailResult<()> {
+        delete_script(self, account, name)
+    }
+
+    fn sieve_rename_script(&self, account: Option<&str>, from: &str, to: &str) -> MailResult<()> {
+        rename_script(self, account, from, to)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::resolve_target;

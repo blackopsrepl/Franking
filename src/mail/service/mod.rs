@@ -10,10 +10,11 @@ mod router_sieve;
 mod router_sync;
 mod service_options;
 mod service_trait;
+mod sieve_trait;
 
 #[cfg(test)]
 mod tests;
 
 pub use router::default_mail_service;
 pub use service_options::SendOptions;
-pub use service_trait::MailService;
+pub use service_trait::{MailService, SieveService};
