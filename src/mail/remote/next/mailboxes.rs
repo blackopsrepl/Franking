@@ -28,8 +28,10 @@ pub fn delete_folder(client: &mut Connection, name: &str) -> MailResult<()> {
     Ok(())
 }
 
-/// RENAME a mailbox.
-pub fn rename_folder(client: &mut Connection, from: &str, to: &str) -> MailResult<()> {
+/// RENAME a mailbox. IMAP renames its subfolders too, so the server's
+/// hierarchy delimiter is returned for callers that track folder paths.
+pub fn rename_folder(client: &mut Connection, from: &str, to: &str) -> MailResult<Option<char>> {
+    let delimiter = hierarchy_delimiter(client, from)?;
     client
         .run(CommandBody::Rename {
             from: mailbox_of(from)?,
@@ -37,7 +39,20 @@ pub fn rename_folder(client: &mut Connection, from: &str, to: &str) -> MailResul
         })
         .map_err(imap_error)?
         .require_ok("RENAME")?;
-    Ok(())
+    Ok(delimiter)
+}
+
+/// The delimiter the server reports for `name`; `None` for a flat namespace.
+fn hierarchy_delimiter(client: &mut Connection, name: &str) -> MailResult<Option<char>> {
+    use imap_types::response::{Data, Response};
+    let body = CommandBody::list("", name.to_owned()).map_err(|error| {
+        crate::mail::errors::MailError::other(format!("cannot build LIST command: {error:?}"))
+    })?;
+    let output = client.run(body).map_err(imap_error)?.require_ok("LIST")?;
+    Ok(output.responses.iter().find_map(|response| match response {
+        Response::Data(Data::List { delimiter, .. }) => delimiter.as_ref().map(|d| d.inner()),
+        _ => None,
+    }))
 }
 
 /// SUBSCRIBE to a mailbox.

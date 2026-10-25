@@ -202,7 +202,12 @@ impl MailService for RouterMailService {
         route!(self, account, service => service.create_folder(account, name))
     }
 
-    fn rename_folder(&self, account: Option<&str>, from: &str, to: &str) -> MailResult<()> {
+    fn rename_folder(
+        &self,
+        account: Option<&str>,
+        from: &str,
+        to: &str,
+    ) -> MailResult<Option<char>> {
         route!(self, account, service => service.rename_folder(account, from, to))
     }
 

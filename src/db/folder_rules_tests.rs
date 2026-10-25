@@ -74,12 +74,11 @@ fn suspended_rules_resume_at_a_fresh_boundary() {
         list(&conn).unwrap()[0].suspended.as_deref(),
         Some(MAILBOX_RESET)
     );
-    set_inbox(&conn, "work", 8, 340);
-    resume(&conn, "work", "alice@example.org").unwrap();
+    resume(&conn, "work", "alice@example.org", (8, 340)).unwrap();
     let rule = &list(&conn).unwrap()[0];
     assert_eq!((rule.uid_validity, rule.first_uid), (8, 340));
     assert_eq!(rule.suspended, None);
-    assert!(resume(&conn, "work", "bob@example.org").is_err());
+    assert!(resume(&conn, "work", "bob@example.org", (8, 340)).is_err());
 }
 
 #[test]
@@ -92,7 +91,10 @@ fn folder_rename_and_delete_follow_only_that_account() {
     ] {
         save(&conn, &draft(&conn, account, sender, "Reading").unwrap()).unwrap();
     }
-    assert_eq!(retarget(&conn, "work", "Reading", "Later").unwrap(), 2);
+    assert_eq!(
+        retarget(&conn, "work", "Reading", "Later", None).unwrap(),
+        2
+    );
     let targets: Vec<_> = list(&conn).unwrap().into_iter().map(|r| r.target).collect();
     assert_eq!(targets, ["Reading", "Later", "Later"]);
     assert_eq!(delete_targeting(&conn, "work", "Later").unwrap(), 2);

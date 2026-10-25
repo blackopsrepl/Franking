@@ -80,7 +80,7 @@ cargo run -- --setup
 - **Multi-account** — `Ctrl+a` switches accounts; All Inboxes combines their inboxes.
 - **Reply later** — `y` toggles a local follow-up marker; open the visible sidebar view to work the checklist. A successful direct reply clears its marker.
 - **Starred** — `!` toggles the server flag; the sidebar view lists flagged messages from locally cached folders. Refresh source folders to update this view.
-- **Explicit future-mail rules** — Move offers an unchecked option to move future mail from the same sender in the receiving IMAP account. The rule is saved only if that move succeeds. Inspect, resume, or remove rules through Actions → Sender folder rules. Rules run while Franking fetches mail, not while it is closed; a rule whose move fails or whose Inbox was reset is suspended with the reason shown. Renaming or deleting a folder in Franking updates or removes its rules.
+- **Explicit future-mail rules** — Move offers an unchecked option to move future mail from the same sender in the receiving IMAP account. The rule is saved only if that move succeeds. Inspect, resume, or remove rules through Actions → Sender folder rules. Rules run while Franking fetches mail, not while it is closed; a rule whose move fails or whose Inbox was reset is suspended with the reason shown. Renaming a folder in Franking carries its rules, subfolders included; deleting one removes its rules.
 - **Mute conversations** — Actions → Mute / unmute controls notifications without hiding mail or changing its order.
 - **Snippets** — `Ctrl+n` in compose inserts reusable text; save a body as a snippet from the snippet picker.
 - **Attachment library** — open cached attachments across accounts from Actions.

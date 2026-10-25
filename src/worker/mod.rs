@@ -17,5 +17,5 @@ mod template_ops;
 mod watch;
 
 pub use dispatch::{Worker, WorkerResult};
-pub use folder_ops::FolderChange;
+pub use folder_ops::{FolderChange, ResumeCheck};
 pub use folder_rules::{RoutingReport, RoutingSnapshot};

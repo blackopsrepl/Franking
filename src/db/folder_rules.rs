@@ -113,10 +113,14 @@ pub fn suspend(conn: &Connection, account: &str, sender: &str, reason: &str) -> 
     )? > 0)
 }
 
-/// Re-arm a suspended rule at a fresh stored boundary, so mail that arrived
-/// while it was suspended is never swept up.
-pub fn resume(conn: &Connection, account: &str, sender: &str) -> Result<()> {
-    let (uid_validity, first_uid) = boundary(conn, account)?;
+/// Re-arm a suspended rule at the server's live INBOX boundary, so mail that
+/// arrived while it was suspended is never swept up.
+pub fn resume(
+    conn: &Connection,
+    account: &str,
+    sender: &str,
+    (uid_validity, first_uid): (u32, u32),
+) -> Result<()> {
     let changed = conn.execute(
         "UPDATE folder_rules SET uid_validity=?3,first_uid=?4,suspended_reason=NULL
          WHERE account=?1 AND sender=?2",
@@ -128,12 +132,28 @@ pub fn resume(conn: &Connection, account: &str, sender: &str) -> Result<()> {
     Ok(())
 }
 
-/// Follow a server folder rename. Returns the number of rules updated.
-pub fn retarget(conn: &Connection, account: &str, from: &str, to: &str) -> Result<usize> {
-    Ok(conn.execute(
+/// Follow a server folder rename, including its subfolders when the server
+/// has a hierarchy `delimiter`. Returns the number of rules updated.
+pub fn retarget(
+    conn: &Connection,
+    account: &str,
+    from: &str,
+    to: &str,
+    delimiter: Option<char>,
+) -> Result<usize> {
+    let mut updated = conn.execute(
         "UPDATE folder_rules SET target=?3 WHERE account=?1 AND target=?2",
         params![account, from, to],
-    )?)
+    )?;
+    if let Some(delimiter) = delimiter {
+        let parent = format!("{from}{delimiter}");
+        updated += conn.execute(
+            "UPDATE folder_rules SET target = ?3 || substr(target, length(?2) + 1)
+             WHERE account=?1 AND substr(target, 1, length(?2)) = ?2",
+            params![account, parent, format!("{to}{delimiter}")],
+        )?;
+    }
+    Ok(updated)
 }
 
 /// Drop rules whose server folder was deleted. Returns the number removed.

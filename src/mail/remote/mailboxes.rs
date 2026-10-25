@@ -14,7 +14,12 @@ impl ImapSmtpService {
     }
 
     /// Rename a mailbox.
-    pub fn rename_folder(&self, account: Option<&str>, from: &str, to: &str) -> MailResult<()> {
+    pub fn rename_folder(
+        &self,
+        account: Option<&str>,
+        from: &str,
+        to: &str,
+    ) -> MailResult<Option<char>> {
         self.ensure_requested_account(account)?;
         self.pool.with_client(&self.account, |client| {
             next::rename_folder(client, from, to)

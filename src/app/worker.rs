@@ -50,6 +50,9 @@ impl App {
                 WorkerResult::FolderChanged(change, result) => {
                     self.handle_folder_changed(change, result);
                 }
+                WorkerResult::RuleResumeChecked(rule, result) => {
+                    self.handle_rule_resume_checked(rule, result);
+                }
                 WorkerResult::Discovered(config) => self.apply_discovered(config),
                 WorkerResult::Outbox(result) => self.handle_outbox(result),
                 WorkerResult::OAuthAuthorized(account, result) => {

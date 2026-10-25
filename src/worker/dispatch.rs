@@ -46,6 +46,8 @@ pub enum WorkerResult {
     ),
     /// A server folder rename/delete, so rules can follow it on success.
     FolderChanged(super::FolderChange, Result<String, MailError>),
+    /// Server state for resuming a suspended rule.
+    RuleResumeChecked(crate::db::folder_rules::FolderRule, super::ResumeCheck),
 }
 
 /// Lightweight handle for dispatching work to background threads.

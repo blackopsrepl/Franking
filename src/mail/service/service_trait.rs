@@ -170,8 +170,13 @@ pub trait MailService: SieveService + Send + Sync {
         ))
     }
 
-    /// Rename a mailbox.
-    fn rename_folder(&self, account: Option<&str>, from: &str, to: &str) -> MailResult<()> {
+    /// Rename a mailbox and its subfolders; returns the hierarchy delimiter.
+    fn rename_folder(
+        &self,
+        account: Option<&str>,
+        from: &str,
+        to: &str,
+    ) -> MailResult<Option<char>> {
         let _ = (account, from, to);
         Err(MailError::unsupported_feature(
             "this backend cannot rename folders",

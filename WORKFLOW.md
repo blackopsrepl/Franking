@@ -67,11 +67,13 @@ whose move failed stays listed, because it is still in the Inbox.
 
 A rule whose move fails, or whose Inbox was reset by the server (UIDVALIDITY
 changed), is suspended with that reason and is not retried. The status line
-names the sender and folder. Press r in the rules list to resume it: it then
-routes only mail arriving from that point on, and resuming is refused if its
-folder no longer exists (resume while that account is the active one).
-Renaming a folder in Franking updates rules that target it; deleting a folder
-removes them. If the rename or delete fails, rules are left unchanged.
+names the sender and folder. Press r in the rules list to resume it from any
+account: Franking asks that rule's server whether the folder still exists and
+reads its live Inbox position, so the rule routes only mail arriving from then
+on. Renaming a folder in Franking updates rules that target it or any of its
+subfolders, since the server renames those too; deleting a folder removes the
+rules that target it, and its subfolders keep theirs because the server keeps
+them. If the rename or delete fails, rules are left unchanged.
 
 ## Notifications
 

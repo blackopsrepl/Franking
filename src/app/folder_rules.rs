@@ -107,7 +107,8 @@ impl App {
         }
     }
 
-    /// Resume a suspended rule at a fresh boundary, only if its folder exists.
+    /// Resume a suspended rule once its own account's server confirms the
+    /// target folder exists; the boundary is the live INBOX UIDNEXT.
     pub(crate) fn resume_folder_rule(&mut self) {
         self.folder_rules.pending_delete = None;
         let Some(rule) = self
@@ -122,35 +123,8 @@ impl App {
             self.set_status("This rule is active.");
             return;
         }
-        if self.account_name.as_deref() != Some(rule.account.as_str()) {
-            self.set_error(&format!(
-                "Switch to account {} to resume this rule, so {} can be checked.",
-                rule.account, rule.target
-            ));
-            return;
-        }
-        if !self.folders.iter().any(|f| f.name == rule.target) {
-            self.set_error(&format!(
-                "{} no longer exists in {}; remove this rule or create a new one from Move.",
-                rule.target, rule.account
-            ));
-            return;
-        }
-        let result = self
-            .db
-            .as_ref()
-            .ok_or_else(|| anyhow::anyhow!("Local database is unavailable"))
-            .and_then(|conn| store::resume(conn, &rule.account, &rule.sender));
-        match result {
-            Ok(()) => {
-                self.reload_folder_rules();
-                self.set_status(&format!(
-                    "Rule resumed; mail from {} arriving from now on moves to {}.",
-                    rule.sender, rule.target
-                ));
-            }
-            Err(error) => self.set_error(&format!("Could not resume folder rule: {error}")),
-        }
+        self.set_status(&format!("Checking {} in {}…", rule.target, rule.account));
+        self.worker.check_rule_resume(rule);
     }
 
     pub(crate) fn close_folder_rules(&mut self) {

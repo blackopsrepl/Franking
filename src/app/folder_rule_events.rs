@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use super::model::App;
 use crate::db::folder_rules::{self as store, FolderRule, MAILBOX_RESET};
 use crate::mail::MailError;
-use crate::worker::{FolderChange, RoutingReport, RoutingSnapshot};
+use crate::worker::{FolderChange, ResumeCheck, RoutingReport, RoutingSnapshot};
 
 const OPEN_RULES: &str = "Open Actions → Sender folder rules.";
 
@@ -137,7 +137,8 @@ impl App {
                     account: Some(account),
                     from,
                     to,
-                } => store::retarget(conn, account, from, to).map(|n| (n, "updated")),
+                    delimiter,
+                } => store::retarget(conn, account, from, to, *delimiter).map(|n| (n, "updated")),
                 FolderChange::Deleted {
                     account: Some(account),
                     name,
@@ -157,6 +158,40 @@ impl App {
         }
         if self.folder_rules.open {
             self.reload_folder_rules();
+        }
+    }
+
+    /// Store a resume only when the folder exists and the server gave a
+    /// usable INBOX boundary.
+    pub(crate) fn handle_rule_resume_checked(&mut self, rule: FolderRule, result: ResumeCheck) {
+        let resumed = match result {
+            Ok((false, _, _)) => Err(anyhow::anyhow!(
+                "{} no longer exists in {}; remove this rule or create a new one from Move",
+                rule.target,
+                rule.account
+            )),
+            Ok((true, Some(validity), Some(next))) if validity > 0 && next > 0 => self
+                .db
+                .as_ref()
+                .ok_or_else(|| anyhow::anyhow!("Local database is unavailable"))
+                .and_then(|conn| {
+                    store::resume(conn, &rule.account, &rule.sender, (validity, next))
+                }),
+            Ok(_) => Err(anyhow::anyhow!(
+                "{}'s INBOX did not report UIDVALIDITY and UIDNEXT",
+                rule.account
+            )),
+            Err(error) => Err(error.into()),
+        };
+        if self.folder_rules.open {
+            self.reload_folder_rules();
+        }
+        match resumed {
+            Ok(()) => self.set_status(&format!(
+                "Rule resumed; mail from {} arriving from now on moves to {}.",
+                rule.sender, rule.target
+            )),
+            Err(error) => self.set_error(&format!("Could not resume folder rule: {error}")),
         }
     }
 }

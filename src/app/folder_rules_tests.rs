@@ -102,13 +102,11 @@ fn failing_rules_are_suspended_shown_and_resumed_only_with_their_folder() {
         app.folder_rules.rules[0].suspended.as_deref(),
         Some("no such mailbox")
     );
-    app.account_name = Some("work".into());
-    let folders = std::mem::take(&mut app.folders);
-    app.resume_folder_rule();
+    app.handle_rule_resume_checked(rule.clone(), Ok((false, Some(7), Some(120))));
     assert!(app.folder_rules.rules[0].suspended.is_some());
-    app.folders = folders;
-    app.resume_folder_rule();
+    app.handle_rule_resume_checked(rule.clone(), Ok((true, Some(7), Some(120))));
     assert_eq!(app.folder_rules.rules[0].suspended, None);
+    assert_eq!(app.folder_rules.rules[0].first_uid, 120);
     app.handle_routing_report(RoutingReport {
         moved: vec![(rule, 2)],
         ..Default::default()
@@ -127,6 +125,7 @@ fn folder_rename_and_delete_carry_rules_only_on_success() {
         account: account.clone(),
         from: "Reading".into(),
         to: "Later".into(),
+        delimiter: Some('/'),
     };
     app.handle_folder_changed(renamed.clone(), Err(MailError::other("denied")));
     assert_eq!(
