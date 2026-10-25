@@ -15,41 +15,30 @@ fn envelope_list_selects_for_batch_actions() {
         Action::ToggleSelect
     );
     assert_eq!(
-        resolve(View::EnvelopeList, key(KeyCode::Char('u'))),
+        resolve(View::EnvelopeList, key(KeyCode::Esc)),
         Action::ClearSelection
     );
     assert_eq!(
         resolve(View::EnvelopeList, key(KeyCode::Char('z'))),
         Action::Undo
     );
-    assert_eq!(
-        resolve(View::EnvelopeList, key(KeyCode::Char('['))),
-        Action::CollapseThread
+    super::support::menu_only(
+        View::EnvelopeList,
+        KeyCode::Char('['),
+        Action::CollapseThread,
     );
-    assert_eq!(
-        resolve(View::EnvelopeList, key(KeyCode::Left)),
-        Action::CollapseThread
-    );
+    super::support::menu_only(View::EnvelopeList, KeyCode::Left, Action::CollapseThread);
     assert_eq!(
         resolve(View::EnvelopeList, key(KeyCode::Char('E'))),
-        Action::EmptyFolder
+        Action::None
     );
     assert_eq!(
         resolve(View::EnvelopeList, key(KeyCode::Char('e'))),
         Action::Archive
     );
-    assert_eq!(
-        resolve(View::EnvelopeList, key(KeyCode::Char('C'))),
-        Action::CopyMessage
-    );
-    assert_eq!(
-        resolve(View::EnvelopeList, key(KeyCode::Char(']'))),
-        Action::ExpandThread
-    );
-    assert_eq!(
-        resolve(View::EnvelopeList, key(KeyCode::Right)),
-        Action::ExpandThread
-    );
+    super::support::menu_only(View::EnvelopeList, KeyCode::Char('C'), Action::CopyMessage);
+    super::support::menu_only(View::EnvelopeList, KeyCode::Char(']'), Action::ExpandThread);
+    super::support::menu_only(View::EnvelopeList, KeyCode::Right, Action::ExpandThread);
 }
 
 // ── Move prompt ─────────────────────────────────────────────────────
@@ -74,7 +63,7 @@ fn move_prompt_input() {
     );
     assert_eq!(
         resolve(View::MovePrompt, key(KeyCode::Char('j'))),
-        Action::MoveNext
+        Action::MoveInput('j')
     );
     assert_eq!(
         resolve(View::MovePrompt, key(KeyCode::Up)),
@@ -98,28 +87,24 @@ fn unrecognized_key_returns_none() {
 
 #[test]
 fn unread_navigation_keys() {
-    assert_eq!(
-        resolve(View::EnvelopeList, key(KeyCode::Char('>'))),
-        Action::NextUnread
-    );
-    assert_eq!(
-        resolve(View::EnvelopeList, key(KeyCode::Char('<'))),
-        Action::PrevUnread
-    );
+    super::support::menu_only(View::EnvelopeList, KeyCode::Char('>'), Action::NextUnread);
+    super::support::menu_only(View::EnvelopeList, KeyCode::Char('<'), Action::PrevUnread);
 }
 
 #[test]
 fn sort_order_key() {
-    assert_eq!(
-        resolve(View::EnvelopeList, key(KeyCode::Char('o'))),
-        Action::CycleSortOrder
+    super::support::menu_only(
+        View::EnvelopeList,
+        KeyCode::Char('o'),
+        Action::CycleSortOrder,
     );
 }
 
 #[test]
 fn mark_thread_read_key() {
-    assert_eq!(
-        resolve(View::EnvelopeList, key(KeyCode::Char('r'))),
-        Action::MarkThreadRead
+    super::support::menu_only(
+        View::EnvelopeList,
+        KeyCode::Char('r'),
+        Action::MarkThreadRead,
     );
 }

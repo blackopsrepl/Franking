@@ -184,7 +184,7 @@ fn space_key_selects_the_cursor_row() {
     app.handle_key(KeyEvent::new(KeyCode::Char(' '), KeyModifiers::NONE));
     assert!(app.selected.contains("1"));
 
-    app.handle_key(KeyEvent::new(KeyCode::Char('u'), KeyModifiers::NONE));
+    app.handle_key(KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE));
     assert!(app.selected.is_empty());
 }
 
@@ -258,7 +258,10 @@ fn save_message_writes_the_source_and_reports_it() {
     let mut app = App::new(None);
     app.view = View::MessageView;
     app.message_content = Some(document);
-    app.handle_key(KeyEvent::new(KeyCode::Char('s'), KeyModifiers::NONE));
+    for c in ":save message".chars() {
+        app.handle_key(KeyEvent::new(KeyCode::Char(c), KeyModifiers::NONE));
+    }
+    app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
 
     assert!(!app.status_is_error, "status: {}", app.status_message);
     assert!(

@@ -9,12 +9,40 @@ pub fn render(app: &App, frame: &mut Frame, area: Rect) {
     let t = theme();
     let full = frame.area();
     let candidates = app.move_candidates();
+    if !app.move_is_copy {
+        let owner = app
+            .selected_envelope()
+            .and_then(|e| e.account.as_deref())
+            .unwrap_or("?");
+        let sender = app
+            .move_rule_sender()
+            .unwrap_or_else(|| "select one message with a sender mailbox".into());
+        let checkbox = Rect::new(
+            full.x + 2,
+            area.y.saturating_sub(2),
+            full.width.saturating_sub(4),
+            2,
+        );
+        frame.render_widget(Clear, checkbox);
+        let lines = vec![
+            Line::raw(format!(" {owner} · {sender}")),
+            Line::raw(format!(
+                " [{}] Also move future messages from this sender · Tab toggle",
+                if app.folder_rules.also_future {
+                    "x"
+                } else {
+                    " "
+                }
+            )),
+        ];
+        frame.render_widget(Paragraph::new(lines).style(t.popup()), checkbox);
+    }
 
     if !candidates.is_empty() {
         let height = (candidates.len() as u16 + 2).min(10);
         let popup = Rect {
             x: full.x + 2,
-            y: area.y.saturating_sub(height + 1),
+            y: area.y.saturating_sub(height + 2),
             width: full.width.saturating_sub(4),
             height,
         };
@@ -65,7 +93,7 @@ pub fn render(app: &App, frame: &mut Frame, area: Rect) {
             format!("{}{cursor_char}", app.move_target),
             t.search_input(),
         ),
-        Span::styled("  (j/k pick, Enter to confirm, Esc to cancel)", t.dimmed()),
+        Span::styled("  (↑/↓ pick, Enter confirm, Esc cancel)", t.dimmed()),
     ];
 
     let paragraph = Paragraph::new(Line::from(spans)).style(t.status_bar());

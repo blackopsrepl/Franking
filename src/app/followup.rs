@@ -20,12 +20,11 @@ impl App {
     }
 
     pub(crate) fn open_followup(&mut self, marker: Marker) {
-        self.followup_lane = if self.followup_lane == Some(marker) {
-            None
-        } else {
-            Some(marker)
-        };
+        self.followup_lane = Some(marker);
+        self.starred_view = false;
         self.triage_lane = None;
+        self.selected.clear();
+        self.folder_index = self.folders.len();
         if self.current_folder != UNIFIED_INBOX {
             self.current_folder = "INBOX".into();
         }

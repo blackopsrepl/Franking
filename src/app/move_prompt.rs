@@ -22,6 +22,7 @@ impl App {
             self.move_target.clear();
             self.move_index = 0;
             self.move_is_copy = copy;
+            self.folder_rules.also_future = false;
             self.view = View::MovePrompt;
         }
     }
@@ -29,10 +30,11 @@ impl App {
     /// Folders matching the typed filter, excluding the current folder.
     pub(crate) fn move_candidates(&self) -> Vec<String> {
         let filter = self.move_target.trim().to_ascii_lowercase();
+        let source = self.selected_folder();
         self.folders
             .iter()
             .map(|folder| folder.name.clone())
-            .filter(|name| !name.eq_ignore_ascii_case(&self.current_folder))
+            .filter(|name| !name.eq_ignore_ascii_case(&source))
             .filter(|name| name != super::model::UNIFIED_INBOX)
             .filter(|name| filter.is_empty() || name.to_ascii_lowercase().contains(&filter))
             .collect()
@@ -66,13 +68,19 @@ impl App {
             self.view = View::EnvelopeList;
             return;
         };
+        if self.folder_rules.also_future && !self.move_is_copy {
+            if let Err(error) = self.save_move_future_rule(&target) {
+                self.set_error(&format!("Rule not saved; message not moved: {error}"));
+                return;
+            }
+        }
         let ids = self.target_ids();
         if let Some(id) = ids.first().cloned() {
             self.loading = true;
             self.pending_refresh_after_action = true;
             self.view = View::EnvelopeList;
-            let account = self.acct_owned();
-            let folder = self.current_folder.clone();
+            let account = self.selected_account();
+            let folder = self.selected_folder();
 
             if self.move_is_copy {
                 // A copy leaves the original in place, so there is nothing to undo.

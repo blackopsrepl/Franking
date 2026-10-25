@@ -84,10 +84,7 @@ fn file_picker_keys() {
 
 #[test]
 fn outbox_keys() {
-    assert_eq!(
-        resolve(View::EnvelopeList, key(KeyCode::Char('O'))),
-        Action::OpenOutbox
-    );
+    super::support::menu_only(View::EnvelopeList, KeyCode::Char('O'), Action::OpenOutbox);
     assert_eq!(
         resolve(View::Outbox, key(KeyCode::Char('j'))),
         Action::OutboxNext
@@ -120,10 +117,7 @@ fn settings_navigation_keys() {
 
 #[test]
 fn settings_keys() {
-    assert_eq!(
-        resolve(View::EnvelopeList, key(KeyCode::Char('P'))),
-        Action::OpenSettings
-    );
+    super::support::menu_only(View::EnvelopeList, KeyCode::Char('P'), Action::OpenSettings);
     assert_eq!(
         resolve(View::Settings, key(KeyCode::Char(' '))),
         Action::SettingsToggleNotifications

@@ -18,6 +18,9 @@ impl App {
 
     pub(crate) fn load_envelopes(&mut self) {
         self.loading = true;
+        if self.load_starred() {
+            return;
+        }
         if let Some(marker) = self.followup_lane {
             let result = self
                 .db
@@ -44,18 +47,6 @@ impl App {
         if self.current_folder == super::model::UNIFIED_INBOX {
             let window = self.page * self.page_size;
             self.worker.fetch_all_inboxes("INBOX".to_string(), window);
-            return;
-        }
-        if self.triage_lane.is_some() && self.current_folder.eq_ignore_ascii_case("INBOX") {
-            let window = (self.page * self.page_size).min(crate::worker::MAX_PER_ACCOUNT);
-            self.worker.fetch_envelopes(
-                self.acct_owned(),
-                "INBOX".to_string(),
-                1,
-                window,
-                None,
-                self.sort_order,
-            );
             return;
         }
         self.worker

@@ -8,10 +8,7 @@ use super::support::{ctrl, key};
 
 #[test]
 fn folder_list_opens_the_filter_browser() {
-    assert_eq!(
-        resolve(View::FolderList, key(KeyCode::Char('F'))),
-        Action::OpenSieve
-    );
+    super::support::menu_only(View::FolderList, KeyCode::Char('F'), Action::OpenSieve);
 }
 
 #[test]

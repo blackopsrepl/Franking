@@ -51,6 +51,7 @@ impl App {
                     self.current_folder = "INBOX".to_string();
                     self.triage_lane = None;
                     self.followup_lane = None;
+                    self.starred_view = false;
                 }
                 self.load_accounts();
                 self.set_status(&format!("Deleted account {name}."));

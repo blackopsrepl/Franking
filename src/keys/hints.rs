@@ -2,89 +2,18 @@
 
 use super::view::View;
 
-pub fn hints(view: View) -> &'static [(&'static str, &'static str)] {
-    match view {
-        View::EnvelopeList => &[
-            ("j/k", "nav"),
-            ("Enter", "read"),
-            ("v", "triage lane"),
-            ("1-5", "route sender"),
-            ("L/D", "reply/saved"),
-            ("y/Y", "mark reply/save"),
-            ("M", "quiet"),
-            ("+", "loud"),
-            ("B", "bundle"),
-            ("R", "reply to selected"),
-            ("b", "resurface"),
-            ("i", "note"),
-            ("%", "rename"),
-            ("c", "compose"),
-            ("d", "del"),
-            ("e", "archive"),
-            ("m", "move"),
-            ("C", "copy"),
-            ("!", "flag"),
-            ("N", "read"),
-            ("S", "sync"),
-            ("A", "all read"),
-            ("t", "thread"),
-            ("space", "select"),
-            ("u", "clear sel"),
-            ("z", "undo"),
-            ("< >", "unread"),
-            ("o", "sort"),
-            ("r", "thread read"),
-            ("/", "search"),
-            ("Tab", "folders"),
-            ("Ctrl+b", "contacts"),
-            ("?", "help"),
-        ],
-        View::MessageView => &[
-            ("j/k", "scroll"),
-            ("1-5", "route sender"),
-            ("L/D", "reply/saved"),
-            ("y/Y", "mark reply/save"),
-            ("M", "quiet"),
-            ("+", "loud"),
-            ("B", "bundle"),
-            ("R", "reply to selected"),
-            ("b", "resurface"),
-            ("i", "note"),
-            ("%", "rename"),
-            ("r", "reply"),
-            ("R", "all"),
-            ("f", "fwd"),
-            ("d", "del"),
-            ("e", "archive"),
-            ("C", "copy"),
-            ("a", "attach"),
-            ("Z", "zip all"),
-            ("N", "read"),
-            ("P", "unlock"),
-            ("T", "trust"),
-            ("o", "attach"),
-            ("/", "find"),
-            ("l", "links"),
-            ("h", "headers"),
-            ("Q", "quotes"),
-            ("H", "html"),
-            ("c", "to calendar"),
-            ("s", "save .eml"),
-            ("z", "undo"),
-            ("q", "back"),
-            ("?", "help"),
-        ],
-        View::FolderList => &[
-            ("j/k", "nav"),
-            ("Enter", "select"),
-            ("Tab", "emails"),
-            ("n", "new"),
-            ("r", "rename"),
-            ("a-z", "jump"),
-            ("d", "delete"),
-            ("F", "filters"),
-            ("?", "help"),
-        ],
+pub fn hints(view: View) -> Vec<(&'static str, &'static str)> {
+    if matches!(
+        view,
+        View::EnvelopeList | View::MessageView | View::FolderList
+    ) {
+        return super::commands::commands(view)
+            .into_iter()
+            .filter_map(|command| command.hint.map(|hint| (command.shortcut, hint)))
+            .collect();
+    }
+    let pairs: &[(&'static str, &'static str)] = match view {
+        View::EnvelopeList | View::MessageView | View::FolderList => unreachable!(),
         View::FolderPrompt => &[("Enter", "confirm"), ("Esc", "cancel")],
         View::MessageSearch => &[("Enter", "find"), ("Esc", "cancel")],
         View::LinkList => &[("j/k", "nav"), ("Enter", "open"), ("Esc", "close")],
@@ -239,5 +168,6 @@ pub fn hints(view: View) -> &'static [(&'static str, &'static str)] {
             ("Tab→Save→Enter", "save"),
             ("Esc", "cancel"),
         ],
-    }
+    };
+    pairs.to_vec()
 }

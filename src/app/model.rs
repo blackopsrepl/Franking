@@ -36,6 +36,9 @@ pub struct App {
     // ── View state ──────────────────────────────────────────────────
     pub view: View,
     pub previous_view: Option<View>,
+    pub(crate) actions_menu: Option<super::actions_menu::ActionsMenu>,
+    pub(crate) starred_view: bool,
+    pub(crate) folder_rules: super::folder_rules::FolderRulesState,
 
     // ── Account state ───────────────────────────────────────────────
     pub accounts: Vec<Account>,
@@ -190,6 +193,7 @@ pub struct App {
     // ── Status / loading ────────────────────────────────────────────
     pub status_message: String,
     pub status_is_error: bool,
+    pub(crate) status_since_tick: u64,
     pub loading: bool,
     pub tick_count: u64,
 

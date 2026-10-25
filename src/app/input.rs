@@ -8,6 +8,9 @@ use super::model::App;
 
 impl App {
     pub fn handle_key(&mut self, key: KeyEvent) {
+        if self.handle_folder_rules_key(key) || self.handle_actions_menu_key(key) {
+            return;
+        }
         if key.code == KeyCode::F(1)
             && !self
                 .compose_state
@@ -29,6 +32,10 @@ impl App {
         } else {
             keys::resolve(self.view, key)
         };
+        self.dispatch_action(action);
+    }
+
+    pub(crate) fn dispatch_action(&mut self, action: Action) {
         if self.try_local_action(&action)
             || self.try_snippet_action(&action)
             || self.try_clip_action(&action)
@@ -38,6 +45,9 @@ impl App {
             return;
         }
         match action {
+            Action::OpenActions => self.open_actions_menu(),
+            Action::OpenStarred => self.open_starred(),
+            Action::OpenFolderRules => self.open_folder_rules(),
             Action::Quit => self.running = false,
             Action::Back => self.go_back(),
             Action::MoveUp => self.move_selection(-1),

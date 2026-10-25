@@ -1,6 +1,7 @@
 /*! App unit test wiring. */
 
 mod accounts;
+mod actions_menu;
 mod annotations;
 mod archive;
 mod attachment_library;

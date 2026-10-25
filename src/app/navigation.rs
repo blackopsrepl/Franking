@@ -59,7 +59,7 @@ impl App {
                 self.envelope_state.select(Some(next));
             }
             View::FolderList => {
-                let len = self.folders.len();
+                let len = self.sidebar_len();
                 if len == 0 {
                     return;
                 }
@@ -135,7 +135,7 @@ impl App {
     }
 
     pub(crate) fn page_up(&mut self) {
-        if self.followup_lane.is_some() {
+        if self.followup_lane.is_some() || self.starred_view {
             return;
         }
         if self.view == View::EnvelopeList && self.page > 1 {
@@ -145,7 +145,7 @@ impl App {
     }
 
     pub(crate) fn page_down(&mut self) {
-        if self.followup_lane.is_some() {
+        if self.followup_lane.is_some() || self.starred_view {
             return;
         }
         if self.view == View::EnvelopeList && self.envelopes.len() >= self.page_size {
@@ -157,10 +157,19 @@ impl App {
     pub(crate) fn select_item(&mut self) {
         match self.view {
             View::FolderList => {
+                if self.folder_index == self.folders.len() {
+                    self.open_followup(crate::db::message_markers::Marker::ReplyLater);
+                    return;
+                }
+                if self.folder_index == self.folders.len() + 1 {
+                    self.open_starred();
+                    return;
+                }
                 if let Some(folder) = self.folders.get(self.folder_index) {
                     self.current_folder = folder.name.clone();
                     self.triage_lane = None;
                     self.followup_lane = None;
+                    self.starred_view = false;
                     self.selected.clear();
                     self.page = 1;
                     self.active_query = None;
@@ -176,6 +185,7 @@ impl App {
                     self.current_folder = "INBOX".to_string();
                     self.triage_lane = None;
                     self.followup_lane = None;
+                    self.starred_view = false;
                     self.selected.clear();
                     self.page = 1;
                     self.active_query = None;

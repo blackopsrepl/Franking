@@ -25,28 +25,14 @@ pub fn render(app: &mut App, frame: &mut Frame, area: Rect) {
     };
 
     let thread_indicator = if app.threaded { " \u{2637}" } else { "" }; // ☷ trigram
-    let title = if let Some(marker) = app.followup_lane {
+    let title = if app.starred_view {
+        " Starred · cached mail ".to_string()
+    } else if let Some(marker) = app.followup_lane {
         format!(" {} · {} ", app.current_folder, marker.label())
-    } else if let Some(filter) = app.stage_filter.as_ref() {
-        format!(" {} \u{00b7} stage: {filter} ", app.current_folder)
-    } else if let Some(filter) = app.collection_filter.as_ref() {
-        format!(" {} \u{00b7} collection: {filter} ", app.current_folder)
-    } else if let Some(lane) = app.triage_lane {
-        let cover = if app.covered_count > 0 {
-            format!(" · {} covered (V)", app.covered_count)
-        } else {
-            String::new()
-        };
-        format!(" {} · {lane:?} · p{}{cover} ", app.current_folder, app.page)
     } else if let Some(ref q) = app.active_query {
-        format!(
-            " {}{} \u{2014} search: {q} ",
-            app.current_folder, thread_indicator
-        )
-    } else if app.threaded {
-        format!(" {}{} ", app.current_folder, thread_indicator)
+        format!(" {}{thread_indicator} — search: {q} ", app.current_folder)
     } else {
-        format!(" {} \u{2014} p{} ", app.current_folder, app.page)
+        format!(" {}{thread_indicator} · p{} ", app.current_folder, app.page)
     };
     let title = if app.selected.is_empty() {
         title
@@ -93,21 +79,9 @@ pub fn render(app: &mut App, frame: &mut Frame, area: Rect) {
         .iter()
         .enumerate()
         .map(|(index, env)| {
-            let quiet_lane = matches!(
-                app.triage_lane,
-                Some(
-                    crate::db::sender_routes::Route::Reading
-                        | crate::db::sender_routes::Route::Receipts
-                )
-            );
-            let muted = app.muted_ids.contains(&env.id);
-            let loud = app.loud_ids.contains(&env.id);
-            let resurfaced = app.resurfaced_ids.contains(&env.id);
-            let base_style = if muted {
-                t.dimmed()
-            } else if env.is_flagged() {
+            let base_style = if env.is_flagged() {
                 t.flagged()
-            } else if !env.is_seen() && !quiet_lane {
+            } else if !env.is_seen() {
                 t.unread()
             } else {
                 t.normal()
@@ -118,11 +92,7 @@ pub fn render(app: &mut App, frame: &mut Frame, area: Rect) {
             } else {
                 " "
             };
-            let icon = if quiet_lane && !env.is_flagged() {
-                " "
-            } else {
-                env.flag_icon()
-            };
+            let icon = env.flag_icon();
             let flag_cell = Cell::from(format!("{marker} {icon}")).style(base_style);
             let sender = if app.is_unified_inbox() {
                 format!(
@@ -136,33 +106,16 @@ pub fn render(app: &mut App, frame: &mut Frame, area: Rect) {
             let from_cell = Cell::from(truncate(&sender, 24)).style(base_style);
             let depth = depths.get(index).copied().unwrap_or(0);
             // One base string, then one prefix, so a row costs few allocations.
-            let base = if let Some(alias) = app.subject_aliases.get(&env.id) {
-                format!("{alias}  ({})", env.subject)
-            } else if depth > 0 {
-                format!("{}\u{21b3} {}", "  ".repeat(depth), env.subject)
+            let base = if depth > 0 {
+                format!("{}↳ {}", "  ".repeat(depth), env.subject)
             } else {
                 env.subject.clone()
             };
-            let mut prefix = String::new();
-            let bundle_count = app.bundled_reps.get(&env.id).copied().unwrap_or(0);
-            if bundle_count > 1 {
-                let _ = write!(prefix, "\u{2261} {bundle_count} \u{00b7} ");
-            } else if resurfaced {
-                prefix.push_str("\u{25F7} resurfaced \u{00b7} ");
-            } else if loud {
-                prefix.push_str("loud \u{00b7} ");
-            } else if muted {
-                prefix.push_str("quiet \u{00b7} ");
-            }
-            let inbox_group = app.triage_lane == Some(crate::db::sender_routes::Route::Inbox)
-                && (index == 0 || app.envelopes[index - 1].is_seen() != env.is_seen());
-            if inbox_group {
-                prefix.push_str(if env.is_seen() {
-                    "Seen \u{00b7} "
-                } else {
-                    "New \u{00b7} "
-                });
-            }
+            let mut prefix = if app.muted_ids.contains(&env.id) {
+                "muted · ".to_string()
+            } else {
+                String::new()
+            };
             let collapsed = root_keys
                 .get(index)
                 .and_then(|key| app.collapsed_threads.get(key));

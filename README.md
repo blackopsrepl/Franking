@@ -71,27 +71,19 @@ cargo run -- --setup
 
 - **Non-blocking I/O** - Background workers for all mail operations
 - **Relative timestamps** - "2h ago", "Yesterday", "Mon"
-- **Threading support** - Press `t` to toggle threaded view; replies nest under their parent and server-side `THREAD` is used when available
-- **Auto-refresh** - New mail check every 60 seconds
-- **Folder unread counts** - Shows (3) badge on folders
-- **Mouse support** - Click to select, scroll wheel works
-- **Multi-account** - Switch with Ctrl+a; an "All Inboxes" folder merges every account's inbox when more than one account is configured
-- **Account-scoped mail triage** - In an inbox, `v` cycles Screening, Inbox, Reading, Receipts, Blocked, then the unfiltered server view. `1`-`5` routes the selected sender for the receiving account; see [mail workflow](WORKFLOW.md).
-- **Follow-up queues** - `y` marks a message Reply later, `Y` saves it for reference; `L`/`D` open the respective account-scoped queues, including from All Inboxes
-- **Quiet conversations and resurfacing** - `M` quiets (or restores) a conversation so new replies stop demanding attention; `b` sets a delay (30m, 2h, 1d) after which the conversation floats back to the top of the list
-- **Local annotations** - `i` writes a private note shown above the message; `%` renames a subject for your eyes only, and `x` places a single message in another lane
-- **Attachment library** - `Ctrl+l` lists attachments from cached mail across accounts; Enter opens the source message
-- **Read together** - `T` reads the selected messages, or the cursor row, in one numbered scroll
-- **Bypass token and cover** - Preferences holds a per-account token that lifts screening for a trusted stranger's subject; a cover hides previously seen Inbox mail until `V`
-- **Focus & reply** - `F` works the Reply later queue one message at a time: `n`/`p` move, `r`/`R` reply, `d` done
-- **Snippets** - `Ctrl+n` in compose inserts reusable text; `s` saves the current body as a snippet
-- **Text clips** - `*` in the reader saves an excerpt; `Ctrl+k` lists clips, Enter copies one to the clipboard
-- **Quiet or loud threads** - `M` quiets a conversation, `+` makes it always notify; both key on the conversation's message anchors
-- **Sender bundles** - `B` collapses a high-volume sender to one counted row, expands it, or unbundles it
-- **Workflow stages** - `Ctrl+g` assigns a conversation to an account-scoped stage and can filter the list by stage
-- **Bulk reply and reading stream** - `R` replies to every selected sender in one message; `T` in the Reading lane streams the loaded newsletters
-- **Collections** - `Ctrl+o` files a conversation into named collections and filters the list by one
-- **Merged conversations** - `Ctrl+t` merges two local conversations into one grouping without touching the mail
+- **Ordinary Inbox and server folders** — incoming mail stays visible; no screening, hidden lanes, or implicit sender classification. See [mail workflow](WORKFLOW.md).
+- **Searchable Actions** — `:` opens context-specific commands; type a name and press Enter. Secondary operations do not consume another letter shortcut.
+- **Short contextual footer** — everyday actions remain visible at 80 columns; Actions and Help stay discoverable at narrower widths.
+- **Threading** — enable threaded view from Actions; replies nest under their parent and server-side `THREAD` is used when available.
+- **Auto-refresh** — new mail check every 60 seconds.
+- **Folder unread counts and mouse navigation** — sidebar badges, click to select, scroll to navigate.
+- **Multi-account** — `Ctrl+a` switches accounts; All Inboxes combines their inboxes.
+- **Reply later** — `y` toggles a local follow-up marker; open the visible sidebar view to work the checklist. A successful direct reply clears its marker.
+- **Starred** — `!` toggles the server flag; the sidebar view lists flagged messages from locally cached folders. Refresh source folders to update this view.
+- **Explicit future-mail rules** — Move offers an unchecked option to move future mail from the same sender in the receiving IMAP account. Inspect/remove rules through Actions → Sender folder rules. Rules run while Franking fetches mail, not while it is closed.
+- **Mute conversations** — Actions → Mute / unmute controls notifications without hiding mail or changing its order.
+- **Snippets** — `Ctrl+n` in compose inserts reusable text; save a body as a snippet from the snippet picker.
+- **Attachment library** — open cached attachments across accounts from Actions.
 - **Fast keyboard navigation** - j/k and g/G in list/message views, plus direct multiline editing in compose
 - **Smart error handling** - Typed mail diagnostics and clean user-facing errors
 - **Structured message reader** - MIME-aware message content with one canonical HTML-first render path
@@ -108,44 +100,35 @@ cargo run -- --setup
 - **Drafts** - Save a draft and resume it from the Drafts folder; the draft is removed after sending
 - **Security indicators** - SPF/DKIM/DMARC verdicts from `Authentication-Results`, PGP/MIME and S/MIME structure detection, and OpenPGP/S/MIME verification and decryption
 - **Crypto keyring** - public/secret keys under `~/.local/share/franking/keys` verify and decrypt OpenPGP (inline and PGP/MIME) and S/MIME (PKCS#7 signed/enveloped)
-- **Calendar invitations** - `text/calendar` events show their summary and time with its timezone, cancelled events are marked, and `c` hands the invitation to Planner123 (`planner123-cli ical import`)
-- **Desktop notifications** - Quiet by default: `notify-send` for accepted Inbox senders when the IDLE watcher fires, with all/contacts/off preferences
+- **Calendar invitations** - `text/calendar` events show their summary and time with its timezone, cancelled events are marked, and Actions → Add invitation to calendar hands it to Planner123 (`planner123-cli ical import`)
+- **Desktop notifications** — all Inbox mail by default, with contacts-only/off preferences and explicit conversation mute.
 - **Offline cache** - Listings and search fall back to the local store when the server is unreachable
 - **Mark read/unread** - Press `N` to toggle the Seen flag
 
 ## Keybindings
 
-### Global
-- `Ctrl+c` / `Ctrl+q` - Quit
-- `Ctrl+a` - Switch account
-- `Ctrl+r` - Refresh
-- `?` - Help
-- `F1` - Help from any view (including compose); `g`/`G` jump to the start/end
+### Mail views
+- `j`/`k` or arrows — navigate or scroll; `g`/`G` — start/end in list and reader
+- `:` — searchable Actions; `?` / `F1` — contextual Help
+- `Ctrl+a` — switch account; `Ctrl+r` — refresh; `Ctrl+q` / `Ctrl+c` — quit
+- `Tab` — switch between sidebar and message list; `Enter` opens the selected item
 
-### Envelope List
-- `j`/`k` - Navigate up/down
-- `Enter` - Read message
-- `c` - Compose new
-- `d` - Delete
-- `m` - Move to folder
-- `!` - Toggle flag
-- `N` - Toggle read/unread
-- `A` - Mark all read
-- `t` - Toggle threaded view
-- `/` - Search
-- `Tab` - Focus folders
-- `Ctrl+b` - Open contacts
-- `I` - Open identities
+### Message list
+- `c` — compose; `/` — search; `n`/`p` — next/previous page
+- `e` — archive; `d` — delete; `m` — move to folder
+- `!` — toggle star; `N` — toggle read/unread; `y` — toggle Reply later
+- `Space` — select for a batch action; `Esc` — clear selection; `z` — undo
+- `q` — quit (Esc does not quit)
 
-### Message View
-- `j`/`k` - Scroll
-- `q`/`Esc` - Back to list
-- `r` - Reply
-- `R` - Reply all
-- `f` - Forward
-- `d` - Delete
-- `a` - Download attachments
-- `N` - Toggle read/unread
+### Reader
+- `r` — reply; `R` — reply all; `f` — forward
+- `e` — archive; `d` — delete; `m` — move; `a` — attachments
+- `!` — toggle star; `N` — read/unread; `y` — Reply later; `z` — undo
+- `/` — find text; `n`/`p` — next/previous match; `Space` — page down
+- `q` / `Esc` — return to list
+
+Copy, threading, sort, mute, contacts, identities, preferences, keys, outbox,
+calendar handoff, and other secondary operations are named in **Actions**.
 
 ### Compose View
 - `Tab` / `Shift+Tab` - Next/previous compose field

@@ -8,6 +8,9 @@ use super::model::App;
 
 impl App {
     pub fn handle_mouse(&mut self, mouse: MouseEvent) {
+        if self.actions_menu.is_some() || self.folder_rules.open {
+            return;
+        }
         // Layout: header (row 0), body (rows 1..h-1), status (row h-1)
         // Body: sidebar cols 0..22, envelope list cols 23..
         // Message view: full width (no sidebar)
@@ -39,7 +42,7 @@ impl App {
                 _ => {}
             },
             MouseEventKind::Down(MouseButton::Left) => {
-                if row == 0 || row >= h.saturating_sub(1) {
+                if row == 0 || row >= h.saturating_sub(self.mail_footer_height()) {
                     // Click on header or status bar -- ignore
                     return;
                 }
@@ -48,16 +51,16 @@ impl App {
                     View::MessageView | View::Help | View::AccountList => {
                         // In overlays, clicks don't do navigation
                     }
-                    _ => {
+                    View::EnvelopeList | View::FolderList => {
                         // Body area
                         let body_row = (row - 1) as usize; // offset past header
 
                         if col < 22 {
                             // Sidebar click
-                            if body_row > 0 && body_row <= self.folders.len() {
-                                // Account for border (row 0 of sidebar is border)
-                                let folder_idx = body_row.saturating_sub(1);
-                                if folder_idx < self.folders.len() {
+                            let visible = h.saturating_sub(3 + self.mail_footer_height()) as usize;
+                            if col > 0 && col < 21 && body_row > 0 && body_row <= visible {
+                                let folder_idx = self.sidebar_offset(visible) + body_row - 1;
+                                if folder_idx < self.sidebar_len() {
                                     self.folder_index = folder_idx;
                                     self.view = View::FolderList;
                                     self.select_item();
@@ -67,7 +70,8 @@ impl App {
                             // Envelope list click
                             // Account for border + header row (2 rows of table overhead)
                             if body_row >= 2 {
-                                let env_idx = body_row.saturating_sub(2);
+                                let env_idx =
+                                    self.envelope_state.offset() + body_row.saturating_sub(2);
                                 if env_idx < self.envelopes.len() {
                                     self.envelope_state.select(Some(env_idx));
                                     self.view = View::EnvelopeList;
@@ -75,6 +79,7 @@ impl App {
                             }
                         }
                     }
+                    _ => {}
                 }
             }
             // Right-click to go back

@@ -31,7 +31,7 @@ fn help_end_is_reachable_and_can_be_left_at_narrow_width() {
     terminal
         .draw(|frame| crate::ui::render(&mut app, frame))
         .unwrap();
-    assert!(app.help_max_scroll > 100);
+    assert!(app.help_max_scroll > 0);
     app.handle_key(key(KeyCode::Char('G')));
     assert_eq!(app.help_scroll, app.help_max_scroll);
     app.handle_key(key(KeyCode::Char('k')));

@@ -5,6 +5,35 @@ use crate::keys::View;
 use super::model::App;
 
 impl App {
+    pub(crate) fn sidebar_len(&self) -> usize {
+        self.folders.len() + 2
+    }
+
+    pub(crate) fn sidebar_active_index(&self) -> Option<usize> {
+        if self.starred_view {
+            Some(self.folders.len() + 1)
+        } else if self.followup_lane.is_some() {
+            Some(self.folders.len())
+        } else {
+            self.folders
+                .iter()
+                .position(|folder| folder.name == self.current_folder)
+        }
+    }
+
+    /// Deterministic viewport shared by rendering and mouse hit testing.
+    /// No render-only ListState offset can get lost between frames.
+    pub(crate) fn sidebar_offset(&self, visible_rows: usize) -> usize {
+        let selected = if self.view == View::FolderList {
+            Some(self.folder_index.min(self.sidebar_len() - 1))
+        } else {
+            self.sidebar_active_index()
+        };
+        selected
+            .unwrap_or(0)
+            .saturating_sub(visible_rows.saturating_sub(1))
+    }
+
     /// Extend the folder query and jump to the first match.
     pub(crate) fn folder_jump_input(&mut self, c: char) {
         self.folder_jump.push(c);
@@ -31,14 +60,20 @@ impl App {
         if query.is_empty() {
             return;
         }
-        match self
+        let labels = self
             .folders
             .iter()
-            .position(|folder| folder.name.to_ascii_lowercase().starts_with(&query))
-        {
-            Some(index) => {
+            .map(|folder| folder.name.as_str())
+            .chain(["Reply later", "Starred (cached)"]);
+        let found = labels.enumerate().find_map(|(index, label)| {
+            label
+                .to_ascii_lowercase()
+                .starts_with(&query)
+                .then(|| (index, label.to_owned()))
+        });
+        match found {
+            Some((index, name)) => {
                 self.folder_index = index;
-                let name = self.folders[index].name.clone();
                 self.set_status(&format!("Folder: {name}"));
             }
             None => self.set_status(&format!("No folder starts with {query}")),

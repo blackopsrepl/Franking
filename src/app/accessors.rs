@@ -18,12 +18,14 @@ impl App {
     /// Set a transient status message (non-error).
     pub fn set_status(&mut self, msg: &str) {
         self.status_message = msg.to_string();
+        self.status_since_tick = self.tick_count;
         self.status_is_error = false;
     }
 
     /// Set a transient error message.
     pub(crate) fn set_error(&mut self, msg: &str) {
         self.status_message = msg.to_string();
+        self.status_since_tick = self.tick_count;
         self.status_is_error = true;
     }
 
@@ -51,6 +53,9 @@ impl App {
             running: true,
             view: View::EnvelopeList,
             previous_view: None,
+            actions_menu: None,
+            starred_view: false,
+            folder_rules: Default::default(),
             accounts: Vec::new(),
             account_index: 0,
             account_name: initial_account,
@@ -139,6 +144,7 @@ impl App {
             help_max_scroll: 0,
             status_message: String::new(),
             status_is_error: false,
+            status_since_tick: 0,
             loading: false,
             tick_count: 0,
             pending_open_command: None,
@@ -194,6 +200,12 @@ impl App {
     /// Handle a tick event: animate spinner + poll background results + auto-refresh.
     pub fn tick(&mut self) {
         self.tick_count = self.tick_count.wrapping_add(1);
+        if !self.loading
+            && !self.status_is_error
+            && self.tick_count.wrapping_sub(self.status_since_tick) >= 20
+        {
+            self.status_message.clear();
+        }
         self.poll_worker();
         self.outbox_flush_tick();
         self.autosave_tick();

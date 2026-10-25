@@ -1,6 +1,7 @@
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[rustfmt::skip]
 pub enum Action {
+    OpenActions, OpenStarred, OpenFolderRules,
     Quit, Back, MoveUp, MoveDown,
     PageUp, PageDown, JumpTop, JumpBottom,
     Select, OpenMessage, Compose, Reply,

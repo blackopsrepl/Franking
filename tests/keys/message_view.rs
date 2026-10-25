@@ -8,26 +8,17 @@ use super::support::key;
 
 #[test]
 fn message_view_opens_unlock_prompt() {
-    assert_eq!(
-        resolve(View::MessageView, key(KeyCode::Char('P'))),
-        Action::UnlockPrompt
-    );
+    super::support::menu_only(View::MessageView, KeyCode::Char('P'), Action::UnlockPrompt);
 }
 
 #[test]
 fn message_view_toggles_all_headers() {
-    assert_eq!(
-        resolve(View::MessageView, key(KeyCode::Char('h'))),
-        Action::ToggleHeaders
-    );
+    super::support::menu_only(View::MessageView, KeyCode::Char('h'), Action::ToggleHeaders);
 }
 
 #[test]
 fn message_view_lists_links() {
-    assert_eq!(
-        resolve(View::MessageView, key(KeyCode::Char('l'))),
-        Action::OpenLinks
-    );
+    super::support::menu_only(View::MessageView, KeyCode::Char('l'), Action::OpenLinks);
     assert_eq!(
         resolve(View::LinkList, key(KeyCode::Char('j'))),
         Action::LinkNext
@@ -52,26 +43,21 @@ fn message_view_archives() {
 
 #[test]
 fn message_view_toggles_html_source() {
-    assert_eq!(
-        resolve(View::MessageView, key(KeyCode::Char('H'))),
-        Action::ToggleHtmlSource
+    super::support::menu_only(
+        View::MessageView,
+        KeyCode::Char('H'),
+        Action::ToggleHtmlSource,
     );
 }
 
 #[test]
 fn message_view_toggles_quoted_lines() {
-    assert_eq!(
-        resolve(View::MessageView, key(KeyCode::Char('Q'))),
-        Action::ToggleQuotes
-    );
+    super::support::menu_only(View::MessageView, KeyCode::Char('Q'), Action::ToggleQuotes);
 }
 
 #[test]
 fn message_view_hands_an_invitation_to_the_calendar() {
-    assert_eq!(
-        resolve(View::MessageView, key(KeyCode::Char('c'))),
-        Action::AddToPlanner
-    );
+    super::support::menu_only(View::MessageView, KeyCode::Char('c'), Action::AddToPlanner);
 }
 
 #[test]
@@ -112,25 +98,20 @@ fn message_view_undoes_the_last_action() {
 
 #[test]
 fn message_view_saves_the_source() {
-    assert_eq!(
-        resolve(View::MessageView, key(KeyCode::Char('s'))),
-        Action::SaveMessage
-    );
+    super::support::menu_only(View::MessageView, KeyCode::Char('s'), Action::SaveMessage);
 }
 
 #[test]
 fn message_view_trusts_the_smime_signer() {
-    assert_eq!(
-        resolve(View::MessageView, key(KeyCode::Char('T'))),
-        Action::TrustSigner
-    );
+    super::support::menu_only(View::MessageView, KeyCode::Char('T'), Action::TrustSigner);
 }
 
 #[test]
 fn message_view_opens_the_attachment_list() {
-    assert_eq!(
-        resolve(View::MessageView, key(KeyCode::Char('o'))),
-        Action::OpenAttachments
+    super::support::menu_only(
+        View::MessageView,
+        KeyCode::Char('o'),
+        Action::OpenAttachments,
     );
 }
 

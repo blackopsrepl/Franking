@@ -45,7 +45,7 @@ pub fn render(app: &App, frame: &mut Frame, area: Rect) {
         .borders(Borders::ALL)
         .border_style(border_style);
 
-    let items: Vec<ListItem> = app
+    let mut items: Vec<ListItem> = app
         .folders
         .iter()
         .enumerate()
@@ -63,7 +63,7 @@ pub fn render(app: &App, frame: &mut Frame, area: Rect) {
                 Some(false) => format!("{content} ·"),
                 _ => content,
             };
-            let style = if folder.name == app.current_folder {
+            let style = if app.sidebar_active_index() == Some(i) {
                 if focused && i == app.folder_index {
                     t.folder_active()
                 } else {
@@ -78,18 +78,30 @@ pub fn render(app: &App, frame: &mut Frame, area: Rect) {
         })
         .collect();
 
+    for (index, label) in ["↩ Reply later", "★ Starred (cached)"]
+        .into_iter()
+        .enumerate()
+    {
+        let row = app.folders.len() + index;
+        let style = if focused && app.folder_index == row {
+            t.selected()
+        } else if app.sidebar_active_index() == Some(row) {
+            t.accent_style().add_modifier(Modifier::BOLD)
+        } else {
+            t.folder_inactive()
+        };
+        items.push(ListItem::new(label).style(style));
+    }
+
     let mut state = ListState::default();
     if focused {
         state.select(Some(app.folder_index));
     } else {
         // Highlight the active folder
-        let active = app
-            .folders
-            .iter()
-            .position(|f| f.name == app.current_folder);
-        state.select(active);
+        state.select(app.sidebar_active_index());
     }
 
+    *state.offset_mut() = app.sidebar_offset(area.height.saturating_sub(2) as usize);
     let list = List::new(items).block(block);
     frame.render_stateful_widget(list, area, &mut state);
 }

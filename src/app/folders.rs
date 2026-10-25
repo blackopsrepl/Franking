@@ -17,6 +17,7 @@ pub enum FolderPromptKind {
 pub struct FolderPrompt {
     pub kind: FolderPromptKind,
     pub input: String,
+    pub source: String,
 }
 
 impl FolderPrompt {
@@ -42,15 +43,16 @@ impl FolderPrompt {
 impl App {
     /// Subscribe to the current folder, or unsubscribe from it.
     pub(crate) fn toggle_folder_subscription(&mut self) {
-        if self.current_folder == super::model::UNIFIED_INBOX {
-            self.set_status("The unified inbox is not a mailbox on the server.");
-            return;
-        }
-        let Some(folder) = self
-            .folders
-            .iter()
-            .find(|folder| folder.name == self.current_folder)
-        else {
+        let target = if self.view == View::FolderList {
+            self.folders
+                .get(self.folder_index)
+                .map(|folder| folder.name.as_str())
+        } else {
+            Some(self.current_folder.as_str())
+        };
+        let Some(folder) = self.folders.iter().find(|folder| {
+            Some(folder.name.as_str()) == target && folder.name != super::model::UNIFIED_INBOX
+        }) else {
             self.set_status("No folder is selected.");
             return;
         };
@@ -78,11 +80,28 @@ impl App {
     }
 
     fn open_folder_prompt(&mut self, kind: FolderPromptKind) {
+        let source = if self.view == View::FolderList && kind != FolderPromptKind::Create {
+            let Some(folder) = self.folders.get(self.folder_index) else {
+                self.set_status("This is a local view, not a server folder.");
+                return;
+            };
+            folder.name.clone()
+        } else {
+            self.current_folder.clone()
+        };
+        if kind != FolderPromptKind::Create && source == super::model::UNIFIED_INBOX {
+            self.set_status("All Inboxes is a view, not a server folder.");
+            return;
+        }
         let input = match kind {
-            FolderPromptKind::Rename => self.current_folder.clone(),
+            FolderPromptKind::Rename => source.clone(),
             _ => String::new(),
         };
-        self.folder_prompt = Some(FolderPrompt { kind, input });
+        self.folder_prompt = Some(FolderPrompt {
+            kind,
+            input,
+            source,
+        });
         self.view = View::FolderPrompt;
     }
 
@@ -123,7 +142,7 @@ impl App {
                 self.worker.create_folder(self.acct_owned(), input);
             }
             FolderPromptKind::Rename => {
-                let from = self.current_folder.clone();
+                let from = prompt.source;
                 if input.is_empty() || input == from {
                     self.pending_folder_refresh = false;
                     self.set_status("Folder name unchanged.");
@@ -139,8 +158,7 @@ impl App {
                     return;
                 }
                 self.loading = true;
-                self.worker
-                    .delete_folder(self.acct_owned(), self.current_folder.clone());
+                self.worker.delete_folder(self.acct_owned(), prompt.source);
             }
         }
     }

@@ -57,7 +57,7 @@ impl App {
     /// Hide every message below the cursor's thread root.
     pub(crate) fn collapse_thread(&mut self) {
         if !self.threaded {
-            self.set_status("Threading is off (press t).");
+            self.set_status("Threading is off; enable it in Actions.");
             return;
         }
         let Some(index) = self.envelope_state.selected() else {
@@ -135,7 +135,7 @@ impl App {
             return;
         }
         if !self.threaded {
-            self.set_status("Threading is off (press t).");
+            self.set_status("Threading is off; enable it in Actions.");
             return;
         }
         let Some(index) = self.envelope_state.selected() else {

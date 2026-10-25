@@ -1,6 +1,7 @@
 mod account_edit;
 mod account_list;
 pub mod action_bar;
+mod actions_menu;
 mod annotation_prompt;
 mod attachment_library;
 mod attachment_list;
@@ -15,6 +16,7 @@ mod file_picker;
 mod focus;
 mod folder_list;
 mod folder_prompt;
+mod folder_rules;
 mod help;
 mod help_wrap;
 mod identity_edit;
@@ -84,7 +86,7 @@ pub fn render(app: &mut App, frame: &mut Frame) {
     let outer = Layout::vertical([
         Constraint::Length(1),
         Constraint::Fill(1),
-        Constraint::Length(1),
+        Constraint::Length(app.mail_footer_height()),
     ])
     .split(area);
 
@@ -181,5 +183,9 @@ pub fn render(app: &mut App, frame: &mut Frame) {
     }
     if app.view == View::IdentityEdit {
         identity_edit::render(app, frame);
+    }
+    actions_menu::render(app, frame);
+    if app.folder_rules.open {
+        folder_rules::render(app, frame);
     }
 }

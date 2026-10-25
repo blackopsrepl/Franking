@@ -18,4 +18,3 @@ mod template_ops;
 mod watch;
 
 pub use dispatch::{Worker, WorkerResult};
-pub(crate) use inbox::MAX_PER_ACCOUNT;
