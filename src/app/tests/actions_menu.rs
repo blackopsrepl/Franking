@@ -91,7 +91,7 @@ fn action_menu_does_not_capture_compose_text() {
 #[test]
 fn local_views_do_not_offer_server_folder_mutations() {
     let mut app = App::new(None);
-    app.starred_view = true;
+    app.local_view = Some(crate::app::LocalView::Starred);
     type_text(&mut app, ":mark folder");
     assert!(app.actions_menu.as_ref().unwrap().matches().is_empty());
 }

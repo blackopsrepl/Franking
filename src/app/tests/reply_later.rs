@@ -1,12 +1,12 @@
-/*! Follow-up queues keep independent state per source account. */
+/*! Reply later keeps independent state per source account. */
 
-use crate::app::App;
-use crate::db::message_markers::{self, Marker};
+use crate::app::{App, LocalView};
+use crate::db::message_markers;
 
-use super::triage::envelope;
+use super::envelope;
 
 #[test]
-fn reply_and_saved_lanes_show_marked_mail_across_accounts() {
+fn reply_later_shows_marked_mail_across_accounts() {
     let conn = rusqlite::Connection::open_in_memory().unwrap();
     crate::db::init_for_test(&conn).unwrap();
     let mut app = App::new(Some("personal".into()));
@@ -16,18 +16,14 @@ fn reply_and_saved_lanes_show_marked_mail_across_accounts() {
         envelope("personal", "1", "alice@example.org"),
         envelope("work", "2", "bob@example.org"),
     ]);
-    app.toggle_marker(Marker::ReplyLater);
+    app.toggle_reply_later();
     let marked = app.selected_envelope().unwrap().clone();
-    app.toggle_marker(Marker::Saved);
-    assert!(message_markers::has(app.db.as_ref().unwrap(), &marked, Marker::Saved).unwrap());
-    app.open_followup(Marker::ReplyLater);
+    app.open_reply_later();
+    assert_eq!(app.local_view, Some(LocalView::ReplyLater));
     assert_eq!(app.envelopes.len(), 1);
     assert_eq!(app.envelopes[0].account, marked.account);
-    app.toggle_marker(Marker::ReplyLater);
+    app.toggle_reply_later();
     assert!(app.envelopes.is_empty());
-    app.open_followup(Marker::Saved);
-    assert_eq!(app.envelopes.len(), 1);
-    assert_eq!(app.envelopes[0].sender_display(), marked.sender_display());
 }
 
 #[test]
@@ -42,7 +38,7 @@ fn reply_retains_the_original_source_for_completion() {
 }
 
 #[test]
-fn completing_a_reply_clears_only_its_own_queue_entry() {
+fn completing_a_reply_clears_only_its_own_entry() {
     let conn = rusqlite::Connection::open_in_memory().unwrap();
     crate::db::init_for_test(&conn).unwrap();
     let mut app = App::new(Some("personal".into()));
@@ -50,19 +46,13 @@ fn completing_a_reply_clears_only_its_own_queue_entry() {
     app.current_folder = "All Inboxes".into();
     let work = envelope("work", "7", "alice@example.org");
     let personal = envelope("personal", "7", "alice@example.org");
-    message_markers::set(app.db.as_ref().unwrap(), &work, Marker::ReplyLater, true).unwrap();
-    message_markers::set(
-        app.db.as_ref().unwrap(),
-        &personal,
-        Marker::ReplyLater,
-        true,
-    )
-    .unwrap();
-    message_markers::set(app.db.as_ref().unwrap(), &work, Marker::Saved, true).unwrap();
+    let conn = app.db.as_ref().unwrap();
+    message_markers::set_reply_later(conn, &work, true).unwrap();
+    message_markers::set_reply_later(conn, &personal, true).unwrap();
     app.handle_envelopes_loaded(vec![work.clone()]);
     app.reply(false);
     app.complete_reply_marker().unwrap();
-    assert!(!message_markers::has(app.db.as_ref().unwrap(), &work, Marker::ReplyLater).unwrap());
-    assert!(message_markers::has(app.db.as_ref().unwrap(), &work, Marker::Saved).unwrap());
-    assert!(message_markers::has(app.db.as_ref().unwrap(), &personal, Marker::ReplyLater).unwrap());
+    let conn = app.db.as_ref().unwrap();
+    assert!(!message_markers::is_reply_later(conn, &work).unwrap());
+    assert!(message_markers::is_reply_later(conn, &personal).unwrap());
 }

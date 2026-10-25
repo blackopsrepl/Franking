@@ -127,7 +127,7 @@ cargo run -- --setup
 - `/` — find text; `n`/`p` — next/previous match; `Space` — page down
 - `q` / `Esc` — return to list
 
-Copy, threading, sort, mute, contacts, identities, preferences, keys, outbox,
+Copy, threading, sort, empty folder, mute, contacts, identities, preferences, keys, outbox,
 calendar handoff, and other secondary operations are named in **Actions**.
 
 ### Compose View

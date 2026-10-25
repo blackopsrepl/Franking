@@ -98,7 +98,7 @@ impl App {
         }
         if self.notification_rule == NotificationRule::Contacts {
             return newest
-                .and_then(|envelope| crate::db::sender_routes::sender_address(&envelope.sender))
+                .and_then(|envelope| envelope.sender.mailbox())
                 .is_some_and(|sender| self.should_notify(&sender));
         }
         true

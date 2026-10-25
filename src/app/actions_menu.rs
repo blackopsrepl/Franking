@@ -26,6 +26,7 @@ impl ActionsMenu {
                         || !matches!(
                             command.action,
                             Action::MarkFolderRead
+                                | Action::EmptyFolder
                                 | Action::SyncFolder
                                 | Action::MarkThreadRead
                                 | Action::ToggleThread
@@ -70,7 +71,7 @@ impl App {
                         .get(self.folder_index)
                         .is_some_and(|f| f.name != super::model::UNIFIED_INBOX)
                 } else {
-                    !self.starred_view && self.followup_lane.is_none() && !self.is_unified_inbox()
+                    self.local_view.is_none() && !self.is_unified_inbox()
                 },
             });
         }

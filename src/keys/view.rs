@@ -18,38 +18,12 @@ pub enum View {
     Settings,
     /// Prompt for a send-later delay.
     SchedulePrompt,
-    /// Prompt for a resurface delay on a conversation.
-    ResurfacePrompt,
-    /// Prompt to place one message in a lane, overriding its sender's route.
-    PlacePrompt,
-    /// Prompt to write a private note on the selected message.
-    MessageNote,
-    /// Prompt to rename the selected conversation's subject locally.
-    SubjectAlias,
     /// Cross-account attachment library.
     AttachmentLibrary,
-    /// Several selected messages read in one scroll.
-    ReadTogether,
-    /// Prompt to set, regenerate, or clear the screening bypass token.
-    BypassPrompt,
-    /// Sequential reply queue over the Reply later pile.
-    FocusReply,
     /// Reusable snippet picker.
     Snippets,
     /// Naming a snippet before saving the current compose body.
     SnippetName,
-    /// Saved text clips.
-    Clips,
-    /// Capturing an excerpt from the open message.
-    ClipPrompt,
-    /// Workflow stage board.
-    StageBoard,
-    /// Naming a workflow stage.
-    StageName,
-    /// Named collections board.
-    CollectionBoard,
-    /// Naming a collection.
-    CollectionName,
     Search,
     Help,
     MovePrompt,
@@ -91,14 +65,4 @@ pub enum View {
     SavedSearches,
     /// Naming the active search before saving it.
     SaveSearch,
-}
-
-impl View {
-    /// A status-bar prompt that should leave the reader visible behind it.
-    pub fn overlays_message(self) -> bool {
-        matches!(
-            self,
-            View::MessageNote | View::SubjectAlias | View::ClipPrompt | View::PlacePrompt
-        )
-    }
 }

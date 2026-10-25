@@ -18,22 +18,13 @@ mod migration_v9_v10;
 mod schema;
 mod schema_local;
 
-pub mod account_policy;
-pub mod annotations;
-pub mod bundles;
-pub mod clips;
-pub mod collections;
 pub mod conversations;
 pub mod folder_rules;
 pub mod message_markers;
-pub mod message_routes;
 pub mod preferences;
 pub mod saved_searches;
 mod schema_migrations;
-pub mod sender_routes;
 pub mod snippets;
-pub mod stages;
-pub mod thread_merges;
 
 pub use connection::{db_path, init_for_test, open, schema_version, CURRENT_SCHEMA_VERSION};
 

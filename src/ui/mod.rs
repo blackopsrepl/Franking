@@ -2,18 +2,13 @@ mod account_edit;
 mod account_list;
 pub mod action_bar;
 mod actions_menu;
-mod annotation_prompt;
 mod attachment_library;
 mod attachment_list;
-mod bypass_prompt;
-mod clips;
-mod collections;
 mod compose;
 mod contact_edit;
 mod contacts;
 mod envelope_list;
 mod file_picker;
-mod focus;
 mod folder_list;
 mod folder_prompt;
 mod folder_rules;
@@ -27,15 +22,11 @@ mod move_prompt;
 mod outbox;
 mod passphrase_prompt;
 mod pgp_keys;
-mod place_prompt;
-mod read_together;
-mod resurface_prompt;
 mod saved_searches;
 mod search;
 mod settings;
 mod sieve;
 mod snippets;
-mod stages;
 mod status_bar;
 pub mod util;
 
@@ -98,16 +89,6 @@ pub fn render(app: &mut App, frame: &mut Frame) {
         View::MessageView => {
             message_view::render(app, frame, outer[1]);
         }
-        // A status prompt opened from the reader keeps the message behind it.
-        view if view.overlays_message() && app.message_content.is_some() => {
-            message_view::render(app, frame, outer[1]);
-        }
-        View::ReadTogether => {
-            read_together::render(app, frame, outer[1]);
-        }
-        View::FocusReply => {
-            focus::render(app, frame, outer[1]);
-        }
         _ => {
             let main =
                 Layout::horizontal([Constraint::Length(22), Constraint::Fill(1)]).split(outer[1]);
@@ -123,14 +104,7 @@ pub fn render(app: &mut App, frame: &mut Frame) {
         View::PassphrasePrompt => passphrase_prompt::render(app, frame, outer[2]),
         View::FolderPrompt => folder_prompt::render(app, frame, outer[2]),
         View::SchedulePrompt => outbox::render_schedule_prompt(app, frame, outer[2]),
-        View::ResurfacePrompt => resurface_prompt::render(app, frame, outer[2]),
-        View::BypassPrompt => bypass_prompt::render(app, frame, outer[2]),
         View::SnippetName => snippets::render_name_prompt(app, frame, outer[2]),
-        View::ClipPrompt => clips::render_prompt(app, frame, outer[2]),
-        View::StageName => stages::render_name_prompt(app, frame, outer[2]),
-        View::CollectionName => collections::render_name_prompt(app, frame, outer[2]),
-        View::PlacePrompt => place_prompt::render(app, frame, outer[2]),
-        View::MessageNote | View::SubjectAlias => annotation_prompt::render(app, frame, outer[2]),
         View::MessageSearch => message_view::render_search_prompt(app, frame, outer[2]),
         _ => status_bar::render(app, frame, outer[2]),
     }
@@ -153,15 +127,6 @@ pub fn render(app: &mut App, frame: &mut Frame) {
     }
     if app.view == View::Snippets {
         snippets::render(app, frame);
-    }
-    if app.view == View::Clips {
-        clips::render(app, frame);
-    }
-    if app.view == View::StageBoard {
-        stages::render(app, frame);
-    }
-    if app.view == View::CollectionBoard {
-        collections::render(app, frame);
     }
     if app.view == View::LinkList {
         links::render(app, frame);

@@ -39,11 +39,10 @@ fn envelope(account: &str, uid: &str, folder: &str) -> Envelope {
 #[test]
 fn explicit_rules_are_account_scoped_persistent_and_removable() {
     let conn = setup();
-    crate::db::sender_routes::set(
-        &conn,
-        "work",
-        "alice@example.org",
-        crate::db::sender_routes::Route::Blocked,
+    conn.execute(
+        "INSERT INTO sender_routes (account, sender, route)
+         VALUES ('work', 'alice@example.org', 'blocked')",
+        [],
     )
     .unwrap();
     assert!(list(&conn).unwrap().is_empty());
@@ -60,9 +59,12 @@ fn explicit_rules_are_account_scoped_persistent_and_removable() {
     );
     assert!(delete(&conn, "work", "alice@example.org").unwrap());
     assert_eq!(list(&conn).unwrap().len(), 1);
+    let legacy: i64 = conn
+        .query_row("SELECT COUNT(*) FROM sender_routes", [], |row| row.get(0))
+        .unwrap();
     assert_eq!(
-        crate::db::sender_routes::get(&conn, "work", "alice@example.org").unwrap(),
-        crate::db::sender_routes::Route::Blocked
+        legacy, 1,
+        "old screening decisions are never imported or deleted"
     );
 }
 

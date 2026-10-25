@@ -133,6 +133,23 @@ pub enum Sender {
 }
 
 impl Sender {
+    /// The normalized sender mailbox. Only a parsed address is a stable key;
+    /// display names alone are not.
+    pub fn mailbox(&self) -> Option<String> {
+        let value = match self {
+            Sender::Structured {
+                addr: Some(addr), ..
+            } => addr.clone(),
+            Sender::Plain(text) => crate::contacts::parse_address_list(text)
+                .into_iter()
+                .next()
+                .map(|(_, email)| email)?,
+            _ => return None,
+        };
+        let value = value.trim().to_ascii_lowercase();
+        (value.contains('@') && !value.contains(char::is_whitespace)).then_some(value)
+    }
+
     pub fn display(&self) -> String {
         match self {
             Sender::Plain(s) => s.clone(),

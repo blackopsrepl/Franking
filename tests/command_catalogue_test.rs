@@ -22,31 +22,8 @@ fn every_advertised_shortcut_resolves_without_collisions() {
 }
 
 #[test]
-fn retired_workflows_have_no_shortcut_or_action_menu_entry() {
+fn digits_are_unbound_and_colon_opens_actions() {
     for view in [View::EnvelopeList, View::MessageView, View::FolderList] {
-        let rows = commands(view);
-        for row in rows {
-            assert!(!matches!(
-                row.action,
-                Action::CycleTriageLane
-                    | Action::RouteSender(_)
-                    | Action::RouteMessage(_)
-                    | Action::OpenStages
-                    | Action::OpenCollections
-                    | Action::MergeConversation
-                    | Action::OpenClips
-                    | Action::OpenClipPrompt
-                    | Action::OpenSubjectAlias
-                    | Action::CycleBundle
-                    | Action::OpenReadTogether
-                    | Action::OpenFocusReply
-                    | Action::OpenResurface
-                    | Action::ToggleLoudConversation
-                    | Action::ToggleCoverReveal
-                    | Action::ToggleMarker(franking::db::message_markers::Marker::Saved)
-                    | Action::OpenFollowup(franking::db::message_markers::Marker::Saved)
-            ));
-        }
         for digit in '1'..='5' {
             assert_eq!(
                 resolve(

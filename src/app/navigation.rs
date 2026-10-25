@@ -14,12 +14,6 @@ impl App {
             View::AccountList => {
                 self.view = View::EnvelopeList;
             }
-            View::ReadTogether => {
-                self.close_read_together();
-            }
-            View::FocusReply => {
-                self.close_focus();
-            }
             View::Contacts | View::ContactSearch => {
                 self.contact_search.clear();
                 self.contact_search_active = false;
@@ -135,7 +129,7 @@ impl App {
     }
 
     pub(crate) fn page_up(&mut self) {
-        if self.followup_lane.is_some() || self.starred_view {
+        if self.local_view.is_some() {
             return;
         }
         if self.view == View::EnvelopeList && self.page > 1 {
@@ -145,7 +139,7 @@ impl App {
     }
 
     pub(crate) fn page_down(&mut self) {
-        if self.followup_lane.is_some() || self.starred_view {
+        if self.local_view.is_some() {
             return;
         }
         if self.view == View::EnvelopeList && self.envelopes.len() >= self.page_size {
@@ -158,7 +152,7 @@ impl App {
         match self.view {
             View::FolderList => {
                 if self.folder_index == self.folders.len() {
-                    self.open_followup(crate::db::message_markers::Marker::ReplyLater);
+                    self.open_reply_later();
                     return;
                 }
                 if self.folder_index == self.folders.len() + 1 {
@@ -167,9 +161,7 @@ impl App {
                 }
                 if let Some(folder) = self.folders.get(self.folder_index) {
                     self.current_folder = folder.name.clone();
-                    self.triage_lane = None;
-                    self.followup_lane = None;
-                    self.starred_view = false;
+                    self.local_view = None;
                     self.selected.clear();
                     self.page = 1;
                     self.active_query = None;
@@ -181,11 +173,8 @@ impl App {
                 if let Some(account) = self.accounts.get(self.account_index) {
                     self.account_name = Some(account.name.clone());
                     self.pending_undo = None;
-                    self.refresh_bypass_token();
                     self.current_folder = "INBOX".to_string();
-                    self.triage_lane = None;
-                    self.followup_lane = None;
-                    self.starred_view = false;
+                    self.local_view = None;
                     self.selected.clear();
                     self.page = 1;
                     self.active_query = None;
@@ -213,14 +202,6 @@ impl App {
                     self.help_scroll = self.help_scroll.saturating_sub(1);
                 }
             }
-            View::ReadTogether => {
-                if delta > 0 {
-                    self.read_together_scroll = self.read_together_scroll.saturating_add(1);
-                } else {
-                    self.read_together_scroll = self.read_together_scroll.saturating_sub(1);
-                }
-            }
-            View::FocusReply => self.focus_scroll(delta),
             _ => {}
         }
     }

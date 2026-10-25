@@ -5,7 +5,7 @@ use super::model::App;
 impl App {
     /// Toggle the current row's selection and advance the cursor.
     pub(crate) fn toggle_select(&mut self) {
-        if self.is_unified_inbox() || self.starred_view || self.followup_lane.is_some() {
+        if self.is_unified_inbox() || self.local_view.is_some() {
             self.set_status("Batch selection across accounts needs account-aware actions.");
             return;
         }
@@ -41,7 +41,7 @@ impl App {
 
     /// Prevent an operation from using a mailbox belonging to another account.
     pub(crate) fn can_mutate_selected_mailbox(&mut self) -> bool {
-        if let Some(allowed) = self.guard_virtual_mailbox_mutation() {
+        if let Some(allowed) = self.guard_local_view_mutation() {
             return allowed;
         }
         if !self.is_unified_inbox() {

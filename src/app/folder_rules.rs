@@ -115,8 +115,7 @@ impl App {
         if self.move_is_copy || self.target_ids().len() != 1 {
             return None;
         }
-        self.selected_envelope()
-            .and_then(|e| crate::db::sender_routes::sender_address(&e.sender))
+        self.selected_envelope().and_then(|e| e.sender.mailbox())
     }
 
     pub(crate) fn toggle_move_future_rule(&mut self) {

@@ -29,6 +29,15 @@ pub struct PendingOpenCommand {
 /// Synthetic folder aggregating every account's inbox.
 pub(crate) const UNIFIED_INBOX: &str = "All Inboxes";
 
+/// Local views listed in the sidebar below the server folders.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum LocalView {
+    /// The Reply later checklist.
+    ReplyLater,
+    /// Server-flagged messages from cached folders.
+    Starred,
+}
+
 /// Top-level application state (TEA model).
 pub struct App {
     pub running: bool,
@@ -37,7 +46,8 @@ pub struct App {
     pub view: View,
     pub previous_view: Option<View>,
     pub(crate) actions_menu: Option<super::actions_menu::ActionsMenu>,
-    pub(crate) starred_view: bool,
+    /// Reply later or Starred, shown instead of a server folder.
+    pub(crate) local_view: Option<LocalView>,
     pub(crate) folder_rules: super::folder_rules::FolderRulesState,
 
     // ── Account state ───────────────────────────────────────────────
@@ -49,67 +59,13 @@ pub struct App {
     pub folders: Vec<Folder>,
     pub folder_index: usize,
     pub current_folder: String,
-    /// Optional local triage lane over the current account's INBOX.
-    pub(crate) triage_lane: Option<crate::db::sender_routes::Route>,
-    pub(crate) followup_lane: Option<crate::db::message_markers::Marker>,
     pub(crate) pending_reply_marker: Option<Envelope>,
-    /// Recipients a bulk reply fills in once its template loads.
-    pub(crate) pending_bulk_to: Option<String>,
-    /// Conversation anchors and decisions for the loaded list, keyed by envelope id.
+    /// Conversation anchors for the loaded list, keyed by envelope id.
     pub(crate) conversation_anchors: HashMap<String, Vec<String>>,
+    /// Loaded envelopes whose conversation is muted.
     pub(crate) muted_ids: std::collections::HashSet<String>,
-    pub(crate) resurfaced_ids: std::collections::HashSet<String>,
-    pub(crate) loud_ids: std::collections::HashSet<String>,
-    /// Buffered resurface delay input.
-    pub(crate) resurface_input: String,
-    /// Display aliases for the loaded list, keyed by envelope id.
-    pub(crate) subject_aliases: HashMap<String, String>,
-    /// Buffered text for the note or subject-alias prompt.
-    pub(crate) annotation_input: String,
-    /// Private note for the open message, if one was written.
-    pub(crate) message_note: Option<String>,
-
-    /// Screening bypass token for the current account.
-    pub(crate) bypass_token: Option<String>,
-    /// Buffered token input while the bypass prompt is open.
-    pub(crate) bypass_input: String,
-    /// Whether the cover has been lifted for this session.
-    pub(crate) cover_revealed: bool,
-    /// How many seen messages the cover is hiding.
-    pub(crate) covered_count: usize,
-
     /// Reusable compose snippets.
     pub(crate) snippets: super::snippets::SnippetsState,
-    /// Saved text clips.
-    pub(crate) clips: super::clips::ClipsState,
-    /// Workflow stages and the board state.
-    pub(crate) stages: super::stages::StagesState,
-    /// Stage each loaded conversation anchor belongs to.
-    pub(crate) stage_of_anchor: HashMap<String, String>,
-    /// Active stage filter by name.
-    pub(crate) stage_filter: Option<String>,
-    /// Named collections and the board state.
-    pub(crate) collections: super::collections::CollectionsState,
-    /// Collections each loaded conversation anchor belongs to.
-    pub(crate) collection_of_anchor: HashMap<String, Vec<String>>,
-    /// Active collection filter by name.
-    pub(crate) collection_filter: Option<String>,
-    /// Locally merged conversation roots, keyed by source anchor.
-    pub(crate) merge_roots: HashMap<String, String>,
-    /// Merge source awaiting a target: (account, anchor).
-    pub(crate) pending_merge: Option<(String, String)>,
-
-    /// Bundled senders for the loaded accounts, keyed by (account, sender).
-    pub(crate) bundled_senders: super::bundle_view::BundleKeys,
-    /// Bundles expanded for this session.
-    pub(crate) expanded_bundles: super::bundle_view::BundleKeys,
-    /// Collapsed bundle representative count, keyed by envelope id.
-    pub(crate) bundled_reps: std::collections::HashMap<String, usize>,
-
-    /// Sequential reply queue over Reply later.
-    pub(crate) focus: Option<super::focus::FocusState>,
-    /// Whether the in-flight reply came from the focus queue.
-    pub(crate) focus_reply_in_flight: bool,
 
     // ── Envelope state ──────────────────────────────────────────────
     pub envelopes: Vec<Envelope>,
@@ -157,8 +113,6 @@ pub struct App {
     pub(crate) mark_read_on_open: bool,
     /// Highlighted preference row.
     pub(crate) settings_index: usize,
-    /// Incremental folder-search query.
-    pub(crate) folder_jump: String,
     /// Ordering applied to the listed page.
     pub(crate) sort_order: crate::mail::sort::SortOrder,
     /// Messages fetched per page.
@@ -285,8 +239,4 @@ pub struct App {
 
     /// Cross-account attachment library.
     pub(crate) attachment_library: super::attachment_library::AttachmentLibraryState,
-
-    /// Messages loaded together for one scroll.
-    pub(crate) read_together: Option<Vec<MessageDocument>>,
-    pub(crate) read_together_scroll: u16,
 }

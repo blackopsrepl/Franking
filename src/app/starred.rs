@@ -1,63 +1,20 @@
-/*! Cached server-flagged messages; legacy Saved markers stay independent. */
+/*! Starred: server-flagged messages from locally cached folders. */
 
 use anyhow::{Context, Result};
 use rusqlite::Connection;
 
-use crate::keys::View;
 use crate::mail::store;
 use crate::mail::types::{Envelope, Sender};
 
-use super::model::{App, UNIFIED_INBOX};
+use super::model::App;
 
 impl App {
-    /// Shared mutation guard for cross-folder queues. Batch ids are only UIDs,
-    /// so they cannot safely identify messages from different source folders.
-    pub(crate) fn guard_virtual_mailbox_mutation(&mut self) -> Option<bool> {
-        if !self.starred_view && self.followup_lane.is_none() {
-            return None;
-        }
-        let allowed = self.selected.is_empty()
-            && self.selected_envelope().is_some_and(|e| {
-                e.account.is_some() && e.account == self.account_name && e.folder.is_some()
-            });
-        if !allowed {
-            self.set_status(
-                "Open the source account and clear batch selection before changing this message.",
-            );
-        }
-        Some(allowed)
-    }
-
-    pub(crate) fn open_starred(&mut self) {
-        self.starred_view = true;
-        if self.current_folder != UNIFIED_INBOX {
-            self.current_folder = "INBOX".into();
-        }
-        self.followup_lane = None;
-        self.triage_lane = None;
-        self.selected.clear();
-        self.active_query = None;
-        self.page = 1;
-        self.folder_index = self.folders.len() + 1;
-        self.envelopes.clear();
-        self.envelope_state.select(None);
-        self.view = View::EnvelopeList;
-        self.load_envelopes();
-    }
-
-    /// Returns true when this local view handled loading (including failures).
-    pub(crate) fn load_starred(&mut self) -> bool {
-        if !self.starred_view {
-            return false;
-        }
-        let account = (self.current_folder != UNIFIED_INBOX)
-            .then_some(self.account_name.as_deref())
-            .flatten();
+    pub(crate) fn load_starred(&mut self) {
         let result = self
             .db
             .as_ref()
             .context("local database is unavailable")
-            .and_then(|conn| cached_starred(conn, account));
+            .and_then(|conn| cached_starred(conn, self.local_view_account()));
         match result {
             Ok(envelopes) => {
                 self.handle_envelopes_loaded(envelopes);
@@ -70,7 +27,6 @@ impl App {
                 self.set_error(&format!("Could not open Starred (cached): {error}"));
             }
         }
-        true
     }
 }
 

@@ -31,8 +31,9 @@ all, `f` forwards, `a` opens attachments, and Esc returns to the list.
 
 Press **`:` for Actions**, type a command name, use arrows to choose, then Enter.
 Esc closes Actions without executing anything or leaving the underlying view.
-Threading, sorting, copying, mute, contacts, identities, keys, preferences, and
-the outbox live here rather than competing for more letter bindings.
+Threading, sorting, copying, emptying a folder, mute, contacts, identities,
+keys, preferences, and the outbox live here rather than competing for more
+letter bindings.
 `?` or F1 opens contextual help; F1 also works in compose.
 
 The footer shows only the most useful controls for its current context. It
@@ -68,7 +69,7 @@ Notifications default to **all Inbox mail**. Preferences offers all, contacts
 only, or off. **Actions → Mute / unmute conversation** suppresses notifications
 for that conversation without hiding it or changing its ordering. Matching uses
 available Message-ID/reply anchors, so a deep reply with no loaded parent may
-not be recognised. Off stays off; legacy loud rules cannot override it.
+not be recognised. Off stays off; nothing overrides it.
 
 ## Existing installations
 
@@ -77,10 +78,11 @@ contacts, snippets, saved searches, and follow-up records remain intact.
 
 Screening lanes, per-message placement, bypass tokens, seen-mail covers,
 resurfacing, loud priority, bundles, stages, collections, local conversation
-merges, clips, subject aliases, read-together, focus-and-reply, and the separate
-Saved shelf are retired from the interface. Their existing local records remain
-stored for compatibility, but do not silently affect ordinary mail listings.
-Legacy Saved records are not automatically turned into server stars.
+merges, clips, private notes, subject aliases, read-together, focus-and-reply,
+bulk reply, and the separate Saved shelf have been removed from Franking. Their
+rows remain in the local database untouched, but no code reads them, and they
+never affect listings, ordering, or notifications. Saved records are not turned
+into server stars.
 Previously stored focused-Inbox notification settings now mean all Inbox mail;
 explicit off and contacts-only preferences are retained.
 

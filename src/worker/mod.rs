@@ -11,7 +11,6 @@ mod listing;
 mod oauth_ops;
 mod outbox_ops;
 mod outgoing_ops;
-mod read_together_ops;
 mod search_ops;
 mod sieve_ops;
 mod template_ops;

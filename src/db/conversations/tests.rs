@@ -1,4 +1,4 @@
-/*! Conversation rule and anchor tests. */
+/*! Conversation mute and anchor tests. */
 
 use super::*;
 use crate::mail::types::Sender;
@@ -42,38 +42,6 @@ fn unmuting_forgets_a_rule_that_carries_no_other_decision() {
         })
         .unwrap();
     assert_eq!(rows, 0);
-}
-
-#[test]
-fn resurfacing_is_due_only_after_its_time() {
-    let conn = Connection::open_in_memory().unwrap();
-    crate::db::init_for_test(&conn).unwrap();
-    let root = envelope("1", Some("root@x"), None);
-    let anchors = anchors(&root);
-    set_resurface(&conn, "work", &anchors, Some("2026-09-23T12:00:00Z")).unwrap();
-    assert!(!is_due(&conn, "work", &anchors, "2026-09-23T11:00:00Z").unwrap());
-    assert!(is_due(&conn, "work", &anchors, "2026-09-23T13:00:00Z").unwrap());
-    set_resurface(&conn, "work", &anchors, None).unwrap();
-    assert!(!is_due(&conn, "work", &anchors, "2026-09-23T13:00:00Z").unwrap());
-}
-
-#[test]
-fn a_loud_conversation_always_notifies_and_clears_with_its_anchors() {
-    let conn = Connection::open_in_memory().unwrap();
-    crate::db::init_for_test(&conn).unwrap();
-    let root = envelope("1", Some("root@x"), None);
-    let anchors = anchors(&root);
-    set_loud(&conn, "work", &anchors, true).unwrap();
-    assert!(is_loud(&conn, "work", &anchors).unwrap());
-    assert!(!is_loud(&conn, "personal", &anchors).unwrap());
-    set_loud(&conn, "work", &anchors, false).unwrap();
-    assert!(!is_loud(&conn, "work", &anchors).unwrap());
-    let rows: i64 = conn
-        .query_row("SELECT COUNT(*) FROM conversation_rules", [], |row| {
-            row.get(0)
-        })
-        .unwrap();
-    assert_eq!(rows, 0, "a lone loud flag is forgotten");
 }
 
 #[test]

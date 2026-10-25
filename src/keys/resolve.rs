@@ -13,17 +13,10 @@ use super::resolve_contacts::{
     resolve_identity_edit, resolve_identity_list,
 };
 use super::resolve_keys::{resolve_keys, resolve_keys_prompt};
-use super::resolve_prompts::resolve_bypass;
-use super::resolve_prompts::resolve_focus;
-use super::resolve_prompts::resolve_read_together;
 use super::resolve_prompts::{
-    resolve_annotation, resolve_attachment_library, resolve_attachment_list, resolve_folder_prompt,
-    resolve_help, resolve_link_list, resolve_message_search, resolve_move_prompt, resolve_place,
-    resolve_resurface, resolve_search, resolve_unlock_prompt,
-};
-use super::resolve_prompts::{
-    resolve_clip_prompt, resolve_clips, resolve_collection_name, resolve_collections,
-    resolve_snippet_name, resolve_snippets, resolve_stage_name, resolve_stages,
+    resolve_attachment_library, resolve_attachment_list, resolve_folder_prompt, resolve_help,
+    resolve_link_list, resolve_message_search, resolve_move_prompt, resolve_search,
+    resolve_snippet_name, resolve_snippets, resolve_unlock_prompt,
 };
 use super::resolve_saved::{resolve_save_search, resolve_saved_searches};
 use super::resolve_sieve::{resolve_sieve_edit, resolve_sieve_name, resolve_sieve_scripts};
@@ -43,21 +36,9 @@ pub fn resolve(view: View, key: KeyEvent) -> Action {
         View::Outbox => return resolve_outbox(key),
         View::Settings => return resolve_settings(key),
         View::SchedulePrompt => return resolve_schedule(key),
-        View::ResurfacePrompt => return resolve_resurface(key),
-        View::PlacePrompt => return resolve_place(key),
         View::AttachmentLibrary => return resolve_attachment_library(key),
-        View::ReadTogether => return resolve_read_together(key),
-        View::BypassPrompt => return resolve_bypass(key),
-        View::FocusReply => return resolve_focus(key),
         View::Snippets => return resolve_snippets(key),
         View::SnippetName => return resolve_snippet_name(key),
-        View::Clips => return resolve_clips(key),
-        View::ClipPrompt => return resolve_clip_prompt(key),
-        View::StageBoard => return resolve_stages(key),
-        View::StageName => return resolve_stage_name(key),
-        View::CollectionBoard => return resolve_collections(key),
-        View::CollectionName => return resolve_collection_name(key),
-        View::MessageNote | View::SubjectAlias => return resolve_annotation(key),
         View::AttachmentView => return resolve_attachment_view(key),
         View::LinkList => return resolve_link_list(key),
         View::SavedSearches => return resolve_saved_searches(key),
@@ -82,7 +63,6 @@ pub fn resolve(view: View, key: KeyEvent) -> Action {
             KeyCode::Char('c') | KeyCode::Char('q') => Action::Quit,
             KeyCode::Char('a') => Action::SwitchAccount,
             KeyCode::Char('r') => Action::Refresh,
-
             _ => Action::None,
         };
     }
@@ -112,22 +92,9 @@ pub fn resolve(view: View, key: KeyEvent) -> Action {
         | View::Outbox
         | View::Settings
         | View::SchedulePrompt
-        | View::ResurfacePrompt
-        | View::PlacePrompt
-        | View::MessageNote
-        | View::SubjectAlias
         | View::AttachmentLibrary
-        | View::ReadTogether
-        | View::BypassPrompt
-        | View::FocusReply
         | View::Snippets
         | View::SnippetName
-        | View::Clips
-        | View::ClipPrompt
-        | View::StageBoard
-        | View::StageName
-        | View::CollectionBoard
-        | View::CollectionName
         | View::AttachmentView
         | View::Keys
         | View::KeysPrompt

@@ -57,18 +57,9 @@ impl App {
     }
 
     pub fn render_message_body(&self, width: usize) -> String {
-        let body = self
-            .current_message()
+        self.current_message()
             .map(|message| message.render(width))
-            .unwrap_or_default();
-        match self
-            .message_note
-            .as_deref()
-            .filter(|note| !note.trim().is_empty())
-        {
-            Some(note) => format!("Note: {note}\n\n{body}"),
-            None => body,
-        }
+            .unwrap_or_default()
     }
 
     pub fn rendered_message_line_count(&self, width: usize) -> u16 {

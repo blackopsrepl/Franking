@@ -91,80 +91,12 @@ pub(super) fn resolve_move_prompt(key: KeyEvent) -> Action {
     }
 }
 
-pub(super) fn resolve_resurface(key: KeyEvent) -> Action {
-    match key.code {
-        KeyCode::Enter => Action::ResurfaceSubmit,
-        KeyCode::Esc => Action::ResurfaceCancel,
-        KeyCode::Backspace => Action::ResurfaceBackspace,
-        KeyCode::Char(c) => Action::ResurfaceInput(c),
-        _ => Action::None,
-    }
-}
-
-pub(super) fn resolve_annotation(key: KeyEvent) -> Action {
-    match key.code {
-        KeyCode::Enter => Action::AnnotationSubmit,
-        KeyCode::Esc => Action::AnnotationCancel,
-        KeyCode::Backspace => Action::AnnotationBackspace,
-        KeyCode::Char(c) => Action::AnnotationInput(c),
-        _ => Action::None,
-    }
-}
-
 pub(super) fn resolve_attachment_library(key: KeyEvent) -> Action {
     match key.code {
         KeyCode::Char('j') | KeyCode::Down => Action::AttachmentLibraryNext,
         KeyCode::Char('k') | KeyCode::Up => Action::AttachmentLibraryPrev,
         KeyCode::Enter | KeyCode::Char('o') => Action::AttachmentLibraryOpen,
         KeyCode::Esc | KeyCode::Char('q') => Action::AttachmentLibraryClose,
-        _ => Action::None,
-    }
-}
-
-pub(super) fn resolve_place(key: KeyEvent) -> Action {
-    match key.code {
-        KeyCode::Char('1') => Action::RouteMessage(crate::db::sender_routes::Route::Inbox),
-        KeyCode::Char('2') => Action::RouteMessage(crate::db::sender_routes::Route::Reading),
-        KeyCode::Char('3') => Action::RouteMessage(crate::db::sender_routes::Route::Receipts),
-        KeyCode::Char('4') => Action::RouteMessage(crate::db::sender_routes::Route::Blocked),
-        KeyCode::Char('5') => Action::RouteMessage(crate::db::sender_routes::Route::Screening),
-        KeyCode::Esc | KeyCode::Char('q') => Action::PlaceCancel,
-        _ => Action::None,
-    }
-}
-
-pub(super) fn resolve_read_together(key: KeyEvent) -> Action {
-    match key.code {
-        KeyCode::Char('j') | KeyCode::Down => Action::ScrollDown,
-        KeyCode::Char('k') | KeyCode::Up => Action::ScrollUp,
-        KeyCode::Char('g') => Action::JumpTop,
-        KeyCode::Char('G') => Action::JumpBottom,
-        KeyCode::Esc | KeyCode::Char('q') => Action::Back,
-        _ => Action::None,
-    }
-}
-
-pub(super) fn resolve_bypass(key: KeyEvent) -> Action {
-    match key.code {
-        KeyCode::Enter => Action::BypassSubmit,
-        KeyCode::Esc => Action::BypassCancel,
-        KeyCode::Backspace => Action::BypassBackspace,
-        KeyCode::Tab => Action::BypassGenerate,
-        KeyCode::Char(c) => Action::BypassInput(c),
-        _ => Action::None,
-    }
-}
-
-pub(super) fn resolve_focus(key: KeyEvent) -> Action {
-    match key.code {
-        KeyCode::Char('j') | KeyCode::Down => Action::ScrollDown,
-        KeyCode::Char('k') | KeyCode::Up => Action::ScrollUp,
-        KeyCode::Char('n') | KeyCode::Char('>') => Action::FocusNext,
-        KeyCode::Char('p') | KeyCode::Char('<') => Action::FocusPrev,
-        KeyCode::Char('r') => Action::FocusReply,
-        KeyCode::Char('R') => Action::FocusReplyAll,
-        KeyCode::Char('d') => Action::FocusDone,
-        KeyCode::Esc | KeyCode::Char('q') => Action::Back,
         _ => Action::None,
     }
 }
@@ -187,76 +119,6 @@ pub(super) fn resolve_snippet_name(key: KeyEvent) -> Action {
         KeyCode::Esc => Action::SnippetNameCancel,
         KeyCode::Backspace => Action::SnippetNameBackspace,
         KeyCode::Char(c) => Action::SnippetNameInput(c),
-        _ => Action::None,
-    }
-}
-
-pub(super) fn resolve_clips(key: KeyEvent) -> Action {
-    match key.code {
-        KeyCode::Char('j') | KeyCode::Down => Action::ClipsNext,
-        KeyCode::Char('k') | KeyCode::Up => Action::ClipsPrev,
-        KeyCode::Enter | KeyCode::Char('y') => Action::ClipCopy,
-        KeyCode::Char('d') => Action::ClipDelete,
-        KeyCode::Esc | KeyCode::Char('q') => Action::ClipsClose,
-        _ => Action::None,
-    }
-}
-
-pub(super) fn resolve_clip_prompt(key: KeyEvent) -> Action {
-    match key.code {
-        KeyCode::Enter => Action::ClipSubmit,
-        KeyCode::Esc => Action::ClipCancel,
-        KeyCode::Backspace => Action::ClipBackspace,
-        KeyCode::Char(c) => Action::ClipInput(c),
-        _ => Action::None,
-    }
-}
-
-pub(super) fn resolve_stages(key: KeyEvent) -> Action {
-    match key.code {
-        KeyCode::Char('j') | KeyCode::Down => Action::StagesNext,
-        KeyCode::Char('k') | KeyCode::Up => Action::StagesPrev,
-        KeyCode::Enter => Action::StagesAssign,
-        KeyCode::Char('u') => Action::StagesUnassign,
-        KeyCode::Char('f') => Action::StagesFilter,
-        KeyCode::Char('n') => Action::StagesNew,
-        KeyCode::Char('r') => Action::StagesRename,
-        KeyCode::Char('d') => Action::StagesDelete,
-        KeyCode::Esc | KeyCode::Char('q') => Action::StagesClose,
-        _ => Action::None,
-    }
-}
-
-pub(super) fn resolve_stage_name(key: KeyEvent) -> Action {
-    match key.code {
-        KeyCode::Enter => Action::StageNameSubmit,
-        KeyCode::Esc => Action::StageNameCancel,
-        KeyCode::Backspace => Action::StageNameBackspace,
-        KeyCode::Char(c) => Action::StageNameInput(c),
-        _ => Action::None,
-    }
-}
-
-pub(super) fn resolve_collections(key: KeyEvent) -> Action {
-    match key.code {
-        KeyCode::Char('j') | KeyCode::Down => Action::CollectionsNext,
-        KeyCode::Char('k') | KeyCode::Up => Action::CollectionsPrev,
-        KeyCode::Enter => Action::CollectionsToggle,
-        KeyCode::Char('f') => Action::CollectionsFilter,
-        KeyCode::Char('n') => Action::CollectionsNew,
-        KeyCode::Char('r') => Action::CollectionsRename,
-        KeyCode::Char('d') => Action::CollectionsDelete,
-        KeyCode::Esc | KeyCode::Char('q') => Action::CollectionsClose,
-        _ => Action::None,
-    }
-}
-
-pub(super) fn resolve_collection_name(key: KeyEvent) -> Action {
-    match key.code {
-        KeyCode::Enter => Action::CollectionNameSubmit,
-        KeyCode::Esc => Action::CollectionNameCancel,
-        KeyCode::Backspace => Action::CollectionNameBackspace,
-        KeyCode::Char(c) => Action::CollectionNameInput(c),
         _ => Action::None,
     }
 }

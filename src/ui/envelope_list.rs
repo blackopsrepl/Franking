@@ -25,10 +25,12 @@ pub fn render(app: &mut App, frame: &mut Frame, area: Rect) {
     };
 
     let thread_indicator = if app.threaded { " \u{2637}" } else { "" }; // ☷ trigram
-    let title = if app.starred_view {
-        " Starred · cached mail ".to_string()
-    } else if let Some(marker) = app.followup_lane {
-        format!(" {} · {} ", app.current_folder, marker.label())
+    let title = if let Some(view) = app.local_view {
+        let name = match view {
+            crate::app::LocalView::ReplyLater => "Reply later",
+            crate::app::LocalView::Starred => "Starred · cached mail",
+        };
+        format!(" {} · {name} ", app.current_folder)
     } else if let Some(ref q) = app.active_query {
         format!(" {}{thread_indicator} — search: {q} ", app.current_folder)
     } else {

@@ -97,7 +97,7 @@ pub fn target_for<'a>(
     let (Some(account), Some(folder), Some(sender)) = (
         envelope.account.as_deref(),
         envelope.folder.as_deref(),
-        crate::db::sender_routes::sender_address(&envelope.sender),
+        envelope.sender.mailbox(),
     ) else {
         return Ok(None);
     };

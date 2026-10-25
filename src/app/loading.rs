@@ -18,31 +18,10 @@ impl App {
 
     pub(crate) fn load_envelopes(&mut self) {
         self.loading = true;
-        if self.load_starred() {
-            return;
-        }
-        if let Some(marker) = self.followup_lane {
-            let result = self
-                .db
-                .as_ref()
-                .ok_or_else(|| anyhow::anyhow!("local database is unavailable"))
-                .and_then(|conn| {
-                    crate::db::message_markers::list(
-                        conn,
-                        (self.current_folder != super::model::UNIFIED_INBOX)
-                            .then_some(self.account_name.as_deref())
-                            .flatten(),
-                        marker,
-                    )
-                });
-            match result {
-                Ok(envelopes) => self.handle_envelopes_loaded(envelopes),
-                Err(error) => {
-                    self.loading = false;
-                    self.set_error(&format!("Could not open {}: {error}", marker.label()));
-                }
-            }
-            return;
+        match self.local_view {
+            Some(super::model::LocalView::Starred) => return self.load_starred(),
+            Some(super::model::LocalView::ReplyLater) => return self.load_reply_later(),
+            None => {}
         }
         if self.current_folder == super::model::UNIFIED_INBOX {
             let window = self.page * self.page_size;
@@ -74,9 +53,6 @@ impl App {
     }
 
     pub(crate) fn load_message(&mut self) {
-        if self.expand_bundle_at_cursor() {
-            return;
-        }
         if let Some(id) = self.selected_envelope_id().map(|s| s.to_string()) {
             self.loading = true;
             if self.current_folder_is_drafts() {
@@ -271,7 +247,7 @@ impl App {
     }
 
     pub(crate) fn toggle_thread(&mut self) {
-        if self.triage_lane.is_some() {
+        if self.local_view.is_some() {
             self.set_status("Threading is available in server folders.");
             return;
         }

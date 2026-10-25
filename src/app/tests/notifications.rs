@@ -2,9 +2,8 @@
 
 use crate::app::notification_rules::NotificationRule;
 use crate::app::App;
-use crate::db::sender_routes::{self, Route};
 
-use super::triage::envelope;
+use super::envelope;
 
 #[test]
 fn notification_rule_round_trips() {
@@ -48,12 +47,9 @@ fn notification_rule_round_trips() {
 }
 
 #[test]
-fn inbox_notifications_ignore_sender_routes_and_bypass_tokens() {
+fn every_inbox_message_notifies_by_default() {
     let conn = rusqlite::Connection::open_in_memory().unwrap();
     crate::db::init_for_test(&conn).unwrap();
-    sender_routes::set(&conn, "work", "alice@example.org", Route::Blocked).unwrap();
-    sender_routes::set(&conn, "personal", "alice@example.org", Route::Reading).unwrap();
-    crate::db::account_policy::set_bypass_token(&conn, "work", Some("Red87")).unwrap();
     let mut app = App::new(Some("work".into()));
     app.db = Some(conn);
     let work = envelope("work", "1", "alice@example.org");
@@ -70,13 +66,12 @@ fn inbox_notifications_ignore_sender_routes_and_bypass_tokens() {
 }
 
 #[test]
-fn mute_and_off_cannot_be_overridden_by_legacy_loud_rules() {
+fn mute_and_off_silence_notifications() {
     let conn = rusqlite::Connection::open_in_memory().unwrap();
     crate::db::init_for_test(&conn).unwrap();
     let mut app = App::new(Some("work".into()));
     let mail = envelope("work", "1", "new@example.org");
     let anchors = crate::db::conversations::anchors(&mail);
-    crate::db::conversations::set_loud(&conn, "work", &anchors, true).unwrap();
     crate::db::conversations::set_muted(&conn, "work", &anchors, true).unwrap();
     app.db = Some(conn);
     assert!(!app.notify_for_new_mail(Some("work"), "INBOX", Some(&mail)));

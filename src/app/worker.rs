@@ -39,14 +39,6 @@ impl App {
                         self.set_error(&format!("Failed to read message: {e}"));
                     }
                 },
-                WorkerResult::FocusMessage(result) => self.handle_focus_message(*result),
-                WorkerResult::ReadTogether(Ok(documents)) => {
-                    self.handle_read_together(documents);
-                }
-                WorkerResult::ReadTogether(Err(e)) => {
-                    self.loading = false;
-                    self.set_error(&format!("Failed to read messages: {e}"));
-                }
                 WorkerResult::AttachmentLibrary(result) => {
                     self.handle_attachment_library(result);
                 }
@@ -108,17 +100,12 @@ impl App {
                     let marker_error = self.complete_reply_marker().err();
                     self.clear_autosave();
                     self.compose_state = None;
-                    if self.focus.is_some() && self.focus_reply_in_flight {
-                        self.set_status(&msg);
-                        self.focus_advance_after_send();
-                    } else {
-                        self.view = View::EnvelopeList;
-                        if let Some((account, folder, id)) = self.pending_draft.take() {
-                            self.worker.delete_message(account, folder, id);
-                        }
-                        self.set_status(&msg);
-                        self.refresh_envelopes();
+                    self.view = View::EnvelopeList;
+                    if let Some((account, folder, id)) = self.pending_draft.take() {
+                        self.worker.delete_message(account, folder, id);
                     }
+                    self.set_status(&msg);
+                    self.refresh_envelopes();
                     if let Some(error) = marker_error {
                         self.set_error(&format!(
                             "Message sent, but reply queue update failed: {error}"
@@ -152,9 +139,6 @@ impl App {
     pub(crate) fn handle_template_loaded(&mut self, raw: String) {
         if let Some(ref mut cs) = self.compose_state {
             populate_from_template(cs, &raw);
-            if let Some(to) = self.pending_bulk_to.take() {
-                cs.to = to;
-            }
             self.view = View::Compose;
         }
     }
@@ -204,14 +188,6 @@ impl App {
     }
 
     pub(crate) fn handle_envelopes_loaded(&mut self, envelopes: Vec<Envelope>) {
-        let envelopes = if self.triage_lane.is_some() {
-            match self.filter_triage_lane(envelopes) {
-                Some(envelopes) => envelopes,
-                None => return,
-            }
-        } else {
-            envelopes
-        };
         // Detect new mail by comparing unseen counts
         let old_unseen: usize = self.envelopes.iter().filter(|e| !e.is_seen()).count();
         let new_unseen: usize = envelopes.iter().filter(|e| !e.is_seen()).count();

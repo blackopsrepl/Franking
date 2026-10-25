@@ -42,15 +42,11 @@ fn natural_root(
 }
 
 impl App {
-    /// Thread key for every envelope currently listed, with local merges
-    /// applied so separate threads can be worked as one.
+    /// Thread key for every envelope currently listed.
     pub(crate) fn thread_root_keys(&self) -> Vec<String> {
         let by_id = id_index(&self.envelopes);
         (0..self.envelopes.len())
-            .map(|index| {
-                let natural = natural_root(&by_id, &self.envelopes, index);
-                self.merge_roots.get(&natural).cloned().unwrap_or(natural)
-            })
+            .map(|index| natural_root(&by_id, &self.envelopes, index))
             .collect()
     }
 

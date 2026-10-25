@@ -6,6 +6,26 @@ use rusqlite::Connection;
 use super::migration_tests::versioned_v1;
 use super::{init_for_test, schema_version, CURRENT_SCHEMA_VERSION};
 
+/// A stored sender decision, read without the retired routing API.
+fn sender_route(conn: &Connection, account: &str, sender: &str) -> Option<String> {
+    use rusqlite::OptionalExtension;
+    conn.query_row(
+        "SELECT route FROM sender_routes WHERE account = ?1 AND sender = ?2",
+        [account, sender],
+        |row| row.get(0),
+    )
+    .optional()
+    .unwrap()
+}
+
+fn store_sender_route(conn: &Connection, account: &str, sender: &str, route: &str) {
+    conn.execute(
+        "INSERT INTO sender_routes (account, sender, route) VALUES (?1, ?2, ?3)",
+        [account, sender, route],
+    )
+    .unwrap();
+}
+
 #[test]
 fn v1_to_current_preserves_accounts_contacts_tags_and_identities() {
     let conn = versioned_v1();
@@ -27,10 +47,7 @@ fn v1_to_current_preserves_accounts_contacts_tags_and_identities() {
         )
         .unwrap();
     assert_eq!(tag, "important");
-    assert_eq!(
-        super::sender_routes::get(&conn, "work", "alice@example.org").unwrap(),
-        super::sender_routes::Route::Screening
-    );
+    assert_eq!(sender_route(&conn, "work", "alice@example.org"), None);
 }
 
 #[test]
@@ -83,13 +100,7 @@ fn v3_upgrade_keeps_existing_rows_and_is_idempotent() {
         [],
     )
     .unwrap();
-    super::sender_routes::set(
-        &conn,
-        "work",
-        "alice@example.org",
-        super::sender_routes::Route::Reading,
-    )
-    .unwrap();
+    store_sender_route(&conn, "work", "alice@example.org", "reading");
     conn.execute_batch(
         "INSERT INTO accounts (name, backend_kind) VALUES ('work', 'imap');
          INSERT INTO messages (account, folder, uid, subject, body_text) VALUES ('work', 'INBOX', '11', 'Preserved', 'important body');
@@ -116,8 +127,8 @@ fn v3_upgrade_keeps_existing_rows_and_is_idempotent() {
         .unwrap();
     assert_eq!(draft, "draft content");
     assert_eq!(
-        super::sender_routes::get(&conn, "work", "alice@example.org").unwrap(),
-        super::sender_routes::Route::Reading
+        sender_route(&conn, "work", "alice@example.org").as_deref(),
+        Some("reading")
     );
 }
 
@@ -130,10 +141,7 @@ fn v3_without_sender_routes_gains_the_new_table() {
     )
     .unwrap();
     init_for_test(&conn).unwrap();
-    assert_eq!(
-        super::sender_routes::get(&conn, "test", "alice@example.org").unwrap(),
-        super::sender_routes::Route::Screening
-    );
+    assert_eq!(sender_route(&conn, "test", "alice@example.org"), None);
 }
 
 #[test]
@@ -144,18 +152,12 @@ fn v4_upgrade_adds_followup_without_losing_sender_decisions() {
         "UPDATE meta SET value = '4' WHERE key = 'schema_version'; DROP TABLE message_markers;",
     )
     .unwrap();
-    super::sender_routes::set(
-        &conn,
-        "work",
-        "alice@example.org",
-        super::sender_routes::Route::Reading,
-    )
-    .unwrap();
+    store_sender_route(&conn, "work", "alice@example.org", "reading");
     init_for_test(&conn).unwrap();
     assert_eq!(schema_version(&conn), CURRENT_SCHEMA_VERSION);
     assert_eq!(
-        super::sender_routes::get(&conn, "work", "alice@example.org").unwrap(),
-        super::sender_routes::Route::Reading
+        sender_route(&conn, "work", "alice@example.org").as_deref(),
+        Some("reading")
     );
     let exists: bool = conn
         .query_row(

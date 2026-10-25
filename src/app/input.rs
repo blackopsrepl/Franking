@@ -36,12 +36,7 @@ impl App {
     }
 
     pub(crate) fn dispatch_action(&mut self, action: Action) {
-        if self.try_local_action(&action)
-            || self.try_snippet_action(&action)
-            || self.try_clip_action(&action)
-            || self.try_stage_action(&action)
-            || self.try_collection_action(&action)
-        {
+        if self.try_local_action(&action) {
             return;
         }
         match action {
@@ -67,8 +62,6 @@ impl App {
             Action::ClearSelection => self.clear_selection(),
             Action::ToggleFlag => self.toggle_flag(),
             Action::ToggleRead => self.toggle_read(),
-            Action::CycleTriageLane => self.cycle_triage_lane(),
-            // Local workflow actions are dispatched in `local_actions`.
             Action::SyncFolder => self.sync_folder(),
             Action::MarkFolderRead => self.mark_folder_read(),
             Action::DownloadAttachments => self.download_attachments(),
@@ -91,9 +84,6 @@ impl App {
             Action::Archive => self.archive(),
             Action::NextUnread => self.jump_unread(true),
             Action::PrevUnread => self.jump_unread(false),
-            Action::FolderJumpInput(c) => self.folder_jump_input(c),
-            Action::FolderJumpBackspace => self.folder_jump_backspace(),
-            Action::FolderJumpClear => self.folder_jump_clear(),
             Action::CycleSortOrder => self.cycle_sort_order(),
             Action::MarkThreadRead => self.mark_thread_read(),
             Action::AttachmentView => self.preview_attachment(),

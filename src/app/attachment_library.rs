@@ -70,8 +70,7 @@ impl App {
         let (account, folder, uid) = (item.account.clone(), item.folder.clone(), item.uid.clone());
         self.account_name = Some(account.clone());
         self.current_folder = folder.clone();
-        self.triage_lane = None;
-        self.followup_lane = None;
+        self.local_view = None;
         self.active_query = None;
         self.pending_message_id = Some(uid.clone());
         self.loading = true;

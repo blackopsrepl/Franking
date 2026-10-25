@@ -1,7 +1,6 @@
-/*! Visible virtual rows use the same viewport for rendering and hit-testing. */
+/*! Local-view sidebar rows use the same viewport for rendering and hit-testing. */
 
-use crate::app::App;
-use crate::db::message_markers::{self, Marker};
+use crate::app::{App, LocalView};
 use crate::keys::View;
 use crate::mail::{
     store,
@@ -55,23 +54,20 @@ fn cache(app: &App, account: &str, folder: &str, id: &str, flagged: bool) -> Env
 }
 
 #[test]
-fn virtual_rows_are_visible_and_keyboard_searchable_without_cycling() {
+fn local_views_are_visible_sidebar_rows_without_cycling() {
     let mut app = app(1);
     app.view = View::FolderList;
     app.move_selection(1);
     assert_eq!(app.folder_index, app.folders.len());
     app.select_item();
-    assert_eq!(app.followup_lane, Some(Marker::ReplyLater));
-    app.open_followup(Marker::ReplyLater);
-    assert_eq!(app.followup_lane, Some(Marker::ReplyLater));
+    assert_eq!(app.local_view, Some(LocalView::ReplyLater));
+    app.open_reply_later();
+    assert_eq!(app.local_view, Some(LocalView::ReplyLater));
     app.view = View::FolderList;
-    for c in "star".chars() {
-        app.folder_jump_input(c);
-    }
+    app.move_selection(1);
     assert_eq!(app.folder_index, app.folders.len() + 1);
     app.select_item();
-    assert!(app.starred_view);
-    assert!(app.followup_lane.is_none());
+    assert_eq!(app.local_view, Some(LocalView::Starred));
     let mut terminal = Terminal::new(TestBackend::new(90, 12)).unwrap();
     terminal
         .draw(|frame| crate::ui::render(&mut app, frame))
@@ -87,20 +83,20 @@ fn virtual_rows_are_visible_and_keyboard_searchable_without_cycling() {
     assert!(screen.contains("Starred (cached)"));
     assert!(!screen.contains("Saved"));
     app.open_starred();
-    assert!(
-        app.starred_view,
+    assert_eq!(
+        app.local_view,
+        Some(LocalView::Starred),
         "opening Starred again must not toggle to Inbox"
     );
 }
 
 #[test]
-fn starred_uses_cached_server_flags_across_folders_not_saved_markers() {
+fn starred_uses_cached_server_flags_across_folders() {
     let mut app = app(1);
     cache(&app, "personal", "INBOX", "7", true);
     cache(&app, "personal", "Archive", "7", true);
     cache(&app, "work", "INBOX", "7", true);
-    let saved = cache(&app, "personal", "INBOX", "8", false);
-    message_markers::set(app.db.as_ref().unwrap(), &saved, Marker::Saved, true).unwrap();
+    cache(&app, "personal", "INBOX", "8", false);
     app.open_starred();
     assert_eq!(app.envelopes.len(), 2);
     assert!(app
@@ -112,7 +108,6 @@ fn starred_uses_cached_server_flags_across_folders_not_saved_markers() {
     app.current_folder = "All Inboxes".into();
     app.open_starred();
     assert_eq!(app.envelopes.len(), 3);
-    assert!(message_markers::has(app.db.as_ref().unwrap(), &saved, Marker::Saved).unwrap());
     assert_eq!(app.selected.len(), 0);
     app.page_down();
     assert_eq!(app.page, 1);
@@ -151,7 +146,7 @@ fn mouse_uses_rendered_sidebar_scroll_offset_and_ignores_borders() {
         modifiers: KeyModifiers::NONE,
     };
     app.handle_mouse(click(5, 7));
-    assert!(app.starred_view);
+    assert_eq!(app.local_view, Some(LocalView::Starred));
     terminal
         .draw(|frame| crate::ui::render(&mut app, frame))
         .unwrap();
@@ -164,13 +159,11 @@ fn mouse_uses_rendered_sidebar_scroll_offset_and_ignores_borders() {
         })
         .expect("Reply later must be visible in the rendered sidebar");
     app.handle_mouse(click(5, reply_row));
-    assert_eq!(app.followup_lane, Some(Marker::ReplyLater));
-    assert!(!app.starred_view);
+    assert_eq!(app.local_view, Some(LocalView::ReplyLater));
     app.handle_mouse(click(0, 2));
-    assert_eq!(app.followup_lane, Some(Marker::ReplyLater));
+    assert_eq!(app.local_view, Some(LocalView::ReplyLater));
     app.view = View::FolderList;
     app.folder_index = 0;
     app.select_item();
-    assert!(app.followup_lane.is_none());
-    assert!(!app.starred_view);
+    assert!(app.local_view.is_none());
 }

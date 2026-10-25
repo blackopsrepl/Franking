@@ -1,32 +1,11 @@
-/*! Local follow-up and reference state, independent of server flags. */
+/*! Reply later: a local checklist, independent of server flags. The table
+also holds a retired `saved` column whose rows are left untouched. */
 
 use anyhow::{Context, Result};
 use rusqlite::{params, Connection, OptionalExtension};
 
 use crate::mail::store::{self, StoredMessage};
 use crate::mail::types::{Envelope, Sender};
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Marker {
-    ReplyLater,
-    Saved,
-}
-
-impl Marker {
-    fn column(self) -> &'static str {
-        match self {
-            Self::ReplyLater => "reply_later",
-            Self::Saved => "saved",
-        }
-    }
-
-    pub fn label(self) -> &'static str {
-        match self {
-            Self::ReplyLater => "Reply later",
-            Self::Saved => "Saved",
-        }
-    }
-}
 
 fn source(envelope: &Envelope) -> Result<(&str, &str, &str)> {
     Ok((
@@ -42,11 +21,12 @@ fn source(envelope: &Envelope) -> Result<(&str, &str, &str)> {
     ))
 }
 
-pub fn has(conn: &Connection, envelope: &Envelope, marker: Marker) -> Result<bool> {
+pub fn is_reply_later(conn: &Connection, envelope: &Envelope) -> Result<bool> {
     let (account, folder, uid) = source(envelope)?;
     let value: Option<(Option<String>, bool)> = conn
         .query_row(
-            &format!("SELECT message_id, {} FROM message_markers WHERE account = ?1 AND folder = ?2 AND uid = ?3", marker.column()),
+            "SELECT message_id, reply_later FROM message_markers
+             WHERE account = ?1 AND folder = ?2 AND uid = ?3",
             params![account, folder, uid],
             |row| Ok((row.get(0)?, row.get(1)?)),
         )
@@ -55,60 +35,43 @@ pub fn has(conn: &Connection, envelope: &Envelope, marker: Marker) -> Result<boo
     Ok(value.is_some_and(|(id, value)| value && id == envelope.message_id))
 }
 
-pub fn set(conn: &Connection, envelope: &Envelope, marker: Marker, enabled: bool) -> Result<()> {
+pub fn set_reply_later(conn: &Connection, envelope: &Envelope, enabled: bool) -> Result<()> {
     let (account, folder, uid) = source(envelope)?;
     if enabled {
         let cached = StoredMessage::from_envelope(account, folder, envelope);
         store::upsert_envelope(conn, &cached)?;
         conn.execute(
-            &format!(
-                "INSERT INTO message_markers (account, folder, uid, message_id, {})
-                VALUES (?1, ?2, ?3, ?4, 1)
-                ON CONFLICT(account, folder, uid) DO UPDATE SET
-                    message_id = excluded.message_id,
-                    {} = 1,
-                    {} = CASE WHEN message_markers.message_id IS excluded.message_id
-                        THEN {} ELSE 0 END",
-                marker.column(),
-                marker.column(),
-                other(marker).column(),
-                other(marker).column()
-            ),
+            "INSERT INTO message_markers (account, folder, uid, message_id, reply_later)
+             VALUES (?1, ?2, ?3, ?4, 1)
+             ON CONFLICT(account, folder, uid) DO UPDATE SET
+                 message_id = excluded.message_id,
+                 reply_later = 1,
+                 saved = CASE WHEN message_markers.message_id IS excluded.message_id
+                     THEN saved ELSE 0 END",
             params![account, folder, uid, envelope.message_id],
         )?;
     } else {
         conn.execute(
-            &format!(
-                "UPDATE message_markers SET {} = 0
-                WHERE account = ?1 AND folder = ?2 AND uid = ?3
-                AND message_id IS ?4",
-                marker.column()
-            ),
+            "UPDATE message_markers SET reply_later = 0
+             WHERE account = ?1 AND folder = ?2 AND uid = ?3 AND message_id IS ?4",
             params![account, folder, uid, envelope.message_id],
         )?;
         conn.execute(
             "DELETE FROM message_markers WHERE account = ?1 AND folder = ?2 AND uid = ?3
-            AND reply_later = 0 AND saved = 0",
+             AND reply_later = 0 AND saved = 0",
             params![account, folder, uid],
         )?;
     }
     Ok(())
 }
 
-fn other(marker: Marker) -> Marker {
-    match marker {
-        Marker::ReplyLater => Marker::Saved,
-        Marker::Saved => Marker::ReplyLater,
-    }
-}
-
-pub fn list(conn: &Connection, account: Option<&str>, marker: Marker) -> Result<Vec<Envelope>> {
-    let mut stmt = conn.prepare(&format!(
-        "SELECT p.account, p.folder, p.uid, p.message_id FROM message_markers p
-         WHERE p.{} = 1 AND (?1 IS NULL OR p.account = ?1)
-         ORDER BY p.rowid DESC",
-        marker.column()
-    ))?;
+/// Reply-later messages for one account, or every account when `None`.
+pub fn reply_later(conn: &Connection, account: Option<&str>) -> Result<Vec<Envelope>> {
+    let mut stmt = conn.prepare(
+        "SELECT account, folder, uid, message_id FROM message_markers
+         WHERE reply_later = 1 AND (?1 IS NULL OR account = ?1)
+         ORDER BY rowid DESC",
+    )?;
     let keys = stmt
         .query_map([account], |row| {
             Ok((
@@ -147,7 +110,7 @@ mod tests {
         Envelope {
             id: uid.into(),
             flags: vec![],
-            subject: "Keep this".into(),
+            subject: "Answer this".into(),
             sender: Sender::Structured {
                 name: Some("Alice".into()),
                 addr: Some("alice@example.org".into()),
@@ -161,22 +124,31 @@ mod tests {
     }
 
     #[test]
-    fn markers_are_independent_and_account_scoped() {
+    fn reply_later_is_account_scoped_and_keeps_legacy_saved_rows() {
         let conn = Connection::open_in_memory().unwrap();
         crate::db::init_for_test(&conn).unwrap();
         let personal = envelope("personal", "7");
         let work = envelope("work", "7");
-        set(&conn, &personal, Marker::ReplyLater, true).unwrap();
-        set(&conn, &personal, Marker::Saved, true).unwrap();
-        set(&conn, &personal, Marker::ReplyLater, false).unwrap();
-        assert!(!has(&conn, &personal, Marker::ReplyLater).unwrap());
-        assert!(has(&conn, &personal, Marker::Saved).unwrap());
-        assert!(!has(&conn, &work, Marker::Saved).unwrap());
+        set_reply_later(&conn, &personal, true).unwrap();
+        conn.execute("UPDATE message_markers SET saved = 1", [])
+            .unwrap();
+        assert!(is_reply_later(&conn, &personal).unwrap());
+        assert!(!is_reply_later(&conn, &work).unwrap());
         assert_eq!(
-            list(&conn, Some("personal"), Marker::Saved).unwrap()[0].sender_display(),
+            reply_later(&conn, Some("personal")).unwrap()[0].sender_display(),
             "Alice"
         );
-        assert!(list(&conn, Some("work"), Marker::Saved).unwrap().is_empty());
+        assert!(reply_later(&conn, Some("work")).unwrap().is_empty());
+        set_reply_later(&conn, &personal, false).unwrap();
+        assert!(!is_reply_later(&conn, &personal).unwrap());
+        let legacy: i64 = conn
+            .query_row(
+                "SELECT count(*) FROM message_markers WHERE saved = 1",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(legacy, 1, "retired Saved rows are not deleted");
     }
 
     #[test]
@@ -184,12 +156,9 @@ mod tests {
         let conn = Connection::open_in_memory().unwrap();
         crate::db::init_for_test(&conn).unwrap();
         let original = envelope("work", "7");
-        set(&conn, &original, Marker::Saved, true).unwrap();
+        set_reply_later(&conn, &original, true).unwrap();
         let mut replacement = original.clone();
         replacement.message_id = Some("different@example.org".into());
-        assert!(!has(&conn, &replacement, Marker::Saved).unwrap());
-        set(&conn, &replacement, Marker::ReplyLater, true).unwrap();
-        assert!(!has(&conn, &replacement, Marker::Saved).unwrap());
-        assert!(has(&conn, &replacement, Marker::ReplyLater).unwrap());
+        assert!(!is_reply_later(&conn, &replacement).unwrap());
     }
 }
