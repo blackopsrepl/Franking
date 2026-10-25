@@ -5,6 +5,7 @@ pub mod autoconfig;
 pub mod calendar;
 pub mod draft;
 pub mod errors;
+pub mod header_text;
 pub mod local_time;
 pub mod maildir;
 pub mod mime;

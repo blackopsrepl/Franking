@@ -136,7 +136,7 @@ fn envelope_from_items(items: &[MessageDataItem<'_>]) -> Envelope {
                 date = value.as_ref().format("%Y-%m-%d %H:%M:%S%:z").to_string();
             }
             MessageDataItem::Envelope(envelope) => {
-                subject = nstring_text(&envelope.subject);
+                subject = header_text(&envelope.subject);
                 sender = sender_from(&envelope.from);
                 if date.is_empty() {
                     date = nstring_text(&envelope.date);
@@ -165,7 +165,7 @@ fn sender_from(addresses: &[imap_types::envelope::Address<'_>]) -> Sender {
     let Some(address) = addresses.first() else {
         return Sender::Unknown;
     };
-    let name = nstring_text(&address.name);
+    let name = header_text(&address.name);
     let mailbox = nstring_text(&address.mailbox);
     let host = nstring_text(&address.host);
     let addr = if mailbox.is_empty() || host.is_empty() {
@@ -191,6 +191,14 @@ fn nstring_text(value: &NString<'_>) -> String {
     match value.0.as_ref() {
         None => String::new(),
         Some(value) => String::from_utf8_lossy(&value.clone().into_inner()).to_string(),
+    }
+}
+
+/// Subject or display name, with RFC 2047 encoded-words decoded.
+fn header_text(value: &NString<'_>) -> String {
+    match value.0.as_ref() {
+        Some(value) => crate::mail::header_text::decode(&value.clone().into_inner()),
+        None => String::new(),
     }
 }
 
